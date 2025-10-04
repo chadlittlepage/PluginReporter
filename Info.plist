@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle Information -->
+    <key>CFBundleName</key>
+    <string>Plugin Reporter</string>
+    <key>CFBundleDisplayName</key>
+    <string>Plugin Reporter</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.chadlittlepage.PluginReporter</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <!-- Minimum System Version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+
+    <!-- App Category (Required for App Store) -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+
+    <!-- User Activity Types -->
+    <key>NSUserActivityTypes</key>
+    <array>
+        <string>com.chadlittlepage.PluginReporter.scan</string>
+        <string>com.chadlittlepage.PluginReporter.export</string>
+    </array>
+
+    <!-- Privacy - File Timestamp Access (iOS 17+) -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Human-Readable Privacy Description -->
+    <key>NSPrivacyUsageDescription</key>
+    <string>Plugin Reporter scans your Audio Plug-Ins folder to catalog installed plugins. No data is collected or shared with third parties.</string>
+
+    <!-- Copyright -->
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025 Chad Littlepage. All rights reserved.</string>
+
+    <!-- Support URLs (Update these before submission) -->
+    <key>NSPrivacyPolicyURL</key>
+    <string>https://yourwebsite.com/pluginreporter/privacy</string>
+</dict>
+</plist>
