@@ -20,9 +20,10 @@ struct SettingsView: View {
             Form {
                 Section {
                     Picker("Appearance", selection: $appearance) {
+                        Text("System").tag("system")
                         Text("Light").tag("light")
                         Text("Dark").tag("dark")
-                        Text("System").tag("system")
+                        Text("Space").tag("space")
                     }
                     .pickerStyle(.segmented)
                 } header: {

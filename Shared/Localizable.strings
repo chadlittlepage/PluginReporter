@@ -15,9 +15,10 @@
 /* Settings */
 "Display" = "Display";
 "Appearance" = "Appearance";
+"System" = "System";
 "Light" = "Light";
 "Dark" = "Dark";
-"System" = "System";
+"Space" = "Space";
 "Data Sync" = "Data Sync";
 "Import JSON File" = "Import JSON File";
 "Browse and select a plugins.json file to import." = "Browse and select a plugins.json file to import.";
