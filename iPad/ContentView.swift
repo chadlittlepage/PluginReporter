@@ -30,8 +30,9 @@ struct ContentView: View {
     var backgroundColor: Color {
         switch appearance {
         case "space": return Color.black  // Pure black for Space mode
-        case "dark": return Color(UIColor.systemBackground)  // System dark gray
-        default: return Color(UIColor.systemBackground)
+        case "dark": return Color(red: 30/255, green: 30/255, blue: 30/255)  // Dark gray matching macOS
+        case "light": return Color(UIColor.systemBackground)  // System light background
+        default: return Color(UIColor.systemBackground)  // System default
         }
     }
 
