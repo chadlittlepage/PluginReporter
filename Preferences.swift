@@ -10,15 +10,20 @@ final class Preferences: ObservableObject {
     // MARK: Appearance
 
     enum Appearance: String, CaseIterable, Identifiable {
-        case system, light, dark
+        case system, light, dark, space
         var id: String { rawValue }
-        
+
         var colorScheme: ColorScheme? {
             switch self {
             case .system: return nil
             case .light:  return .light
             case .dark:   return .dark
+            case .space:  return .dark  // Space mode uses dark color scheme
             }
+        }
+
+        var usesTrueBlack: Bool {
+            return self == .space
         }
     }
 

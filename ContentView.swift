@@ -35,10 +35,16 @@ struct ContentView: View {
     @State private var lastBarUpdateCount = 0
 
     private var appBG: Color {
-        if colorScheme == .dark {
+        // Space mode: pure black background
+        if prefs.appearance.usesTrueBlack {
+            return Color.black
+        }
+        // Regular dark mode: dark gray
+        else if colorScheme == .dark {
             return Color(red: 30/255, green: 30/255, blue: 30/255)
-        } else {
-            // Medium gray for light appearance
+        }
+        // Light mode: medium gray
+        else {
             return Color(red: 0.82, green: 0.82, blue: 0.84)
         }
     }

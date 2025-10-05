@@ -129,6 +129,7 @@ struct SettingsView: View {
         case .system: return "System"
         case .light:  return "Light"
         case .dark:   return "Dark"
+        case .space:  return "Space"
         }
     }
 
