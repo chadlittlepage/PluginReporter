@@ -105,14 +105,14 @@
 		402869212E91F03000A3C7DA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContentView.swift; path = ../iPhoness/ContentView.swift; sourceTree = "<group>"; };
 		402869222E91F03000A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExportView.swift; path = ../iPhoness/ExportView.swift; sourceTree = "<group>"; };
 		402869232E91F03000A3C7DA /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExportViewModel.swift; path = ../iPhoness/ExportViewModel.swift; sourceTree = "<group>"; };
-		402869252E91F03000A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginDetailViews.swift; path = ../iPhoness/PluginDetailViews.swift; sourceTree = "<group>"; };
+		402869252E91F03000A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginDetailViews.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
 		402869262E91F03000A3C7DA /* PluginListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginListView.swift; path = ../iPhoness/PluginListView.swift; sourceTree = "<group>"; };
 		402869272E91F03000A3C7DA /* PluginListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginListViewModel.swift; path = ../iPhoness/PluginListViewModel.swift; sourceTree = "<group>"; };
 		402869282E91F03000A3C7DA /* PluginReporterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginReporterApp.swift; path = ../iPhoness/PluginReporterApp.swift; sourceTree = "<group>"; };
-		402869292E91F03000A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginRowViews.swift; path = ../iPhoness/PluginRowViews.swift; sourceTree = "<group>"; };
+		402869292E91F03000A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginRowViews.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
 		4028692A2E91F03000A3C7DA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = ../iPhoness/SettingsView.swift; sourceTree = "<group>"; };
-		4028692B2E91F03000A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ShareSheet.swift; path = ../iPhoness/ShareSheet.swift; sourceTree = "<group>"; };
-		4028692C2E91F03000A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UIComponents.swift; path = ../iPhoness/UIComponents.swift; sourceTree = "<group>"; };
+		4028692B2E91F03000A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ShareSheet.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
+		4028692C2E91F03000A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UIComponents.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
 		4028694C2E91F3A600A3C7DA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4028694E2E91F3A600A3C7DA /* PluginListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginListView.swift; sourceTree = "<group>"; };
 		4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginReporterApp.swift; sourceTree = "<group>"; };

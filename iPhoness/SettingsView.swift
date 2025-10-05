@@ -12,6 +12,8 @@ struct SettingsView: View {
     let onImport: () -> Void
     @AppStorage("appearance") private var appearance: String = "dark"
     @State private var showFilePicker = false
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         NavigationView {
@@ -86,7 +88,14 @@ struct SettingsView: View {
                     }
                 case .failure(let error):
                     AppLogger.error("File picker error: \(error.localizedDescription)")
+                    errorMessage = String(format: NSLocalizedString("Could not open file: %@", comment: "File picker error"), error.localizedDescription)
+                    showErrorAlert = true
                 }
+            }
+            .alert(NSLocalizedString("Import Error", comment: "Error alert title"), isPresented: $showErrorAlert) {
+                Button(NSLocalizedString("OK", comment: "Dismiss button"), role: .cancel) { }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
@@ -94,6 +103,8 @@ struct SettingsView: View {
     func handleFileImport(url: URL) {
         guard url.startAccessingSecurityScopedResource() else {
             AppLogger.error("Failed to access file")
+            errorMessage = NSLocalizedString("Unable to access the selected file. Please try again.", comment: "File access error")
+            showErrorAlert = true
             return
         }
         defer { url.stopAccessingSecurityScopedResource() }
@@ -102,6 +113,8 @@ struct SettingsView: View {
             // Copy to Documents folder
             guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
                 AppLogger.error("Failed to access document directory")
+                errorMessage = NSLocalizedString("Unable to access app documents folder.", comment: "Documents folder error")
+                showErrorAlert = true
                 return
             }
             let destinationURL = documentsURL.appendingPathComponent("plugins.json")
@@ -118,6 +131,8 @@ struct SettingsView: View {
             onImport()
         } catch {
             AppLogger.error("Import error: \(error.localizedDescription)")
+            errorMessage = String(format: NSLocalizedString("Failed to import file: %@", comment: "Import failure error"), error.localizedDescription)
+            showErrorAlert = true
         }
     }
 }

@@ -1,0 +1,71 @@
+/* Tab Titles */
+"Plugins" = "Plugins";
+"Settings" = "Settings";
+"Export" = "Export";
+
+/* Plugin List */
+"Search" = "Search";
+"Filtered Plugins" = "Filtered Plugins";
+"of %d" = "of %d";
+"Ready" = "Ready";
+"Filtered" = "Filtered";
+"No Plugins Yet" = "No Plugins Yet";
+"Export plugins from your Mac app\nand import them here" = "Export plugins from your Mac app\nand import them here";
+
+/* Settings */
+"Display" = "Display";
+"Appearance" = "Appearance";
+"Light" = "Light";
+"Dark" = "Dark";
+"System" = "System";
+"Data Sync" = "Data Sync";
+"Import JSON File" = "Import JSON File";
+"Browse and select a plugins.json file to import." = "Browse and select a plugins.json file to import.";
+"Reload from Documents" = "Reload from Documents";
+"Reload plugins from the app's Documents folder." = "Reload plugins from the app's Documents folder.";
+"Instructions" = "Instructions";
+"Simulator Setup" = "Simulator Setup";
+"About" = "About";
+"Version" = "Version";
+"Platform" = "Platform";
+"iPad" = "iPad";
+"Unknown" = "Unknown";
+
+/* Export */
+"Export Summary" = "Export Summary";
+"Plugins to Export" = "Plugins to Export";
+"Export Options" = "Export Options";
+"Export as CSV" = "Export as CSV";
+"Export plugin list as comma-separated values file." = "Export plugin list as comma-separated values file.";
+"Export as PDF" = "Export as PDF";
+"Export plugin list as formatted PDF document." = "Export plugin list as formatted PDF document.";
+"About Export" = "About Export";
+"Export Information" = "Export Information";
+"The export will include only the plugins currently visible on the Plugins tab. Use search and filters to customize what gets exported." = "The export will include only the plugins currently visible on the Plugins tab. Use search and filters to customize what gets exported.";
+
+/* Accessibility */
+"Filter and sort options" = "Filter and sort options";
+"Clear search" = "Clear search";
+"Export plugin list as CSV file" = "Export plugin list as CSV file";
+"Export plugin list as PDF file" = "Export plugin list as PDF file";
+
+/* Errors */
+"Import Error" = "Import Error";
+"Could not open file: %@" = "Could not open file: %@";
+"Unable to access the selected file. Please try again." = "Unable to access the selected file. Please try again.";
+"Unable to access app documents folder." = "Unable to access app documents folder.";
+"Failed to import file: %@" = "Failed to import file: %@";
+"OK" = "OK";
+
+/* Sort Options */
+"Sort By" = "Sort By";
+"Name" = "Name";
+"Publisher" = "Publisher";
+"Type" = "Type";
+"Style" = "Style";
+
+/* Filter Options */
+"Filter by Type" = "Filter by Type";
+"Filter by Style" = "Filter by Style";
+"Filter by Publisher" = "Filter by Publisher";
+"Clear All" = "Clear All";

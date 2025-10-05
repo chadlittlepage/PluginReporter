@@ -36,6 +36,7 @@ struct ExportView: View {
                     }) {
                         Label("Export as CSV", systemImage: "doc.text")
                     }
+                    .accessibilityHint("Export plugin list as CSV file")
 
                     Text("Export plugin list as comma-separated values file.")
                         .font(.caption)
@@ -51,6 +52,7 @@ struct ExportView: View {
                     }) {
                         Label("Export as PDF", systemImage: "doc.richtext")
                     }
+                    .accessibilityHint("Export plugin list as PDF file")
 
                     Text("Export plugin list as formatted PDF document.")
                         .font(.caption)

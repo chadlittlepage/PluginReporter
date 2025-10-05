@@ -276,6 +276,7 @@ struct PluginListView: View {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.secondary)
                             }
+                            .accessibilityLabel("Clear search")
                         }
                     }
                     .padding(10)
@@ -478,6 +479,7 @@ struct PluginListView: View {
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                             .imageScale(.large)
+                            .accessibilityLabel("Filter and sort options")
                     }
                 }
             }
