@@ -8,28 +8,82 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = PluginListViewModel()
     @State private var selectedTab = 0
+    @State private var plugins: [PluginItem] = []
+    @State private var isLoading = true
+    @State private var showImportAlert = false
+    @State private var debugMessage = ""
+    @State private var showDebugAlert = false
+    @AppStorage("appearance") private var appearance: String = "dark"
+
+    var colorScheme: ColorScheme? {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        case "system": return nil
+        default: return .dark
+        }
+    }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            PluginListView(plugins: viewModel.plugins)
-                .tabItem {
-                    Label("Plugins", systemImage: "music.note.list")
+        PluginListView(plugins: plugins)
+            .preferredColorScheme(colorScheme)
+            .onAppear {
+                // Auto-load plugins on launch
+                if plugins.isEmpty {
+                    loadPluginsSilently()
                 }
-                .tag(0)
 
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
+                // Request full screen on iPad
+                #if os(iOS)
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .all)) { error in
+                        print("Geometry update error: \(error)")
+                    }
                 }
-                .tag(1)
+                #endif
+            }
+            .alert("Plugins Loaded", isPresented: $showImportAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("\(plugins.count) plugins imported successfully")
+            }
+            .alert("Debug Info", isPresented: $showDebugAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(debugMessage)
+            }
+    }
 
-            ExportView(plugins: viewModel.plugins)
-                .tabItem {
-                    Label("Export", systemImage: "square.and.arrow.up")
-                }
-                .tag(2)
+    func loadPluginsFromFile() {
+        // Reload from shared storage with debug info
+        print("📱 iPad loadPluginsFromFile() called")
+        do {
+            let loadedPlugins = try SharedStorage.loadPlugins()
+            plugins = loadedPlugins
+            isLoading = false
+            AppLogger.info("Loaded \(plugins.count) plugins on iPad")
+            showImportAlert = true
+        } catch {
+            AppLogger.error("Failed to load plugins: \(error.localizedDescription)")
+            debugMessage = "❌ Error: \(error.localizedDescription)"
+            showDebugAlert = true
+            plugins = []
+            isLoading = false
+        }
+    }
+
+    func loadPluginsSilently() {
+        // Auto-load on launch without showing alerts
+        do {
+            let loadedPlugins = try SharedStorage.loadPlugins()
+            plugins = loadedPlugins
+            isLoading = false
+            AppLogger.info("Auto-loaded \(plugins.count) plugins on iPad launch")
+        } catch {
+            AppLogger.error("Failed to auto-load plugins on iPad: \(error.localizedDescription)")
+            plugins = []
+            isLoading = false
         }
     }
 }

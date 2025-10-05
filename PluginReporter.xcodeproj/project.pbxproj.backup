@@ -16,7 +16,19 @@
 		3D090349E5114E2AAE5A9D32 /* SharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D090348E5114E2AAE5A9D31 /* SharedStorage.swift */; };
 		3D09034AE5114E2AAE5A9D33 /* SharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D090348E5114E2AAE5A9D31 /* SharedStorage.swift */; };
 		4028692E2E91F03000A3C7DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4028691E2E91F03000A3C7DA /* Assets.xcassets */; };
+		402869312E91F03000A3C7DA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869212E91F03000A3C7DA /* ContentView.swift */; };
+		402869322E91F03000A3C7DA /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869222E91F03000A3C7DA /* ExportView.swift */; };
+		402869362E91F03000A3C7DA /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869262E91F03000A3C7DA /* PluginListView.swift */; };
+		402869382E91F03000A3C7DA /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
+		4028693A2E91F03000A3C7DA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692A2E91F03000A3C7DA /* SettingsView.swift */; };
+		4028693C2E91F03000A3C7DA /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692C2E91F03000A3C7DA /* UIComponents.swift */; };
 		4028693D2E91F03000A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692B2E91F03000A3C7DA /* ShareSheet.swift */; };
+		402869412E91F03100A3C7DA /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869232E91F03000A3C7DA /* ExportViewModel.swift */; };
+		402869432E91F03100A3C7DA /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869252E91F03000A3C7DA /* PluginDetailViews.swift */; };
+		402869452E91F03100A3C7DA /* PluginListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869272E91F03000A3C7DA /* PluginListViewModel.swift */; };
+		402869472E91F03100A3C7DA /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869292E91F03000A3C7DA /* PluginRowViews.swift */; };
+		402869492E91F03100A3C7DA /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692C2E91F03000A3C7DA /* UIComponents.swift */; };
+		4028694A2E91F03100A3C7DA /* Assets.xcassets in Sources */ = {isa = PBXBuildFile; fileRef = 4028691E2E91F03000A3C7DA /* Assets.xcassets */; };
 		402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */; };
 		402869532E91F3A600A3C7DA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869502E91F3A600A3C7DA /* SettingsView.swift */; };
 		402869542E91F3A600A3C7DA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028694C2E91F3A600A3C7DA /* ContentView.swift */; };
@@ -39,12 +51,15 @@
 		402869742E91FEC500A3C7DA /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869712E91FEC500A3C7DA /* AppLogger.swift */; };
 		402869752E91F48100A3C7DA /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6BFFEB39C84B46908F3B41 /* Formatters.swift */; };
 		402869762E91F48100A3C7DA /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E4D2E82422C0027CFC0 /* Diagnostics.swift */; };
+		402869CA2E9219F900A3C7DA /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869232E91F03000A3C7DA /* ExportViewModel.swift */; };
+		402869CB2E9219F900A3C7DA /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869252E91F03000A3C7DA /* PluginDetailViews.swift */; };
+		402869CC2E9219F900A3C7DA /* PluginListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869272E91F03000A3C7DA /* PluginListViewModel.swift */; };
+		402869CD2E9219F900A3C7DA /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869292E91F03000A3C7DA /* PluginRowViews.swift */; };
 		402869CF2E92312C00A3C7DA /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869CE2E92312C00A3C7DA /* ExportViewModel.swift */; };
 		402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ShareSheet.swift */; };
 		402869D32E92314600A3C7DA /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* UIComponents.swift */; };
 		402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* PluginRowViews.swift */; };
 		402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* PluginDetailViews.swift */; };
-		402869D92E92349D00A3C7DA /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D82E92349D00A3C7DA /* ExportView.swift */; };
 		4044CABD2E862B6F00EF13E7 /* PlatformTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */; };
 		404B81B92E89E4B4004AE604 /* SyncProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404B81B82E89E4B4004AE604 /* SyncProtocols.swift */; };
 		404B81BD2E89E8DB004AE604 /* MobilePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404B81BC2E89E8DB004AE604 /* MobilePreview.swift */; };
@@ -105,6 +120,7 @@
 		4028692B2E91F03000A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ShareSheet.swift; path = ../iPhoness/ShareSheet.swift; sourceTree = "<group>"; };
 		4028692C2E91F03000A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UIComponents.swift; path = ../iPhoness/UIComponents.swift; sourceTree = "<group>"; };
 		4028694C2E91F3A600A3C7DA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4028694D2E91F3A600A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		4028694E2E91F3A600A3C7DA /* PluginListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginListView.swift; sourceTree = "<group>"; };
 		4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginReporterApp.swift; sourceTree = "<group>"; };
 		402869502E91F3A600A3C7DA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -116,7 +132,6 @@
 		402869D22E92314600A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIComponents.swift; sourceTree = "<group>"; };
 		402869D42E92315200A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginRowViews.swift; sourceTree = "<group>"; };
 		402869D62E92315D00A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDetailViews.swift; sourceTree = "<group>"; };
-		402869D82E92349D00A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		403F45772E8F87490068FF3B /* Plugin Reporter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "Plugin Reporter.entitlements"; path = "../Plugin Reporter.entitlements"; sourceTree = "<group>"; };
 		4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformTable.swift; path = ../PlatformTable.swift; sourceTree = "<group>"; };
 		404B81B82E89E4B4004AE604 /* SyncProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyncProtocols.swift; path = ../SyncProtocols.swift; sourceTree = "<group>"; };
@@ -239,13 +254,13 @@
 		4028691C2E91E96000A3C7DA /* iPad */ = {
 			isa = PBXGroup;
 			children = (
-				402869D82E92349D00A3C7DA /* ExportView.swift */,
 				402869D62E92315D00A3C7DA /* PluginDetailViews.swift */,
 				402869D42E92315200A3C7DA /* PluginRowViews.swift */,
 				402869D22E92314600A3C7DA /* UIComponents.swift */,
 				402869D02E92313900A3C7DA /* ShareSheet.swift */,
 				402869CE2E92312C00A3C7DA /* ExportViewModel.swift */,
 				4028694C2E91F3A600A3C7DA /* ContentView.swift */,
+				4028694D2E91F3A600A3C7DA /* ExportView.swift */,
 				4028694E2E91F3A600A3C7DA /* PluginListView.swift */,
 				4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */,
 				402869502E91F3A600A3C7DA /* SettingsView.swift */,
@@ -490,14 +505,19 @@
 				53036FB34444446F9BD84960 /* JSONExporter.swift in Sources */,
 				402869662E91F48100A3C7DA /* HTMLExporter.swift in Sources */,
 				4028696A2E91FD5900A3C7DA /* ColorUtilities.swift in Sources */,
+				4028694A2E91F03100A3C7DA /* Assets.xcassets in Sources */,
+				402869CA2E9219F900A3C7DA /* ExportViewModel.swift in Sources */,
+				402869CB2E9219F900A3C7DA /* PluginDetailViews.swift in Sources */,
+				402869CC2E9219F900A3C7DA /* PluginListViewModel.swift in Sources */,
+				402869CD2E9219F900A3C7DA /* PluginRowViews.swift in Sources */,
+				402869492E91F03100A3C7DA /* UIComponents.swift in Sources */,
+				402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */,
 				402869542E91F3A600A3C7DA /* ContentView.swift in Sources */,
 				402869552E91F3A600A3C7DA /* PluginListView.swift in Sources */,
 				402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */,
 				402869532E91F3A600A3C7DA /* SettingsView.swift in Sources */,
 				402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */,
-				402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */,
 				3D090349E5114E2AAE5A9D32 /* SharedStorage.swift in Sources */,
-				402869D92E92349D00A3C7DA /* ExportView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -512,7 +532,17 @@
 				402869752E91F48100A3C7DA /* Formatters.swift in Sources */,
 				402869762E91F48100A3C7DA /* Diagnostics.swift in Sources */,
 				53036FB44444446F9BD84961 /* JSONExporter.swift in Sources */,
+				402869312E91F03000A3C7DA /* ContentView.swift in Sources */,
+				402869322E91F03000A3C7DA /* ExportView.swift in Sources */,
+				402869412E91F03100A3C7DA /* ExportViewModel.swift in Sources */,
+				402869432E91F03100A3C7DA /* PluginDetailViews.swift in Sources */,
+				402869362E91F03000A3C7DA /* PluginListView.swift in Sources */,
+				402869452E91F03100A3C7DA /* PluginListViewModel.swift in Sources */,
+				402869382E91F03000A3C7DA /* PluginReporterApp.swift in Sources */,
+				402869472E91F03100A3C7DA /* PluginRowViews.swift in Sources */,
+				4028693A2E91F03000A3C7DA /* SettingsView.swift in Sources */,
 				402869722E91FEC500A3C7DA /* AppLogger.swift in Sources */,
+				4028693C2E91F03000A3C7DA /* UIComponents.swift in Sources */,
 				4028693D2E91F03000A3C7DA /* ShareSheet.swift in Sources */,
 				402869702E91FE2800A3C7DA /* Constants.swift in Sources */,
 				3D09034AE5114E2AAE5A9D33 /* SharedStorage.swift in Sources */,
@@ -557,7 +587,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -618,7 +647,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;

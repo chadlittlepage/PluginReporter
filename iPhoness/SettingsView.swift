@@ -4,12 +4,14 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Settings View
 
 struct SettingsView: View {
     let onImport: () -> Void
     @AppStorage("appearance") private var appearance: String = "dark"
+    @State private var showFilePicker = false
 
     var body: some View {
         NavigationView {
@@ -26,31 +28,34 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    HStack {
-                        Image(systemName: "icloud.and.arrow.down")
-                            .foregroundColor(.blue)
-                        Text("Local JSON Import")
+                    Button(action: { showFilePicker = true }) {
+                        Label("Import JSON File", systemImage: "square.and.arrow.down")
                     }
-                    .font(.subheadline)
 
-                    Text("Import plugins from a JSON file exported from the Mac app. Place 'plugins.json' in the app's Documents folder.")
+                    Text("Browse and select a plugins.json file to import.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
+                    Divider()
+
                     Button(action: onImport) {
-                        Label("Reload Plugins", systemImage: "arrow.clockwise")
+                        Label("Reload from Documents", systemImage: "arrow.clockwise")
                     }
+
+                    Text("Reload plugins from the app's Documents folder.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 } header: {
                     Text("Data Sync")
                 }
 
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("How to Sync")
+                        Text("Simulator Setup")
                             .font(.subheadline)
                             .fontWeight(.semibold)
 
-                        Text("1. On Mac: Open Plugin Reporter and click 'Export JSON'\n2. Save to: ~/Library/Developer/CoreSimulator/Devices/[DEVICE-ID]/data/Containers/Data/Application/[APP-ID]/Documents/plugins.json\n3. On iOS: Tap 'Reload Plugins' above")
+                        Text("The Mac app saves to:\n~/Library/Application Support/PluginReporter/plugins.json\n\nCopy this file to the simulator's Documents folder to view in iOS.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -68,6 +73,47 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .fileImporter(
+                isPresented: $showFilePicker,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first {
+                        handleFileImport(url: url)
+                    }
+                case .failure(let error):
+                    print("File picker error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    func handleFileImport(url: URL) {
+        guard url.startAccessingSecurityScopedResource() else {
+            print("Failed to access file")
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        do {
+            // Copy to Documents folder
+            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let destinationURL = documentsURL.appendingPathComponent("plugins.json")
+
+            // Remove existing file if present
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                try FileManager.default.removeItem(at: destinationURL)
+            }
+
+            // Copy new file
+            try FileManager.default.copyItem(at: url, to: destinationURL)
+
+            // Trigger reload
+            onImport()
+        } catch {
+            print("Import error: \(error.localizedDescription)")
         }
     }
 }

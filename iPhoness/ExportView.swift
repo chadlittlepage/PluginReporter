@@ -15,60 +15,66 @@ struct ExportView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                Spacer()
+            ZStack {
+                Color(UIColor.systemBackground)
+                    .ignoresSafeArea()
 
-                Image(systemName: "square.and.arrow.up.circle.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(.blue)
+                VStack(spacing: 20) {
+                    Spacer()
 
-                Text("Export Plugin List")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    Image(systemName: "square.and.arrow.up.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.blue)
 
-                Text("Export all \(plugins.count) plugins")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                    Text("Export Plugin List")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
 
-                VStack(spacing: 12) {
-                    Button(action: {
-                        if let url = generateCSV() {
-                            exportURL = url
-                            showShareSheet = true
+                    Text("Export all \(plugins.count) plugins")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    VStack(spacing: 12) {
+                        Button(action: {
+                            if let url = generateCSV() {
+                                exportURL = url
+                                showShareSheet = true
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "doc.text")
+                                Text("Export as CSV")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
                         }
-                    }) {
-                        HStack {
-                            Image(systemName: "doc.text")
-                            Text("Export as CSV")
+
+                        Button(action: {
+                            if let url = generatePDF() {
+                                exportURL = url
+                                showShareSheet = true
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "doc.richtext")
+                                Text("Export as PDF")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
                     }
+                    .padding(.horizontal, 40)
 
-                    Button(action: {
-                        if let url = generatePDF() {
-                            exportURL = url
-                            showShareSheet = true
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "doc.richtext")
-                            Text("Export as PDF")
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.orange)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
+                    Spacer()
                 }
-                .padding(.horizontal, 40)
-
-                Spacer()
             }
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)
@@ -78,6 +84,7 @@ struct ExportView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     func generateCSV() -> URL? {

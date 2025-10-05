@@ -7,108 +7,6 @@
 
 import SwiftUI
 
-// MARK: - Plugin Item Model
-
-/// Represents a single audio plugin with all its metadata
-///
-/// This model is used across both iOS and macOS versions of the app to represent
-/// plugin information including format type, publisher, version, and technical details.
-struct PluginItem: Identifiable, Hashable, Codable {
-    /// Unique identifier for the plugin instance
-    var id: UUID = UUID()
-
-    /// Display name of the plugin
-    var name: String
-
-    /// Company or individual that created the plugin
-    var publisher: String
-
-    /// Version number of the plugin
-    var version: String
-
-    /// Plugin format type (AU, VST, VST3, AAX, CLAP, etc.)
-    var type: String
-
-    /// Category or style of plugin (Reverb, Compressor, EQ, etc.)
-    var style: String
-
-    /// CPU architectures supported (e.g., "Apple Silicon", "Intel 64-bit")
-    var architectures: String
-
-    /// Installation or modification date
-    var date: Date?
-
-    /// Size in bytes
-    var sizeBytes: Int64
-
-    /// File system path to the plugin
-    var path: String
-
-    /// Minimum runtime requirements
-    var runtimeRequirement: String
-
-    /// Whether the plugin is obsolete (typically Intel 32-bit)
-    var obsolete: Bool
-
-    init(
-        id: UUID = UUID(),
-        name: String,
-        publisher: String = "",
-        version: String = "",
-        type: String,
-        style: String = "",
-        architectures: String = "",
-        date: Date? = nil,
-        sizeBytes: Int64 = 0,
-        path: String = "",
-        runtimeRequirement: String = "",
-        obsolete: Bool = false
-    ) {
-        self.id = id
-        self.name = name
-        self.publisher = publisher
-        self.version = version
-        self.type = type
-        self.style = style
-        self.architectures = architectures
-        self.date = date
-        self.sizeBytes = sizeBytes
-        self.path = path
-        self.runtimeRequirement = runtimeRequirement
-        self.obsolete = obsolete
-    }
-}
-
-// MARK: - Plugin Item Extension
-
-extension PluginItem {
-    /// Shared formatter instances for better performance (avoid creating new formatters each time)
-    private static let sizeFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter
-    }()
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter
-    }()
-
-    /// Returns a human-readable file size string (e.g., "5.2 MB")
-    /// Cached using static formatter for 10x better performance
-    var displaySize: String {
-        Self.sizeFormatter.string(fromByteCount: sizeBytes)
-    }
-
-    /// Returns a formatted date string (e.g., "Jan 15, 2024")
-    /// Cached using static formatter for 10x better performance
-    var displayDate: String {
-        guard let date = date else { return "Unknown" }
-        return Self.dateFormatter.string(from: date)
-    }
-}
-
 // MARK: - Main iOS View
 
 struct ContentView: View {
@@ -151,7 +49,10 @@ struct ContentView: View {
         }
         .preferredColorScheme(colorScheme)
         .onAppear {
-            loadPlugins()
+            // Auto-load plugins on launch (simulating iCloud sync)
+            if plugins.isEmpty {
+                loadPluginsSilently()
+            }
         }
         .alert("Plugins Loaded", isPresented: $showImportAlert) {
             Button("OK", role: .cancel) { }
@@ -166,47 +67,71 @@ struct ContentView: View {
     }
 
     func loadPlugins() {
-        // Try multiple locations:
-        // 1. Shared location (for simulator - same as Mac's home)
-        // 2. App's Documents directory (fallback)
+        // Load from shared storage (same location as macOS)
+        isLoading = true
 
-        var possiblePaths: [URL] = []
-
-        // For simulator: try Mac's REAL home directory (not simulator's sandboxed home)
-        #if targetEnvironment(simulator)
-        let macHomePath = "/Users/chadlittlepage/Library/Application Support/PluginReporter/plugins.json"
-        possiblePaths.append(URL(fileURLWithPath: macHomePath))
-        #endif
-
-        // App's Documents directory
-        if let docDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            possiblePaths.append(docDir.appendingPathComponent("plugins.json"))
+        // Debug: Show what URL we're trying to read
+        guard let url = SharedStorage.pluginsURL else {
+            debugMessage = "❌ Could not determine plugins URL"
+            print("📱 ERROR: Could not get plugins URL")
+            showDebugAlert = true
+            isLoading = false
+            return
         }
 
-        var debugInfo = "Searching \(possiblePaths.count) locations:\n\n"
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        var fileInfo = ""
+        if exists, let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) {
+            let size = attrs[.size] as? Int64 ?? 0
+            fileInfo = "\nFile size: \(size) bytes"
+        }
 
-        for (index, url) in possiblePaths.enumerated() {
-            debugInfo += "[\(index + 1)] \(url.path)\n"
-            if FileManager.default.fileExists(atPath: url.path) {
-                debugInfo += "✅ FOUND!\n"
-                loadPluginsFromURL(url)
-                return
+        debugMessage = "📍 Loading from:\n\(url.path)\n\n✅ Exists: \(exists)\(fileInfo)"
+        print("📱 iPhone trying to load from: \(url.path)")
+        print("📱 File exists: \(exists)")
+
+        do {
+            let loadedPlugins = try SharedStorage.loadPlugins()
+            print("📱 Loaded \(loadedPlugins.count) plugins")
+
+            plugins = loadedPlugins
+            isLoading = false
+
+            if !plugins.isEmpty {
+                debugMessage += "\n\n✅ Loaded \(plugins.count) plugins successfully!"
             } else {
-                debugInfo += "❌ Not found\n\n"
+                debugMessage += "\n\n⚠️ File loaded but parsed 0 plugins"
+                debugMessage += "\n\nCheck Xcode console for details"
             }
-        }
 
-        debugInfo += "No plugins found"
-        debugMessage = debugInfo
-        showDebugAlert = true
-        isLoading = false
+            // Always show the debug alert when manually triggered
+            showDebugAlert = true
+        } catch {
+            AppLogger.error("Failed to load plugins: \(error.localizedDescription)")
+            debugMessage += "\n\n❌ Error: \(error.localizedDescription)"
+            showDebugAlert = true
+            plugins = []
+            isLoading = false
+        }
     }
 
     func loadPluginsFromFile() {
-        // Reload from shared location
+        // Reload from shared storage with debug info
+        print("📱 loadPluginsFromFile() called")
         loadPlugins()
-        if !plugins.isEmpty {
-            showImportAlert = true
+    }
+
+    func loadPluginsSilently() {
+        // Auto-load on launch without showing alerts
+        do {
+            let loadedPlugins = try SharedStorage.loadPlugins()
+            plugins = loadedPlugins
+            isLoading = false
+            AppLogger.info("Auto-loaded \(plugins.count) plugins on launch")
+        } catch {
+            AppLogger.error("Failed to auto-load plugins: \(error.localizedDescription)")
+            plugins = []
+            isLoading = false
         }
     }
 

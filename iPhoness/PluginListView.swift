@@ -64,6 +64,22 @@ struct PluginListView: View {
         }
     }
 
+    // Group plugins by first letter for section index
+    var sectionedPlugins: [(key: String, plugins: [ConsolidatedPlugin])] {
+        let grouped = Dictionary(grouping: consolidatedPlugins) { plugin -> String in
+            let firstChar = plugin.name.prefix(1).uppercased()
+            // Check if it's a letter
+            if firstChar.rangeOfCharacter(from: CharacterSet.letters) != nil {
+                return firstChar
+            } else {
+                return "#" // Numbers and symbols
+            }
+        }
+
+        return grouped.map { (key: $0.key, plugins: $0.value) }
+            .sorted { $0.key < $1.key }
+    }
+
     var filteredAndSortedPlugins: [PluginItem] {
         var result = plugins
 
@@ -160,7 +176,8 @@ struct PluginListView: View {
             VStack(spacing: 0) {
                 // Stats Card
                 statsCard
-                    .padding(.top, 4)
+                    .padding(.top, 0)
+                    .padding(.bottom, 0)
 
                 // Active Sort and Filters
                 if sortOrder != .name || hasActiveFilters {
@@ -204,20 +221,40 @@ struct PluginListView: View {
                     }
                     .frame(maxWidth: .infinity)
                 } else {
-                    List {
-                        ForEach(consolidatedPlugins) { consolidated in
-                            NavigationLink(destination: ConsolidatedPluginDetailView(consolidated: consolidated)) {
-                                ConsolidatedPluginRow(consolidated: consolidated)
+                    ZStack(alignment: .trailing) {
+                        ScrollViewReader { proxy in
+                            List {
+                                ForEach(sectionedPlugins, id: \.key) { section in
+                                    Section(header: EmptyView()) {
+                                        ForEach(section.plugins) { consolidated in
+                                            NavigationLink(destination: ConsolidatedPluginDetailView(consolidated: consolidated)) {
+                                                ConsolidatedPluginRow(consolidated: consolidated)
+                                            }
+                                        }
+                                    }
+                                    .id(section.key)
+                                }
+                            }
+                            .listStyle(.plain)
+                            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToSection"))) { notification in
+                                if let section = notification.object as? String {
+                                    withAnimation {
+                                        proxy.scrollTo(section, anchor: .top)
+                                    }
+                                }
                             }
                         }
+
+                        // Custom section index
+                        SectionIndexView(sections: sectionedPlugins.map { $0.key })
+                            .padding(.trailing, 4)
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: Constants.Layout.standardSpacing) {
+                VStack(spacing: 10) {
                     // Title - level with navigation bar
                     HStack {
                         Text("Plugin Reporter")
@@ -225,7 +262,7 @@ struct PluginListView: View {
                         Spacer()
                     }
                     .padding(.horizontal, Constants.Layout.standardPadding)
-                    .padding(.top, -50)
+                    .padding(.top, -45)
 
                     // Search Bar
                     HStack {
@@ -240,11 +277,11 @@ struct PluginListView: View {
                             }
                         }
                     }
-                    .padding(12)
+                    .padding(10)
                     .background(Color(.systemGray6))
                     .cornerRadius(10)
                     .padding(.horizontal, Constants.Layout.standardPadding)
-                    .padding(.bottom, Constants.Layout.standardSpacing)
+                    .padding(.bottom, 2)
                 }
                 .background(Color(UIColor.systemBackground))
             }
@@ -451,15 +488,15 @@ struct PluginListView: View {
     }
 
     private var statsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(hasActiveFilters ? "Filtered Plugins" : "Your Plugins")
-                            .font(.headline)
+                        Text(hasActiveFilters ? "Filtered Plugins" : "Plugins")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
                         Text("\(filteredAndSortedPlugins.count)")
-                            .font(.headline)
+                            .font(.title2)
                             .fontWeight(.bold)
                         if hasActiveFilters {
                             Text("of \(plugins.count)")
@@ -470,10 +507,11 @@ struct PluginListView: View {
                 }
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: 2) {
                     Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "checkmark.icloud.fill")
                         .foregroundColor(hasActiveFilters ? .orange : .green)
                         .font(.title3)
+                        .padding(.top, 2)
                     Text(hasActiveFilters ? "Filtered" : "Ready")
                         .font(.caption2)
                         .foregroundColor(.secondary)
@@ -482,7 +520,7 @@ struct PluginListView: View {
 
             Divider()
 
-            VStack(spacing: 8) {
+            VStack(spacing: 5) {
                 let counts = dynamicFormatCounts
                 ForEach(counts.sorted(by: { ColorUtilities.formatSortOrder($0.format) < ColorUtilities.formatSortOrder($1.format) }), id: \.format) { item in
                     MiniBarRow(
@@ -498,12 +536,12 @@ struct PluginListView: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         )
         .padding(.horizontal, 16)
     }
@@ -541,3 +579,34 @@ struct PluginListView: View {
     }
 
 }
+
+// MARK: - Section Index View
+
+struct SectionIndexView: View {
+    let sections: [String]
+    @State private var selectedSection: String?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            ForEach(sections, id: \.self) { section in
+                Text(section)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.blue)
+                    .frame(width: 20, height: 14)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        scrollToSection(section)
+                    }
+            }
+        }
+        .padding(.vertical, 8)
+        .background(Color.clear)
+    }
+
+    private func scrollToSection(_ section: String) {
+        // This requires using ScrollViewReader or UITableView
+        // For now, we'll use a notification approach
+        NotificationCenter.default.post(name: NSNotification.Name("ScrollToSection"), object: section)
+    }
+}
+

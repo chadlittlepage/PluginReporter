@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreGraphics
 
 enum Constants {
     enum PDF {
@@ -32,7 +33,7 @@ enum Constants {
     }
 
     enum Typography {
-        static let titleSize: CGFloat = 34
+        static let titleSize: CGFloat = 28
         static let headlineSize: CGFloat = 17
         static let bodySize: CGFloat = 17
         static let captionSize: CGFloat = 12
