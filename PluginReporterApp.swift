@@ -19,6 +19,8 @@ struct PluginReporterApp: App {
             NSApp.appearance = NSAppearance(named: .aqua)
         case .dark:
             NSApp.appearance = NSAppearance(named: .darkAqua)
+        case .space:
+            NSApp.appearance = NSAppearance(named: .darkAqua)  // Space mode uses dark appearance
         }
         #endif
     }
