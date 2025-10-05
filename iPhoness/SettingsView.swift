@@ -73,6 +73,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .fileImporter(
                 isPresented: $showFilePicker,
                 allowedContentTypes: [.json],

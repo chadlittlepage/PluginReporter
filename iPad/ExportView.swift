@@ -13,56 +13,59 @@ struct ExportView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                Spacer()
+            Form {
+                Section {
+                    HStack {
+                        Text("Plugins to Export")
+                        Spacer()
+                        Text("\(plugins.count)")
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Export Summary")
+                }
 
-                Image(systemName: "square.and.arrow.up.circle.fill")
-                    .font(.system(size: 100))
-                    .foregroundColor(.blue)
-
-                Text("Export Plugin List")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-
-                Text("Export all \(plugins.count) plugins")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-
-                HStack(spacing: 20) {
+                Section {
                     Button(action: {
                         viewModel.updatePlugins(plugins)
                         viewModel.exportCSV()
                     }) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "doc.text")
-                                .font(.system(size: 50))
-                            Text("Export as CSV")
-                                .font(.headline)
-                        }
-                        .frame(width: 200, height: 150)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(16)
+                        Label("Export as CSV", systemImage: "doc.text")
                     }
+
+                    Text("Export plugin list as comma-separated values file.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Divider()
 
                     Button(action: {
                         viewModel.updatePlugins(plugins)
                         viewModel.exportPDF()
                     }) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "doc.richtext")
-                                .font(.system(size: 50))
-                            Text("Export as PDF")
-                                .font(.headline)
-                        }
-                        .frame(width: 200, height: 150)
-                        .background(Color.orange)
-                        .foregroundColor(.white)
-                        .cornerRadius(16)
+                        Label("Export as PDF", systemImage: "doc.richtext")
                     }
+
+                    Text("Export plugin list as formatted PDF document.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Export Options")
                 }
 
-                Spacer()
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Export Information")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        Text("The export will include only the plugins currently visible on the Plugins tab. Use search and filters to customize what gets exported.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("About Export")
+                }
             }
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)

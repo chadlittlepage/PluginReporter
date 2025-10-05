@@ -15,65 +15,62 @@ struct ExportView: View {
 
     var body: some View {
         NavigationView {
-            ZStack {
-                Color(UIColor.systemBackground)
-                    .ignoresSafeArea()
-
-                VStack(spacing: 20) {
-                    Spacer()
-
-                    Image(systemName: "square.and.arrow.up.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.blue)
-
-                    Text("Export Plugin List")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-
-                    Text("Export all \(plugins.count) plugins")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-
-                    VStack(spacing: 12) {
-                        Button(action: {
-                            if let url = generateCSV() {
-                                exportURL = url
-                                showShareSheet = true
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "doc.text")
-                                Text("Export as CSV")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-
-                        Button(action: {
-                            if let url = generatePDF() {
-                                exportURL = url
-                                showShareSheet = true
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "doc.richtext")
-                                Text("Export as PDF")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.orange)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
+            Form {
+                Section {
+                    HStack {
+                        Text("Plugins to Export")
+                        Spacer()
+                        Text("\(plugins.count)")
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal, 40)
+                } header: {
+                    Text("Export Summary")
+                }
 
-                    Spacer()
+                Section {
+                    Button(action: {
+                        if let url = generateCSV() {
+                            exportURL = url
+                            showShareSheet = true
+                        }
+                    }) {
+                        Label("Export as CSV", systemImage: "doc.text")
+                    }
+
+                    Text("Export plugin list as comma-separated values file.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Divider()
+
+                    Button(action: {
+                        if let url = generatePDF() {
+                            exportURL = url
+                            showShareSheet = true
+                        }
+                    }) {
+                        Label("Export as PDF", systemImage: "doc.richtext")
+                    }
+
+                    Text("Export plugin list as formatted PDF document.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Export Options")
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Export Information")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        Text("The export will include only the plugins currently visible on the Plugins tab. Use search and filters to customize what gets exported.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("About Export")
                 }
             }
             .navigationTitle("Export")

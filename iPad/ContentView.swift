@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var plugins: [PluginItem] = []
+    @State private var filteredPlugins: [PluginItem] = []
     @State private var isLoading = true
     @State private var showImportAlert = false
     @State private var debugMessage = ""
@@ -26,33 +27,51 @@ struct ContentView: View {
     }
 
     var body: some View {
-        PluginListView(plugins: plugins)
-            .preferredColorScheme(colorScheme)
-            .onAppear {
-                // Auto-load plugins on launch
-                if plugins.isEmpty {
-                    loadPluginsSilently()
+        TabView(selection: $selectedTab) {
+            PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
+                .tabItem {
+                    Label("Plugins", systemImage: "music.note.list")
                 }
+                .tag(0)
 
-                // Request full screen on iPad
-                #if os(iOS)
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                    windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .all)) { error in
-                        print("Geometry update error: \(error)")
-                    }
+            SettingsView(onImport: loadPluginsFromFile)
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
                 }
-                #endif
+                .tag(1)
+
+            ExportView(plugins: filteredPlugins)
+                .tabItem {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .tag(2)
+        }
+        .preferredColorScheme(colorScheme)
+        .onAppear {
+            // Auto-load plugins on launch
+            if plugins.isEmpty {
+                loadPluginsSilently()
             }
-            .alert("Plugins Loaded", isPresented: $showImportAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("\(plugins.count) plugins imported successfully")
+
+            // Request full screen on iPad
+            #if os(iOS)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .all)) { error in
+                    print("Geometry update error: \(error)")
+                }
             }
-            .alert("Debug Info", isPresented: $showDebugAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(debugMessage)
-            }
+            #endif
+        }
+        .alert("Plugins Loaded", isPresented: $showImportAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("\(plugins.count) plugins imported successfully")
+        }
+        .alert("Debug Info", isPresented: $showDebugAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(debugMessage)
+        }
     }
 
     func loadPluginsFromFile() {

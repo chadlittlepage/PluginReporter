@@ -9,6 +9,8 @@ import SwiftUI
 
 struct PluginListView: View {
     let plugins: [PluginItem]
+    var onImport: (() -> Void)? = nil
+    @Binding var filteredPluginsForExport: [PluginItem]
     @State private var searchText = ""
     @State private var selectedFormat: String? = nil
     @State private var selectedStyle: String? = nil
@@ -244,6 +246,12 @@ struct PluginListView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: filteredAndSortedPlugins) { newValue in
+                filteredPluginsForExport = newValue
+            }
+            .onAppear {
+                filteredPluginsForExport = filteredAndSortedPlugins
+            }
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 10) {
                     // Title - level with navigation bar

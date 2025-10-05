@@ -17,7 +17,16 @@
 		3D09034AE5114E2AAE5A9D33 /* SharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D090348E5114E2AAE5A9D31 /* SharedStorage.swift */; };
 		4028692E2E91F03000A3C7DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4028691E2E91F03000A3C7DA /* Assets.xcassets */; };
 		4028693D2E91F03000A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692B2E91F03000A3C7DA /* ShareSheet.swift */; };
-		402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */; };
+		407475AA2E901CD200C33619 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
+		00000000407475AB2E901CD2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869212E91F03000A3C7DA /* ContentView.swift */; };
+		00000000407475AB2E901CD3 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869222E91F03000A3C7DA /* ExportView.swift */; };
+		00000000407475AB2E901CD4 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869232E91F03000A3C7DA /* ExportViewModel.swift */; };
+		00000000407475AB2E901CD5 /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869262E91F03000A3C7DA /* PluginListView.swift */; };
+		00000000407475AB2E901CD6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692A2E91F03000A3C7DA /* SettingsView.swift */; };
+		00000000407475AB2E901CD7 /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869252E91F03000A3C7DA /* PluginDetailViews.swift */; };
+		00000000407475AB2E901CD8 /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869292E91F03000A3C7DA /* PluginRowViews.swift */; };
+		00000000407475AB2E901CD9 /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692C2E91F03000A3C7DA /* UIComponents.swift */; };
+		402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
 		402869532E91F3A600A3C7DA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869502E91F3A600A3C7DA /* SettingsView.swift */; };
 		402869542E91F3A600A3C7DA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028694C2E91F3A600A3C7DA /* ContentView.swift */; };
 		402869552E91F3A600A3C7DA /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028694E2E91F3A600A3C7DA /* PluginListView.swift */; };
@@ -505,6 +514,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				407475AA2E901CD200C33619 /* PluginReporterApp.swift in Sources */,
+				00000000407475AB2E901CD2 /* ContentView.swift in Sources */,
+				00000000407475AB2E901CD3 /* ExportView.swift in Sources */,
+				00000000407475AB2E901CD4 /* ExportViewModel.swift in Sources */,
+				00000000407475AB2E901CD5 /* PluginListView.swift in Sources */,
+				00000000407475AB2E901CD6 /* SettingsView.swift in Sources */,
+				00000000407475AB2E901CD7 /* PluginDetailViews.swift in Sources */,
+				00000000407475AB2E901CD8 /* PluginRowViews.swift in Sources */,
+				00000000407475AB2E901CD9 /* UIComponents.swift in Sources */,
 				4028696B2E91FD5900A3C7DA /* ColorUtilities.swift in Sources */,
 				4028695E2E91F48100A3C7DA /* PluginItem.swift in Sources */,
 				40F28E8B2E8398660027CFC0 /* PluginItem+Columns.swift in Sources */,

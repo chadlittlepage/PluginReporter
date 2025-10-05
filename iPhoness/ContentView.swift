@@ -12,6 +12,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var plugins: [PluginItem] = []
+    @State private var filteredPlugins: [PluginItem] = []
     @State private var isLoading = true
     @State private var showImportAlert = false
     @State private var debugMessage = ""
@@ -29,7 +30,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            PluginListView(plugins: plugins)
+            PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
                 .tabItem {
                     Label("Plugins", systemImage: "music.note.list")
                 }
@@ -41,7 +42,7 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            ExportView(plugins: plugins)
+            ExportView(plugins: filteredPlugins)
                 .tabItem {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }

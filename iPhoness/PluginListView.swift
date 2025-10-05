@@ -9,6 +9,7 @@ import SwiftUI
 
 struct PluginListView: View {
     let plugins: [PluginItem]
+    @Binding var filteredPluginsForExport: [PluginItem]
     @State private var searchText = ""
     @State private var selectedFormat: String? = nil
     @State private var selectedStyle: String? = nil
@@ -479,6 +480,12 @@ struct PluginListView: View {
                             .imageScale(.large)
                     }
                 }
+            }
+            .onChange(of: filteredAndSortedPlugins) { newValue in
+                filteredPluginsForExport = newValue
+            }
+            .onAppear {
+                filteredPluginsForExport = filteredAndSortedPlugins
             }
         }
     }
