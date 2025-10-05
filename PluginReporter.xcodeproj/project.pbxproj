@@ -121,10 +121,10 @@
 		4028696D2E91FE2800A3C7DA /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		402869712E91FEC500A3C7DA /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
 		402869CE2E92312C00A3C7DA /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewModel.swift; sourceTree = "<group>"; };
-		402869D02E92313900A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
-		402869D22E92314600A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIComponents.swift; sourceTree = "<group>"; };
-		402869D42E92315200A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginRowViews.swift; sourceTree = "<group>"; };
-		402869D62E92315D00A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDetailViews.swift; sourceTree = "<group>"; };
+		402869D02E92313900A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
+		402869D22E92314600A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
+		402869D42E92315200A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
+		402869D62E92315D00A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
 		402869D82E92349D00A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		403F45772E8F87490068FF3B /* Plugin Reporter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "Plugin Reporter.entitlements"; path = "../Plugin Reporter.entitlements"; sourceTree = "<group>"; };
 		4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformTable.swift; path = ../PlatformTable.swift; sourceTree = "<group>"; };
