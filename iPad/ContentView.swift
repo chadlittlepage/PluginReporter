@@ -57,7 +57,7 @@ struct ContentView: View {
             #if os(iOS)
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .all)) { error in
-                    print("Geometry update error: \(error)")
+                    AppLogger.error("Geometry update error: \(error)")
                 }
             }
             #endif

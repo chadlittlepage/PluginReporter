@@ -177,6 +177,9 @@ class ExportViewModel: ObservableObject {
 
 private extension String {
     func escapedForCSV() -> String {
-        replacingOccurrences(of: ",", with: ";")
+        if self.contains(",") || self.contains("\"") || self.contains("\n") {
+            return "\"\(self.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return self
     }
 }

@@ -84,6 +84,13 @@ struct ExportView: View {
         .navigationViewStyle(.stack)
     }
 
+    private func escapeCSV(_ text: String) -> String {
+        if text.contains(",") || text.contains("\"") || text.contains("\n") {
+            return "\"\(text.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return text
+    }
+
     func generateCSV() -> URL? {
         // Optimize string building for large datasets
         var lines = [String]()
@@ -94,12 +101,12 @@ struct ExportView: View {
 
         // Data rows
         for plugin in plugins {
-            let name = plugin.name.replacingOccurrences(of: ",", with: ";")
-            let publisher = plugin.publisher.replacingOccurrences(of: ",", with: ";")
+            let name = escapeCSV(plugin.name)
+            let publisher = escapeCSV(plugin.publisher)
             let type = plugin.type
-            let style = plugin.style.replacingOccurrences(of: ",", with: ";")
-            let version = plugin.version.replacingOccurrences(of: ",", with: ";")
-            let arch = plugin.architectures.replacingOccurrences(of: ",", with: ";")
+            let style = escapeCSV(plugin.style)
+            let version = escapeCSV(plugin.version)
+            let arch = escapeCSV(plugin.architectures)
             let size = plugin.displaySize
             let obsolete = plugin.obsolete ? "Yes" : "No"
 

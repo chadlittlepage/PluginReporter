@@ -67,7 +67,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0")
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
                             .foregroundColor(.secondary)
                     }
                 }
@@ -85,7 +85,7 @@ struct SettingsView: View {
                         handleFileImport(url: url)
                     }
                 case .failure(let error):
-                    print("File picker error: \(error.localizedDescription)")
+                    AppLogger.error("File picker error: \(error.localizedDescription)")
                 }
             }
         }
@@ -93,14 +93,17 @@ struct SettingsView: View {
 
     func handleFileImport(url: URL) {
         guard url.startAccessingSecurityScopedResource() else {
-            print("Failed to access file")
+            AppLogger.error("Failed to access file")
             return
         }
         defer { url.stopAccessingSecurityScopedResource() }
 
         do {
             // Copy to Documents folder
-            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                AppLogger.error("Failed to access document directory")
+                return
+            }
             let destinationURL = documentsURL.appendingPathComponent("plugins.json")
 
             // Remove existing file if present
@@ -114,7 +117,7 @@ struct SettingsView: View {
             // Trigger reload
             onImport()
         } catch {
-            print("Import error: \(error.localizedDescription)")
+            AppLogger.error("Import error: \(error.localizedDescription)")
         }
     }
 }
