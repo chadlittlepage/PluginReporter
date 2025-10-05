@@ -48,4 +48,14 @@ public struct PluginItem: Identifiable, Hashable, Codable {
         self.runtimeRequirement = runtimeRequirement
         self.obsolete = obsolete
     }
+
+    /// Human-readable display size (e.g., "1.5 MB") - alias for sizeString
+    public var displaySize: String {
+        Humanize.bytes(sizeBytes)
+    }
+
+    /// Human-readable date string - alias for dateString
+    public var displayDate: String {
+        date.map(Humanize.date) ?? ""
+    }
 }

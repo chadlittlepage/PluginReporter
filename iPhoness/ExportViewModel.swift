@@ -94,7 +94,7 @@ class ExportViewModel: ObservableObject {
             return tempURL
         } catch {
             lastError = error
-            AppLogger.export.error("Failed to write CSV: \(error.localizedDescription)")
+            AppLogger.error("Failed to write CSV: \(error.localizedDescription)")
             return nil
         }
     }
@@ -167,7 +167,7 @@ class ExportViewModel: ObservableObject {
             return tempURL
         } catch {
             lastError = error
-            AppLogger.export.error("Failed to write PDF: \(error.localizedDescription)")
+            AppLogger.error("Failed to write PDF: \(error.localizedDescription)")
             return nil
         }
     }

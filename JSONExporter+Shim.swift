@@ -32,7 +32,7 @@ extension JSONExporter {
             try data.write(to: url, options: .atomic)
         } catch {
             NSSound.beep()
-            AppLogger.export.error("JSONExporter shim failed: \(error.localizedDescription)")
+            AppLogger.error("JSONExporter shim failed: \(error.localizedDescription)")
         }
     }
 }

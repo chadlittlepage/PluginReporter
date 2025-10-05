@@ -57,7 +57,7 @@ class AIPluginSuggestions: ObservableObject {
                     return
                 }
             } catch {
-                AppLogger.network.warning("OpenAI API failed, using local suggestions: \(error.localizedDescription)")
+                AppLogger.warning("OpenAI API failed, using local suggestions: \(error.localizedDescription)")
                 // Fall through to local AI
             }
         }
@@ -117,7 +117,7 @@ class AIPluginSuggestions: ObservableObject {
                         return
                     }
                 } catch {
-                    AppLogger.network.warning("OpenAI free plugins API failed, using local suggestions: \(error.localizedDescription)")
+                    AppLogger.warning("OpenAI free plugins API failed, using local suggestions: \(error.localizedDescription)")
                 }
             }
 

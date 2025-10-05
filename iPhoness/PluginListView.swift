@@ -163,7 +163,7 @@ struct PluginListView: View {
                     .padding(.top, 4)
 
                 // Active Sort and Filters
-                if sortOrder != .name || selectedFormat != nil || selectedStyle != nil || selectedPublisher != nil {
+                if sortOrder != .name || hasActiveFilters {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             // Sort badge with X to reset to Name
@@ -509,7 +509,7 @@ struct PluginListView: View {
     }
 
     private var dynamicFormatCounts: [(format: String, count: Int)] {
-        let pluginsToCount = selectedFormat != nil || selectedStyle != nil || selectedPublisher != nil ? filteredAndSortedPlugins : plugins
+        let pluginsToCount = hasActiveFilters ? filteredAndSortedPlugins : plugins
 
         // Initialize required formats with 0
         var counts: [String: Int] = [

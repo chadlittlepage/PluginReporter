@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "407475C92E901CD200C33618"
-               BuildableName = "PluginReporter.app"
-               BlueprintName = "PluginReporter"
+               BuildableName = "PR iPHONE.app"
+               BlueprintName = "PR iPHONE"
                ReferencedContainer = "container:PluginReporter.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -69,8 +69,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "407475C92E901CD200C33618"
-            BuildableName = "PluginReporter.app"
-            BlueprintName = "PluginReporter"
+            BuildableName = "PR iPHONE.app"
+            BlueprintName = "PR iPHONE"
             ReferencedContainer = "container:PluginReporter.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -86,8 +86,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "407475C92E901CD200C33618"
-            BuildableName = "PluginReporter.app"
-            BlueprintName = "PluginReporter"
+            BuildableName = "PR iPHONE.app"
+            BlueprintName = "PR iPHONE"
             ReferencedContainer = "container:PluginReporter.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

@@ -26,7 +26,7 @@ public enum JSONExporter {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted])
             try data.write(to: url, options: [.atomic])
         } catch {
-            AppLogger.export.error("JSON export failed: \(error.localizedDescription)")
+            AppLogger.error("JSON export failed: \(error.localizedDescription)")
         }
     }
 }

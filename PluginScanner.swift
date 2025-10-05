@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 #if os(macOS)
 import AppKit
 #endif
@@ -1090,9 +1091,9 @@ public final class PluginScanner: ObservableObject {
             let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: [.prettyPrinted])
             try jsonData.write(to: fileURL, options: [.atomic])
 
-            AppLogger.scanner.info("Auto-saved \(plugins.count) plugins")
+            AppLogger.info("Auto-saved \(plugins.count) plugins")
         } catch {
-            AppLogger.scanner.error("Failed to auto-save plugins: \(error.localizedDescription)")
+            AppLogger.error("Failed to auto-save plugins: \(error.localizedDescription)")
         }
     }
 

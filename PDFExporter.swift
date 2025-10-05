@@ -68,7 +68,7 @@ enum PDFExporter {
         do {
             try pdfData.write(to: url, options: .atomic)
         } catch {
-            AppLogger.export.error("PDF export failed: \(error.localizedDescription)")
+            AppLogger.error("PDF export failed: \(error.localizedDescription)")
         }
     }
 

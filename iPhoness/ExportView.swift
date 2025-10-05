@@ -110,7 +110,7 @@ struct ExportView: View {
             try csv.write(to: tempURL, atomically: true, encoding: .utf8)
             return tempURL
         } catch {
-            AppLogger.export.error("Failed to write CSV: \(error.localizedDescription)")
+            AppLogger.error("Failed to write CSV: \(error.localizedDescription)")
             return nil
         }
     }
@@ -174,7 +174,7 @@ struct ExportView: View {
             try data.write(to: tempURL)
             return tempURL
         } catch {
-            AppLogger.export.error("Failed to write PDF: \(error.localizedDescription)")
+            AppLogger.error("Failed to write PDF: \(error.localizedDescription)")
             return nil
         }
     }
