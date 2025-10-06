@@ -1,0 +1,19 @@
+# Fastlane specific
+*.ipa
+*.dSYM.zip
+*.app.zip
+builds/
+screenshots/
+test_output/
+Preview.html
+report.xml
+
+# Fastlane sensitive data
+.env.default
+.env
+
+# Deliver/Pilot temporary files
+*.cert
+*.certSigningRequest
+*.p12
+*.mobileprovision

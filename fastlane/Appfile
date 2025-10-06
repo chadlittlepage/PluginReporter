@@ -1,0 +1,19 @@
+# Plugin Reporter App Configuration
+
+# Your app's bundle identifier
+# Find in Xcode: Select target → General → Bundle Identifier
+app_identifier("com.yourdomain.pluginreporter")  # TODO: Update with your actual bundle ID
+
+# Your Apple ID email
+# Only needed for TestFlight/App Store uploads
+# apple_id("your.email@example.com")  # TODO: Uncomment and update when you have Apple Developer Account
+
+# Team ID (optional, for Apple Developer Account)
+# Find at: https://developer.apple.com/account → Membership
+# team_id("YOUR_TEAM_ID")
+
+# App Store Connect Team ID (optional)
+# itc_team_id("YOUR_ITC_TEAM_ID")
+
+# For now, these are commented out since you don't need them for local builds
+# Uncomment when you're ready to upload to TestFlight/App Store

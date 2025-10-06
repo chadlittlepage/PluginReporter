@@ -1,0 +1,147 @@
+# Plugin Reporter Fastlane Configuration
+# Run with: fastlane <platform> <lane_name>
+# Example: fastlane mac build
+
+default_platform(:mac)
+
+#########################
+# macOS Platform
+#########################
+
+platform :mac do
+  desc "Run tests for macOS"
+  lane :test do
+    scan(
+      scheme: "PR MAC",
+      destination: "platform=macOS",
+      clean: true
+    )
+  end
+
+  desc "Build macOS app (Release)"
+  lane :build do
+    gym(
+      scheme: "PR MAC",
+      configuration: "Release",
+      destination: "platform=macOS",
+      output_directory: "./fastlane/builds/macOS",
+      clean: true,
+      skip_package_pkg: true
+    )
+
+    UI.success("✅ macOS build complete!")
+    UI.message("📦 Location: ./fastlane/builds/macOS/")
+  end
+
+  desc "Full release: test + build"
+  lane :release do
+    test
+    build
+    UI.success("🚀 macOS release ready!")
+  end
+end
+
+#########################
+# iOS Platform
+#########################
+
+platform :ios do
+  desc "Run tests for iOS"
+  lane :test do
+    scan(
+      scheme: "PR iPHONE",
+      destination: "platform=iOS Simulator,name=iPhone 15 Pro",
+      clean: true
+    )
+  end
+
+  desc "Build iOS app (Debug for Simulator)"
+  lane :build do
+    gym(
+      scheme: "PR iPHONE",
+      configuration: "Debug",
+      destination: "platform=iOS Simulator,name=iPhone 15 Pro",
+      output_directory: "./fastlane/builds/iOS",
+      skip_package_ipa: true,
+      clean: true
+    )
+
+    UI.success("✅ iOS build complete!")
+  end
+
+  desc "Build and upload to TestFlight (requires Apple Developer Account)"
+  lane :beta do
+    UI.important("📝 Note: Requires Apple Developer Account ($99/year)")
+
+    # Build for distribution
+    gym(
+      scheme: "PR iPHONE",
+      export_method: "app-store",
+      output_directory: "./fastlane/builds/iOS"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+
+    UI.success("🚀 Uploaded to TestFlight!")
+  end
+
+  desc "Submit to App Store (requires Apple Developer Account)"
+  lane :release do
+    UI.important("📝 Note: Requires Apple Developer Account ($99/year)")
+
+    # Ensure tests pass
+    test
+
+    # Build for distribution
+    gym(
+      scheme: "PR iPHONE",
+      export_method: "app-store",
+      output_directory: "./fastlane/builds/iOS"
+    )
+
+    # Upload to App Store
+    deliver(
+      submit_for_review: false,
+      automatic_release: false
+    )
+
+    UI.success("🚀 Uploaded to App Store Connect!")
+  end
+end
+
+#########################
+# Custom Multi-Platform Lanes
+#########################
+
+desc "Build all platforms"
+lane :build_all do
+  UI.header("Building all platforms")
+
+  mac(:build)
+  ios(:build)
+
+  UI.success("✅ All platforms built successfully!")
+  UI.message("📦 Builds located in: ./fastlane/builds/")
+end
+
+desc "Test all platforms"
+lane :test_all do
+  UI.header("Testing all platforms")
+
+  mac(:test)
+  ios(:test)
+
+  UI.success("✅ All tests passed!")
+end
+
+desc "Quick build check (no tests)"
+lane :quick_build do
+  UI.header("Quick build verification")
+
+  sh("xcodebuild -scheme 'PR MAC' -destination 'platform=macOS' -configuration Debug build")
+
+  UI.success("✅ Quick build complete!")
+end
