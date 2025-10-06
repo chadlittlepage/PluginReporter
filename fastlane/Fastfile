@@ -2,6 +2,9 @@
 # Run with: fastlane <platform> <lane_name>
 # Example: fastlane mac build
 
+# Set the project path (one level up from fastlane directory)
+PROJECT_PATH = File.expand_path("..", __dir__)
+
 default_platform(:mac)
 
 #########################
@@ -21,10 +24,11 @@ platform :mac do
   desc "Build macOS app (Release)"
   lane :build do
     gym(
+      project: "#{PROJECT_PATH}/PluginReporter.xcodeproj",
       scheme: "PR MAC",
       configuration: "Release",
       destination: "platform=macOS",
-      output_directory: "./fastlane/builds/macOS",
+      output_directory: "#{PROJECT_PATH}/fastlane/builds/macOS",
       clean: true,
       skip_package_pkg: true
     )
@@ -58,16 +62,17 @@ platform :ios do
   desc "Build iOS app (Debug for Simulator)"
   lane :build do
     gym(
+      project: "#{PROJECT_PATH}/PluginReporter.xcodeproj",
       scheme: "PR iPHONE",
       configuration: "Debug",
       destination: "generic/platform=iOS Simulator",
-      output_directory: "./fastlane/builds/iOS",
+      output_directory: "#{PROJECT_PATH}/fastlane/builds/iOS",
       skip_package_ipa: true,
       skip_archive: true,
       skip_codesigning: true,
       clean: true,
-      build_path: "./fastlane/builds/iOS",
-      derived_data_path: "./fastlane/builds/iOS/DerivedData"
+      build_path: "#{PROJECT_PATH}/fastlane/builds/iOS",
+      derived_data_path: "#{PROJECT_PATH}/fastlane/builds/iOS/DerivedData"
     )
 
     UI.success("✅ iOS build complete!")
@@ -126,10 +131,11 @@ lane :build_all do
 
   # Build macOS
   gym(
+    project: "#{PROJECT_PATH}/PluginReporter.xcodeproj",
     scheme: "PR MAC",
     configuration: "Release",
     destination: "platform=macOS",
-    output_directory: "./fastlane/builds/macOS",
+    output_directory: "#{PROJECT_PATH}/fastlane/builds/macOS",
     clean: true,
     skip_package_pkg: true
   )
@@ -137,21 +143,22 @@ lane :build_all do
 
   # Build iOS
   gym(
+    project: "#{PROJECT_PATH}/PluginReporter.xcodeproj",
     scheme: "PR iPHONE",
     configuration: "Debug",
     destination: "generic/platform=iOS Simulator",
-    output_directory: "./fastlane/builds/iOS",
+    output_directory: "#{PROJECT_PATH}/fastlane/builds/iOS",
     skip_package_ipa: true,
     skip_archive: true,
     skip_codesigning: true,
     clean: true,
-    build_path: "./fastlane/builds/iOS",
-    derived_data_path: "./fastlane/builds/iOS/DerivedData"
+    build_path: "#{PROJECT_PATH}/fastlane/builds/iOS",
+    derived_data_path: "#{PROJECT_PATH}/fastlane/builds/iOS/DerivedData"
   )
   UI.success("✅ iOS build complete!")
 
   UI.success("✅ All platforms built successfully!")
-  UI.message("📦 Builds located in: ./fastlane/builds/")
+  UI.message("📦 Builds located in: #{PROJECT_PATH}/fastlane/builds/")
 end
 
 desc "Test all platforms"
