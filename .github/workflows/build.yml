@@ -56,9 +56,12 @@ jobs:
     - name: Build iOS app (simulator)
       run: |
         xcodebuild -scheme "PR iPHONE" \
-          -configuration Release \
+          -configuration Debug \
           -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
           -derivedDataPath ./build \
+          -sdk iphonesimulator \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
           clean build
 
     - name: Upload iOS build artifact
@@ -84,9 +87,12 @@ jobs:
     - name: Build iPadOS app (simulator)
       run: |
         xcodebuild -scheme "PR iPHONE" \
-          -configuration Release \
+          -configuration Debug \
           -destination 'platform=iOS Simulator,name=iPad Pro (12.9-inch)' \
           -derivedDataPath ./build \
+          -sdk iphonesimulator \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
           clean build
 
     - name: Upload iPadOS build artifact
