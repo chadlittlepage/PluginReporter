@@ -7,6 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00000000407475AB2E901CD2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869212E91F03000A3C7DA /* ContentView.swift */; };
+		00000000407475AB2E901CD3 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869222E91F03000A3C7DA /* ExportView.swift */; };
+		00000000407475AB2E901CD4 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869232E91F03000A3C7DA /* ExportViewModel.swift */; };
+		00000000407475AB2E901CD5 /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869262E91F03000A3C7DA /* PluginListView.swift */; };
+		00000000407475AB2E901CD6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692A2E91F03000A3C7DA /* SettingsView.swift */; };
+		00000000407475AB2E901CD7 /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869252E91F03000A3C7DA /* PluginDetailViews.swift */; };
+		00000000407475AB2E901CD8 /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869292E91F03000A3C7DA /* PluginRowViews.swift */; };
+		00000000407475AB2E901CD9 /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692C2E91F03000A3C7DA /* UIComponents.swift */; };
 		134AEA1E81EC46089C1EDAD5 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193EC14DF3D54EFA8D086782 /* PluginReporterApp.swift */; };
 		1EC9C926C96842159EF60912 /* PDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9FE2FC213434A8AA9A14CC0 /* PDFExporter.swift */; };
 		35E2369EFBF540B68717750A /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6BFFEB39C84B46908F3B41 /* Formatters.swift */; };
@@ -17,15 +25,6 @@
 		3D09034AE5114E2AAE5A9D33 /* SharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D090348E5114E2AAE5A9D31 /* SharedStorage.swift */; };
 		4028692E2E91F03000A3C7DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4028691E2E91F03000A3C7DA /* Assets.xcassets */; };
 		4028693D2E91F03000A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692B2E91F03000A3C7DA /* ShareSheet.swift */; };
-		407475AA2E901CD200C33619 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
-		00000000407475AB2E901CD2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869212E91F03000A3C7DA /* ContentView.swift */; };
-		00000000407475AB2E901CD3 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869222E91F03000A3C7DA /* ExportView.swift */; };
-		00000000407475AB2E901CD4 /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869232E91F03000A3C7DA /* ExportViewModel.swift */; };
-		00000000407475AB2E901CD5 /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869262E91F03000A3C7DA /* PluginListView.swift */; };
-		00000000407475AB2E901CD6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692A2E91F03000A3C7DA /* SettingsView.swift */; };
-		00000000407475AB2E901CD7 /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869252E91F03000A3C7DA /* PluginDetailViews.swift */; };
-		00000000407475AB2E901CD8 /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869292E91F03000A3C7DA /* PluginRowViews.swift */; };
-		00000000407475AB2E901CD9 /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028692C2E91F03000A3C7DA /* UIComponents.swift */; };
 		402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
 		402869532E91F3A600A3C7DA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869502E91F3A600A3C7DA /* SettingsView.swift */; };
 		402869542E91F3A600A3C7DA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4028694C2E91F3A600A3C7DA /* ContentView.swift */; };
@@ -49,11 +48,14 @@
 		402869752E91F48100A3C7DA /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6BFFEB39C84B46908F3B41 /* Formatters.swift */; };
 		402869762E91F48100A3C7DA /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E4D2E82422C0027CFC0 /* Diagnostics.swift */; };
 		402869CF2E92312C00A3C7DA /* ExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869CE2E92312C00A3C7DA /* ExportViewModel.swift */; };
-		402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ShareSheet.swift */; };
-		402869D32E92314600A3C7DA /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* UIComponents.swift */; };
-		402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* PluginRowViews.swift */; };
-		402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* PluginDetailViews.swift */; };
+		402869D12E92313900A3C7DA /* ../iOS/ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */; };
+		402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */; };
+		402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */; };
+		402869D72E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */; };
 		402869D92E92349D00A3C7DA /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D82E92349D00A3C7DA /* ExportView.swift */; };
+		402869DC2E937F6100A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DB2E937F6100A3C7DA /* Sentry */; };
+		402869DE2E937F8600A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DD2E937F8600A3C7DA /* Sentry */; };
+		402869E02E937FBF00A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DF2E937FBF00A3C7DA /* Sentry */; };
 		4044CABD2E862B6F00EF13E7 /* PlatformTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */; };
 		404B81B92E89E4B4004AE604 /* SyncProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404B81B82E89E4B4004AE604 /* SyncProtocols.swift */; };
 		404B81BD2E89E8DB004AE604 /* MobilePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404B81BC2E89E8DB004AE604 /* MobilePreview.swift */; };
@@ -62,6 +64,7 @@
 		405DCFA62E8731E00079542A /* ExportOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA52E8731E00079542A /* ExportOptions.swift */; };
 		405DCFA82E8731E70079542A /* PDFExportOptionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA72E8731E70079542A /* PDFExportOptionsSheet.swift */; };
 		405DCFAA2E873D6D0079542A /* PluginItem+Init.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA92E873D6D0079542A /* PluginItem+Init.swift */; };
+		407475AA2E901CD200C33619 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
 		40D74ED62E888B1E00E06663 /* FormatTagCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D74ED52E888B1E00E06663 /* FormatTagCloud.swift */; };
 		40D74ED82E888D7900E06663 /* FormatsCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D74ED72E888D7900E06663 /* FormatsCloud.swift */; };
 		40D74EDA2E88965900E06663 /* PublishersCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D74ED92E88965900E06663 /* PublishersCloud.swift */; };
@@ -121,10 +124,10 @@
 		4028696D2E91FE2800A3C7DA /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		402869712E91FEC500A3C7DA /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
 		402869CE2E92312C00A3C7DA /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewModel.swift; sourceTree = "<group>"; };
-		402869D02E92313900A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
-		402869D22E92314600A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
-		402869D42E92315200A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
-		402869D62E92315D00A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
+		402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
+		402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
+		402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
+		402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
 		402869D82E92349D00A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		403F45772E8F87490068FF3B /* Plugin Reporter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "Plugin Reporter.entitlements"; path = "../Plugin Reporter.entitlements"; sourceTree = "<group>"; };
 		4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformTable.swift; path = ../PlatformTable.swift; sourceTree = "<group>"; };
@@ -168,6 +171,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				402869E02E937FBF00A3C7DA /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,6 +179,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				402869DE2E937F8600A3C7DA /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -182,6 +187,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				402869DC2E937F6100A3C7DA /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,10 +255,10 @@
 			isa = PBXGroup;
 			children = (
 				402869D82E92349D00A3C7DA /* ExportView.swift */,
-				402869D62E92315D00A3C7DA /* PluginDetailViews.swift */,
-				402869D42E92315200A3C7DA /* PluginRowViews.swift */,
-				402869D22E92314600A3C7DA /* UIComponents.swift */,
-				402869D02E92313900A3C7DA /* ShareSheet.swift */,
+				402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */,
+				402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */,
+				402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */,
+				402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */,
 				402869CE2E92312C00A3C7DA /* ExportViewModel.swift */,
 				4028694C2E91F3A600A3C7DA /* ContentView.swift */,
 				4028694E2E91F3A600A3C7DA /* PluginListView.swift */,
@@ -318,6 +324,7 @@
 			);
 			name = "PR iPAD";
 			packageProductDependencies = (
+				402869DF2E937FBF00A3C7DA /* Sentry */,
 			);
 			productName = "PR iPAD";
 			productReference = 402868DF2E91E32100A3C7DA /* PR iPAD.app */;
@@ -337,6 +344,7 @@
 			);
 			name = "PR iPHONE";
 			packageProductDependencies = (
+				402869DD2E937F8600A3C7DA /* Sentry */,
 			);
 			productName = PluginReporter;
 			productReference = 407475CA2E901CD200C33618 /* PR iPHONE.app */;
@@ -396,6 +404,7 @@
 			);
 			mainGroup = E6CCA2CB9D45428EBB0523DA;
 			packageReferences = (
+				402869DA2E937F6100A3C7DA /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			productRefGroup = DA50A4FF513446C685DC30D2 /* Products */;
 			projectDirPath = "";
@@ -487,23 +496,23 @@
 			buildActionMask = 2147483647;
 			files = (
 				4028695D2E91F48100A3C7DA /* PluginItem.swift in Sources */,
-				402869D32E92314600A3C7DA /* UIComponents.swift in Sources */,
+				402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */,
 				40F28E8A2E8398660027CFC0 /* PluginItem+Columns.swift in Sources */,
 				402869CF2E92312C00A3C7DA /* ExportViewModel.swift in Sources */,
 				4028696E2E91FE2800A3C7DA /* Constants.swift in Sources */,
 				402869632E91F48100A3C7DA /* Formatters.swift in Sources */,
 				402869732E91FEC500A3C7DA /* AppLogger.swift in Sources */,
 				4028695B2E91F48100A3C7DA /* Humanize.swift in Sources */,
-				402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */,
+				402869D72E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift in Sources */,
 				402869642E91F48100A3C7DA /* CSVExporter.swift in Sources */,
 				53036FB34444446F9BD84960 /* JSONExporter.swift in Sources */,
 				402869662E91F48100A3C7DA /* HTMLExporter.swift in Sources */,
 				4028696A2E91FD5900A3C7DA /* ColorUtilities.swift in Sources */,
 				402869542E91F3A600A3C7DA /* ContentView.swift in Sources */,
 				402869552E91F3A600A3C7DA /* PluginListView.swift in Sources */,
-				402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */,
+				402869D12E92313900A3C7DA /* ../iOS/ShareSheet.swift in Sources */,
 				402869532E91F3A600A3C7DA /* SettingsView.swift in Sources */,
-				402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */,
+				402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */,
 				402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */,
 				3D090349E5114E2AAE5A9D32 /* SharedStorage.swift in Sources */,
 				402869D92E92349D00A3C7DA /* ExportView.swift in Sources */,
@@ -997,6 +1006,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		402869DA2E937F6100A3C7DA /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.56.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		402869DB2E937F6100A3C7DA /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 402869DA2E937F6100A3C7DA /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+		402869DD2E937F8600A3C7DA /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 402869DA2E937F6100A3C7DA /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+		402869DF2E937FBF00A3C7DA /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 402869DA2E937F6100A3C7DA /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EAA2179BA4904DA3BF91894C /* Project object */;
 }

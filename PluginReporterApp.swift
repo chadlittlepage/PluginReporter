@@ -1,4 +1,5 @@
 import SwiftUI
+import Sentry
 #if os(macOS)
 import AppKit
 #endif
@@ -9,6 +10,17 @@ struct PluginReporterApp: App {
     @StateObject private var prefs = Preferences()
     @State private var sync = makeSyncServices(backend: .none) // CloudKit disabled until Apple ID is added to Xcode
     @StateObject private var zoomState = ZoomState()
+
+    init() {
+        // Initialize Sentry for crash reporting and performance monitoring
+        SentrySDK.start { options in
+            options.dsn = "https://2e4766b1965fd54a27939749c41484e0@o4510140548055040.ingest.us.sentry.io/4510140566929408"
+            options.debug = false // Set to true for debugging
+            options.tracesSampleRate = 1.0 // Performance monitoring
+            options.environment = "production"
+            options.enableAutoSessionTracking = true
+        }
+    }
 
     private func applyAppAppearance(_ appearance: Preferences.Appearance) {
         #if os(macOS)
