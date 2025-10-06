@@ -17,34 +17,20 @@ struct ContentView: View {
     @State private var showImportAlert = false
     @State private var debugMessage = ""
     @State private var showDebugAlert = false
-    @AppStorage("appearance") private var appearance: String = "dark"
+    @AppStorage("appearance") private var appearance: String = "space"
 
     var colorScheme: ColorScheme? {
         switch appearance {
         case "light": return .light
         case "dark": return .dark
-        case "space": return .dark  // Space uses dark mode with true black
+        case "space": return .dark
         case "system": return nil
         default: return .dark
         }
     }
 
-    var backgroundColor: Color {
-        switch appearance {
-        case "space": return Color.black  // Pure black for Space mode
-        case "dark": return Color(red: 30/255, green: 30/255, blue: 30/255)  // Dark gray matching macOS
-        case "light": return Color(UIColor.systemBackground)  // System light background
-        default: return Color(UIColor.systemBackground)  // System default
-        }
-    }
-
     var body: some View {
-        ZStack {
-            // Background color layer
-            backgroundColor
-                .ignoresSafeArea()
-
-            TabView(selection: $selectedTab) {
+        TabView(selection: $selectedTab) {
             PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
                 .tabItem {
                     Label("Plugins", systemImage: "music.note.list")
@@ -62,9 +48,8 @@ struct ContentView: View {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
                 .tag(2)
-            }
-            .preferredColorScheme(colorScheme)
         }
+        .preferredColorScheme(colorScheme)
         .onAppear {
             // Auto-load plugins on launch (simulating iCloud sync)
             if plugins.isEmpty {

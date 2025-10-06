@@ -18,6 +18,12 @@ struct PluginListView: View {
     @State private var sortOrder: SortOrder = .name
     @State private var showFilterSheet = false
 
+    // SPEED: Cached computed values to avoid recalculation
+    @State private var cachedConsolidated: [ConsolidatedPlugin] = []
+    @State private var cachedSectioned: [(key: String, plugins: [ConsolidatedPlugin])] = []
+    @State private var cachedFilteredSorted: [PluginItem] = []
+    @State private var lastPluginCount = 0
+
     enum SortOrder {
         case name, publisher, type, style
     }
@@ -33,12 +39,77 @@ struct PluginListView: View {
         let originalPlugins: [PluginItem]
     }
 
+    // SPEED: Return cached value directly
     var consolidatedPlugins: [ConsolidatedPlugin] {
-        let grouped = Dictionary(grouping: filteredAndSortedPlugins) { plugin in
+        cachedConsolidated
+    }
+
+    // SPEED: Return cached value directly
+    var sectionedPlugins: [(key: String, plugins: [ConsolidatedPlugin])] {
+        cachedSectioned
+    }
+
+    // SPEED: Return cached value directly
+    var filteredAndSortedPlugins: [PluginItem] {
+        cachedFilteredSorted
+    }
+
+    // SPEED: Compute filter/sort in one pass
+    private func computeFilteredAndSorted() {
+        var result = plugins
+
+        // Apply search filter
+        if !searchText.isEmpty {
+            let searchLower = searchText.lowercased()
+            result = result.filter { plugin in
+                plugin.name.lowercased().contains(searchLower) ||
+                plugin.publisher.lowercased().contains(searchLower) ||
+                plugin.style.lowercased().contains(searchLower)
+            }
+        }
+
+        // Apply format filter
+        if let format = selectedFormat {
+            if format == "OBSLT" {
+                result = result.filter { $0.obsolete }
+            } else {
+                result = result.filter { $0.type.uppercased() == format }
+            }
+        }
+
+        // Apply style filter
+        if let style = selectedStyle {
+            result = result.filter { $0.style == style }
+        }
+
+        // Apply publisher filter
+        if let publisher = selectedPublisher {
+            result = result.filter { $0.publisher == publisher }
+        }
+
+        // Apply sorting
+        switch sortOrder {
+        case .name:
+            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .publisher:
+            result.sort { $0.publisher.localizedCaseInsensitiveCompare($1.publisher) == .orderedAscending }
+        case .type:
+            result.sort { $0.type.localizedCaseInsensitiveCompare($1.type) == .orderedAscending }
+        case .style:
+            result.sort { $0.style.localizedCaseInsensitiveCompare($1.style) == .orderedAscending }
+        }
+
+        cachedFilteredSorted = result
+        computeConsolidated()
+    }
+
+    // SPEED: Compute consolidated plugins
+    private func computeConsolidated() {
+        let grouped = Dictionary(grouping: cachedFilteredSorted) { plugin in
             "\(plugin.name)|\(plugin.publisher)"
         }
 
-        return grouped.map { _, plugins in
+        let consolidated = grouped.map { _, plugins in
             let first = plugins[0]
             let types = Array(Set(plugins.map { $0.type.uppercased() })).sorted { ColorUtilities.formatSortOrder($0) < ColorUtilities.formatSortOrder($1) }
             let isObsolete = plugins.contains { $0.obsolete }
@@ -63,63 +134,24 @@ struct PluginListView: View {
                 return lhs.style.localizedCaseInsensitiveCompare(rhs.style) == .orderedAscending
             }
         }
+
+        cachedConsolidated = consolidated
+        computeSectioned()
     }
 
-    // Group plugins by first letter for section index
-    var sectionedPlugins: [(key: String, plugins: [ConsolidatedPlugin])] {
-        let grouped = Dictionary(grouping: consolidatedPlugins) { plugin -> String in
+    // SPEED: Compute sectioned plugins
+    private func computeSectioned() {
+        let grouped = Dictionary(grouping: cachedConsolidated) { plugin -> String in
             let firstChar = plugin.name.prefix(1).uppercased()
-            // Check if it's a letter
             if firstChar.rangeOfCharacter(from: CharacterSet.letters) != nil {
                 return firstChar
             } else {
-                return "#" // Numbers and symbols
+                return "#"
             }
         }
 
-        return grouped.map { (key: $0.key, plugins: $0.value) }
+        cachedSectioned = grouped.map { (key: $0.key, plugins: $0.value) }
             .sorted { $0.key < $1.key }
-    }
-
-    var filteredAndSortedPlugins: [PluginItem] {
-        var result = plugins
-
-        if !searchText.isEmpty {
-            result = result.filter { plugin in
-                plugin.name.localizedCaseInsensitiveContains(searchText) ||
-                plugin.publisher.localizedCaseInsensitiveContains(searchText) ||
-                plugin.style.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-
-        if let format = selectedFormat {
-            if format == "OBSLT" {
-                result = result.filter { $0.obsolete }
-            } else {
-                result = result.filter { $0.type.uppercased() == format }
-            }
-        }
-
-        if let style = selectedStyle {
-            result = result.filter { $0.style == style }
-        }
-
-        if let publisher = selectedPublisher {
-            result = result.filter { $0.publisher == publisher }
-        }
-
-        switch sortOrder {
-        case .name:
-            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .publisher:
-            result.sort { $0.publisher.localizedCaseInsensitiveCompare($1.publisher) == .orderedAscending }
-        case .type:
-            result.sort { $0.type.localizedCaseInsensitiveCompare($1.type) == .orderedAscending }
-        case .style:
-            result.sort { $0.style.localizedCaseInsensitiveCompare($1.style) == .orderedAscending }
-        }
-
-        return result
     }
 
     var uniquePublishers: [String] {
@@ -162,6 +194,28 @@ struct PluginListView: View {
             }
         }
         return counts
+    }
+
+    @AppStorage("appearance") private var appearance: String = "space"
+
+    // Pre-computed color constants for instant switching
+    private let spaceBackground = Color.black
+    private let spaceDarker = Color(red: 13/255, green: 13/255, blue: 13/255)
+    private let darkBackground = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let darkDarker = Color(red: 24/255, green: 24/255, blue: 26/255)
+    private let lightBackground = Color(red: 242/255, green: 242/255, blue: 247/255)
+    private let lightDarker = Color(red: 230/255, green: 230/255, blue: 235/255)
+
+    var customBackgroundColor: Color {
+        appearance == "space" ? spaceBackground : appearance == "dark" ? darkBackground : appearance == "light" ? lightBackground : Color(UIColor.systemBackground)
+    }
+
+    var statsCardBackgroundColor: Color {
+        customBackgroundColor
+    }
+
+    var searchBarBackgroundColor: Color {
+        appearance == "space" ? spaceDarker : appearance == "dark" ? darkDarker : appearance == "light" ? lightDarker : Color(UIColor.systemGray6)
     }
 
     var body: some View {
@@ -223,12 +277,14 @@ struct PluginListView: View {
                                             NavigationLink(destination: ConsolidatedPluginDetailView(consolidated: consolidated)) {
                                                 ConsolidatedPluginRow(consolidated: consolidated)
                                             }
+                                            .listRowBackground(Color.clear)
                                         }
                                     }
                                     .id(section.key)
                                 }
                             }
                             .listStyle(.plain)
+                            .scrollContentBackground(.hidden)
                             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToSection"))) { notification in
                                 if let section = notification.object as? String {
                                     withAnimation {
@@ -244,12 +300,27 @@ struct PluginListView: View {
                     }
                 }
             }
+            .background(customBackgroundColor)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: filteredAndSortedPlugins) { newValue in
                 filteredPluginsForExport = newValue
             }
+            .onChange(of: searchText) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedFormat) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedStyle) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
+            .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
+            .onChange(of: plugins.count) { newCount in
+                if newCount != lastPluginCount {
+                    lastPluginCount = newCount
+                    computeFilteredAndSorted()
+                }
+            }
             .onAppear {
+                if cachedFilteredSorted.isEmpty {
+                    computeFilteredAndSorted()
+                }
                 filteredPluginsForExport = filteredAndSortedPlugins
             }
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -278,12 +349,11 @@ struct PluginListView: View {
                         }
                     }
                     .padding(10)
-                    .background(Color(.systemGray6))
+                    .background(searchBarBackgroundColor)
                     .cornerRadius(10)
                     .padding(.horizontal, Constants.Layout.standardPadding)
                     .padding(.bottom, 2)
                 }
-                .background(Color(UIColor.systemBackground))
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -531,11 +601,9 @@ struct PluginListView: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
+        .frame(maxWidth: .infinity)
+        .background(statsCardBackgroundColor)
+        .edgesIgnoringSafeArea(.horizontal)
     }
 
     private var dynamicFormatCounts: [(format: String, count: Int)] {

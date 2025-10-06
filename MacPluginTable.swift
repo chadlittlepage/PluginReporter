@@ -27,9 +27,15 @@ struct SizeCell: View {
     @State private var lastAnchorIndex: Int? = nil
     @State private var lastScrollTime: Date = .distantPast
 //    @State private var sortOrder: [SortDescriptor<PluginItem>] = []
-//    @State private var displayedRows: [PluginItem] = []
+
+    // SPEED: Cache sorted rows to avoid re-sorting on every render
+    @State private var cachedDisplayedRows: [PluginItem] = []
+    @State private var lastManualSortKey: SortKey? = nil
+    @State private var lastManualAscending: Bool = true
+    @State private var lastRowsCount: Int = 0
 
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var prefs: Preferences
 
     // MARK: Resizable column widths - Set to match user's preferred layout
     @State private var wName: CGFloat = 190        // Wider for plugin names
@@ -48,10 +54,16 @@ struct SizeCell: View {
 
     // MARK: Header background color to match search field
     private var headerBackgroundColor: Color {
-        if colorScheme == .dark {
+        // Space mode: match iOS/iPadOS dark gray
+        if prefs.appearance.usesTrueBlack {
+            return Color(red: 28/255, green: 28/255, blue: 30/255)
+        }
+        // Regular dark mode: system background
+        else if colorScheme == .dark {
             return Color(NSColor.windowBackgroundColor)
-        } else {
-            // In light mode, use a darker grey similar to the search field background
+        }
+        // Light mode: darker grey
+        else {
             return Color(red: 0.82, green: 0.82, blue: 0.84)
         }
     }
@@ -179,31 +191,49 @@ struct SizeCell: View {
         return pairs.map { $0.item }
     }
     
+    // SPEED: Return cached value directly
     private var displayedRows: [PluginItem] {
+        cachedDisplayedRows
+    }
+
+    // SPEED: Compute sorted rows only when sort key or data changes
+    private func computeDisplayedRows() {
+        let sorted: [PluginItem]
         switch manualSortKey {
         case .name:
-            return rows.sorted { manualAscending ? ($0.name < $1.name) : ($0.name > $1.name) }
+            sorted = rows.sorted { manualAscending ? ($0.name < $1.name) : ($0.name > $1.name) }
         case .publisher:
-            return rows.sorted { manualAscending ? ($0.publisher < $1.publisher) : ($0.publisher > $1.publisher) }
+            sorted = rows.sorted { manualAscending ? ($0.publisher < $1.publisher) : ($0.publisher > $1.publisher) }
         case .type:
-            return rows.sorted { manualAscending ? ($0.type < $1.type) : ($0.type > $1.type) }
+            sorted = rows.sorted { manualAscending ? ($0.type < $1.type) : ($0.type > $1.type) }
         case .style:
-            return rows.sorted { manualAscending ? ($0.style < $1.style) : ($0.style > $1.style) }
+            sorted = rows.sorted { manualAscending ? ($0.style < $1.style) : ($0.style > $1.style) }
         case .version:
-            return sortByVersionFast(rows, ascending: manualAscending)
+            sorted = sortByVersionFast(rows, ascending: manualAscending)
         case .arch:
-            return rows.sorted { manualAscending ? ($0.architectures < $1.architectures) : ($0.architectures > $1.architectures) }
+            sorted = rows.sorted { manualAscending ? ($0.architectures < $1.architectures) : ($0.architectures > $1.architectures) }
         case .date:
-            return sortByDateFast(rows, ascending: manualAscending)
+            sorted = sortByDateFast(rows, ascending: manualAscending)
         case .size:
-            return sortBySizeFast(rows, ascending: manualAscending)
+            sorted = sortBySizeFast(rows, ascending: manualAscending)
         case .requirement:
-            return rows.sorted { manualAscending ? ($0.runtimeRequirement < $1.runtimeRequirement) : ($0.runtimeRequirement > $1.runtimeRequirement) }
+            sorted = rows.sorted { manualAscending ? ($0.runtimeRequirement < $1.runtimeRequirement) : ($0.runtimeRequirement > $1.runtimeRequirement) }
         case .obsolete:
-            return rows.sorted { manualAscending ? ($0.obsoleteText < $1.obsoleteText) : ($0.obsoleteText > $1.obsoleteText) }
+            sorted = rows.sorted { manualAscending ? ($0.obsoleteText < $1.obsoleteText) : ($0.obsoleteText > $1.obsoleteText) }
         case .path:
-            return rows.sorted { manualAscending ? ($0.path < $1.path) : ($0.path > $1.path) }
+            sorted = rows.sorted { manualAscending ? ($0.path < $1.path) : ($0.path > $1.path) }
         }
+        cachedDisplayedRows = sorted
+        lastManualSortKey = manualSortKey
+        lastManualAscending = manualAscending
+        lastRowsCount = rows.count
+    }
+
+    // SPEED: Check if sort parameters changed
+    private func sortChanged() -> Bool {
+        manualSortKey != lastManualSortKey ||
+        manualAscending != lastManualAscending ||
+        rows.count != lastRowsCount
     }
     
     private func moveSelection(delta: Int, extendingSelection: Bool = false, scrollProxy: ScrollViewProxy? = nil) {
@@ -455,7 +485,25 @@ struct SizeCell: View {
             .onChange(of: selection) { (sel: [PluginItem]) in
                 macSelection = Set(sel.map(\.id))
             }
+            .onChange(of: manualSortKey) { _ in
+                if sortChanged() {
+                    computeDisplayedRows()
+                }
+            }
+            .onChange(of: manualAscending) { _ in
+                if sortChanged() {
+                    computeDisplayedRows()
+                }
+            }
+            .onChange(of: rows.count) { _ in
+                if sortChanged() {
+                    computeDisplayedRows()
+                }
+            }
             .onAppear {
+                if cachedDisplayedRows.isEmpty {
+                    computeDisplayedRows()
+                }
                 sortStatus = makeSortStatus()
             }
             .scrollContentBackground(.hidden)

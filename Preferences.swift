@@ -28,7 +28,11 @@ final class Preferences: ObservableObject {
     }
 
     /// UI appearance (System / Light / Dark). Used by SettingsView.
+    #if os(macOS)
+    @Published var appearance: Appearance = .dark
+    #else
     @Published var appearance: Appearance = .system
+    #endif
 
     // MARK: Scan Options
 

@@ -10,10 +10,19 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     let onImport: () -> Void
-    @AppStorage("appearance") private var appearance: String = "dark"
+    @AppStorage("appearance") private var appearance: String = "space"
     @State private var showFilePicker = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
+
+    // Pre-computed colors
+    private let spaceBackground = Color.black
+    private let darkBackground = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let lightBackground = Color(red: 242/255, green: 242/255, blue: 247/255)
+
+    var customBackgroundColor: Color {
+        appearance == "space" ? spaceBackground : appearance == "dark" ? darkBackground : appearance == "light" ? lightBackground : Color(UIColor.systemBackground)
+    }
 
     var body: some View {
         NavigationView {
@@ -75,6 +84,8 @@ struct SettingsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(customBackgroundColor)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .fileImporter(

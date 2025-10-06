@@ -34,14 +34,23 @@ struct ContentView: View {
     @State private var cachedBarCounts = FormatCounts()
     @State private var lastBarUpdateCount = 0
 
+    // SPEED: Cache filtered plugins to avoid recalculation on every render
+    @State private var cachedFilteredPlugins: [AppPluginItem] = []
+    @State private var lastSearchText = ""
+    @State private var lastSelectedFormats = Set<PluginFormat>()
+    @State private var lastSelectedPublishers = Set<String>()
+    @State private var lastSelectedStyles = Set<String>()
+    @State private var lastShowObsoleteOnly = false
+    @State private var lastPluginCount = 0
+
     private var appBG: Color {
         // Space mode: pure black background
         if prefs.appearance.usesTrueBlack {
             return Color.black
         }
-        // Regular dark mode: dark gray
+        // Regular dark mode: dark gray (matching iOS/iPadOS)
         else if colorScheme == .dark {
-            return Color(red: 30/255, green: 30/255, blue: 30/255)
+            return Color(red: 28/255, green: 28/255, blue: 30/255)
         }
         // Light mode: medium gray
         else {
@@ -49,14 +58,20 @@ struct ContentView: View {
         }
     }
 
+    // SPEED: Return cached value directly
     var filteredPlugins: [AppPluginItem] {
-        // INSTANT filtering - direct access to scanner.plugins without conversion
+        cachedFilteredPlugins
+    }
+
+    // SPEED: Compute filtered plugins only when inputs change
+    private func computeFilteredPlugins() {
         let all = scanner.plugins
 
         // Early exit if no filters applied - return converted array
         guard !searchText.isEmpty || !prefs.selectedFormats.isEmpty ||
               !prefs.selectedPublishers.isEmpty || !prefs.selectedStyles.isEmpty || prefs.showObsoleteOnly else {
-            return all.map(AppPluginItem.init)
+            cachedFilteredPlugins = all.map(AppPluginItem.init)
+            return
         }
 
         // Convert to AppPluginItem for filtering
@@ -74,7 +89,27 @@ struct ContentView: View {
             selectedPublishers: prefs.selectedPublishers,
             selectedStyles: prefs.selectedStyles
         )
-        return applyObsolete(rows)
+        cachedFilteredPlugins = applyObsolete(rows)
+    }
+
+    // SPEED: Check if filters changed
+    private func filtersChanged() -> Bool {
+        searchText != lastSearchText ||
+        prefs.selectedFormats != lastSelectedFormats ||
+        prefs.selectedPublishers != lastSelectedPublishers ||
+        prefs.selectedStyles != lastSelectedStyles ||
+        prefs.showObsoleteOnly != lastShowObsoleteOnly ||
+        scanner.plugins.count != lastPluginCount
+    }
+
+    // SPEED: Update tracking variables
+    private func updateLastFilterState() {
+        lastSearchText = searchText
+        lastSelectedFormats = prefs.selectedFormats
+        lastSelectedPublishers = prefs.selectedPublishers
+        lastSelectedStyles = prefs.selectedStyles
+        lastShowObsoleteOnly = prefs.showObsoleteOnly
+        lastPluginCount = scanner.plugins.count
     }
     
     // INSTANT bar graph with INSTANT fake results - shows immediately
@@ -345,7 +380,48 @@ struct ContentView: View {
                 showDetailSheet = (appState.selected.first != nil)
             }
         }
-        .onAppear { }
+        .onAppear {
+            if cachedFilteredPlugins.isEmpty {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
+        .onChange(of: searchText) { _ in
+            if filtersChanged() {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
+        .onChange(of: prefs.selectedFormats) { _ in
+            if filtersChanged() {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
+        .onChange(of: prefs.selectedPublishers) { _ in
+            if filtersChanged() {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
+        .onChange(of: prefs.selectedStyles) { _ in
+            if filtersChanged() {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
+        .onChange(of: prefs.showObsoleteOnly) { _ in
+            if filtersChanged() {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
+        .onChange(of: scanner.plugins.count) { _ in
+            if filtersChanged() {
+                computeFilteredPlugins()
+                updateLastFilterState()
+            }
+        }
         .onChange(of: prefs.appearance) { newValue in
             if newValue == AppPreferences.Appearance.system {
                 suppressAnimations = true

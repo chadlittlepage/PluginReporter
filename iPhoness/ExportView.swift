@@ -12,6 +12,16 @@ struct ExportView: View {
     let plugins: [PluginItem]
     @State private var showShareSheet = false
     @State private var exportURL: URL?
+    @AppStorage("appearance") private var appearance: String = "space"
+
+    // Pre-computed colors
+    private let spaceBackground = Color.black
+    private let darkBackground = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let lightBackground = Color(red: 242/255, green: 242/255, blue: 247/255)
+
+    var customBackgroundColor: Color {
+        appearance == "space" ? spaceBackground : appearance == "dark" ? darkBackground : appearance == "light" ? lightBackground : Color(UIColor.systemBackground)
+    }
 
     var body: some View {
         NavigationView {
@@ -75,6 +85,8 @@ struct ExportView: View {
                     Text("About Export")
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(customBackgroundColor)
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showShareSheet) {
