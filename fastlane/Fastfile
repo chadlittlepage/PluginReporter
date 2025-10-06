@@ -60,10 +60,14 @@ platform :ios do
     gym(
       scheme: "PR iPHONE",
       configuration: "Debug",
-      destination: "platform=iOS Simulator,name=iPhone 15 Pro",
+      destination: "generic/platform=iOS Simulator",
       output_directory: "./fastlane/builds/iOS",
       skip_package_ipa: true,
-      clean: true
+      skip_archive: true,
+      skip_codesigning: true,
+      clean: true,
+      build_path: "./fastlane/builds/iOS",
+      derived_data_path: "./fastlane/builds/iOS/DerivedData"
     )
 
     UI.success("✅ iOS build complete!")
@@ -120,8 +124,31 @@ desc "Build all platforms"
 lane :build_all do
   UI.header("Building all platforms")
 
-  mac(:build)
-  ios(:build)
+  # Build macOS
+  gym(
+    scheme: "PR MAC",
+    configuration: "Release",
+    destination: "platform=macOS",
+    output_directory: "./fastlane/builds/macOS",
+    clean: true,
+    skip_package_pkg: true
+  )
+  UI.success("✅ macOS build complete!")
+
+  # Build iOS
+  gym(
+    scheme: "PR iPHONE",
+    configuration: "Debug",
+    destination: "generic/platform=iOS Simulator",
+    output_directory: "./fastlane/builds/iOS",
+    skip_package_ipa: true,
+    skip_archive: true,
+    skip_codesigning: true,
+    clean: true,
+    build_path: "./fastlane/builds/iOS",
+    derived_data_path: "./fastlane/builds/iOS/DerivedData"
+  )
+  UI.success("✅ iOS build complete!")
 
   UI.success("✅ All platforms built successfully!")
   UI.message("📦 Builds located in: ./fastlane/builds/")
@@ -131,8 +158,19 @@ desc "Test all platforms"
 lane :test_all do
   UI.header("Testing all platforms")
 
-  mac(:test)
-  ios(:test)
+  # Test macOS
+  scan(
+    scheme: "PR MAC",
+    destination: "platform=macOS",
+    clean: true
+  )
+
+  # Test iOS
+  scan(
+    scheme: "PR iPHONE",
+    destination: "platform=iOS Simulator,name=iPhone 15 Pro",
+    clean: true
+  )
 
   UI.success("✅ All tests passed!")
 end
