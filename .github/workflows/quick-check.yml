@@ -34,7 +34,7 @@ jobs:
     - name: Build macOS (syntax check)
       run: |
         echo "🏗️  Building macOS app..."
-        xcodebuild -scheme PluginReporter \
+        xcodebuild -scheme "PR MAC" \
           -destination 'platform=macOS' \
           -configuration Debug \
           build-for-testing \

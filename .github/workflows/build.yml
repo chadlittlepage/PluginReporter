@@ -27,7 +27,7 @@ jobs:
 
     - name: Build macOS app
       run: |
-        xcodebuild -scheme PluginReporter \
+        xcodebuild -scheme "PR MAC" \
           -configuration Release \
           -destination 'platform=macOS' \
           -derivedDataPath ./build \
@@ -55,7 +55,7 @@ jobs:
 
     - name: Build iOS app (simulator)
       run: |
-        xcodebuild -scheme PluginReporter \
+        xcodebuild -scheme "PR iPHONE" \
           -configuration Release \
           -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
           -derivedDataPath ./build \
@@ -83,7 +83,7 @@ jobs:
 
     - name: Build iPadOS app (simulator)
       run: |
-        xcodebuild -scheme PluginReporter \
+        xcodebuild -scheme "PR iPHONE" \
           -configuration Release \
           -destination 'platform=iOS Simulator,name=iPad Pro (12.9-inch)' \
           -derivedDataPath ./build \
