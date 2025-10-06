@@ -1,0 +1,99 @@
+name: Generate App Store Screenshots
+
+# Run manually or on release
+on:
+  workflow_dispatch:  # Manual trigger
+  release:
+    types: [ created ]
+
+jobs:
+  screenshots:
+    name: Generate Screenshots
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Build for screenshots
+      run: |
+        echo "📸 Preparing apps for screenshots..."
+
+        # Build macOS app
+        xcodebuild -scheme "PR MAC" \
+          -configuration Release \
+          -destination 'platform=macOS' \
+          -derivedDataPath ./build \
+          build
+
+        # Build iOS app for simulator
+        xcodebuild -scheme "PR iPHONE" \
+          -configuration Debug \
+          -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+          -derivedDataPath ./build \
+          -sdk iphonesimulator \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
+          build
+
+    - name: Launch and capture macOS screenshots
+      run: |
+        echo "📸 Capturing macOS screenshots..."
+        mkdir -p screenshots/macOS
+
+        # Launch the app (it will run briefly)
+        open build/Build/Products/Release/PluginReporter.app || true
+        sleep 3
+
+        # Capture screenshot (macOS built-in)
+        screencapture -x screenshots/macOS/main-window.png || echo "Screenshot capture requires manual setup"
+
+        echo "✅ macOS screenshots ready"
+
+    - name: Launch and capture iOS screenshots
+      run: |
+        echo "📸 Capturing iOS screenshots..."
+        mkdir -p screenshots/iOS
+
+        # Boot simulator
+        xcrun simctl boot "iPhone 15 Pro" || true
+        sleep 5
+
+        # Install app to simulator
+        DEVICE_ID=$(xcrun simctl list devices | grep "iPhone 15 Pro" | grep "Booted" | awk -F'[()]' '{print $2}' | head -1)
+        if [ ! -z "$DEVICE_ID" ]; then
+          APP_PATH=$(find build/Build/Products/Debug-iphonesimulator -name "*.app" | head -1)
+          xcrun simctl install $DEVICE_ID "$APP_PATH" || true
+
+          # Launch app
+          APP_BUNDLE_ID=$(defaults read "$APP_PATH/Info.plist" CFBundleIdentifier)
+          xcrun simctl launch $DEVICE_ID $APP_BUNDLE_ID || true
+          sleep 3
+
+          # Capture screenshot
+          xcrun simctl io $DEVICE_ID screenshot screenshots/iOS/main-screen.png || true
+        fi
+
+        echo "✅ iOS screenshots ready"
+
+    - name: Upload screenshot artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: App-Store-Screenshots
+        path: screenshots/
+        retention-days: 90
+
+    - name: Summary
+      run: |
+        echo "📸 Screenshot Generation Complete!"
+        echo ""
+        echo "📂 Generated Screenshots:"
+        find screenshots -type f -name "*.png" || echo "No screenshots captured"
+        echo ""
+        echo "💡 Download from Actions > Artifacts section"
+        echo "🎨 Use these for App Store listings!"

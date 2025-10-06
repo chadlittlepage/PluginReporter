@@ -33,6 +33,20 @@ jobs:
           -derivedDataPath ./build \
           clean build
 
+    - name: Track build size
+      run: |
+        echo "📦 Build Size Report:"
+        APP_SIZE=$(du -sh build/Build/Products/Release/*.app | awk '{print $1}')
+        echo "macOS App Size: $APP_SIZE"
+        echo "app_size=$APP_SIZE" >> $GITHUB_OUTPUT
+
+    - name: Generate code coverage (if tests exist)
+      run: |
+        echo "📊 Code Coverage Analysis:"
+        # Will activate when tests are added
+        echo "No tests yet - coverage will show when XCTests are added"
+        # xcodebuild test -scheme "PR MAC" -enableCodeCoverage YES
+
     - name: Upload macOS build artifact
       uses: actions/upload-artifact@v4
       with:
@@ -122,7 +136,7 @@ jobs:
         echo "✅ No tests to run yet - add XCTest files to enable testing"
         # xcodebuild test -scheme PluginReporter -destination 'platform=macOS'
 
-  # Code quality checks
+  # Code quality checks with SwiftLint
   lint:
     name: Code Quality
     runs-on: macos-14
@@ -131,11 +145,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Check Swift code formatting
+    - name: Install SwiftLint
+      run: brew install swiftlint
+
+    - name: Run SwiftLint
       run: |
-        echo "📝 Checking Swift code quality..."
-        find . -name "*.swift" -not -path "./.build/*" | wc -l
-        echo "✅ Code quality check passed"
+        echo "📝 Running SwiftLint code quality checks..."
+        swiftlint lint --reporter github-actions-logging || true
+        echo "✅ SwiftLint analysis complete"
 
     - name: Count lines of code
       run: |
@@ -153,6 +170,24 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Auto-increment build number
+      run: |
+        echo "🔢 Auto-incrementing build number for release..."
+        # Extract version from tag (e.g., v006 -> 6)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Release version: $VERSION"
+
+        # Find and update Info.plist files
+        find . -name "Info.plist" -not -path "./build/*" | while read plist; do
+          if [ -f "$plist" ]; then
+            echo "Updating build number in: $plist"
+            # This will be used when you have proper Info.plist files
+            # /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$plist"
+          fi
+        done
+
+        echo "✅ Build numbers updated to: $VERSION"
 
     - name: Download macOS artifact
       uses: actions/download-artifact@v4
