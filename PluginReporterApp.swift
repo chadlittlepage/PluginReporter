@@ -144,25 +144,29 @@ struct PluginReporterApp: App {
                 .preferredColorScheme(.dark)  // Always use dark mode for Settings
                 .onAppear {
                     applyAppAppearance(prefs.appearance)
-                    // Force Settings window to always use dark appearance, float on top, and be resizable
-                    if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
-                        settingsWindow.appearance = NSAppearance(named: .darkAqua)
-                        settingsWindow.level = .floating  // Always float on top
-                        settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-                        settingsWindow.styleMask.insert(.resizable)  // Make resizable
+                    // Force Settings window to always use dark appearance and float on top
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
+                            settingsWindow.appearance = NSAppearance(named: .darkAqua)
+                            settingsWindow.level = .floating
+                            settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+                            // Explicitly set resizable style mask
+                            settingsWindow.styleMask = [.titled, .closable, .resizable]
+                        }
                     }
                 }
                 .onChange(of: prefs.appearance) { newValue in
                     applyAppAppearance(newValue)
-                    // Keep Settings window in dark mode, floating on top, and resizable
+                    // Keep Settings window in dark mode and floating on top
                     if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
                         settingsWindow.appearance = NSAppearance(named: .darkAqua)
-                        settingsWindow.level = .floating  // Always float on top
+                        settingsWindow.level = .floating
                         settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-                        settingsWindow.styleMask.insert(.resizable)  // Make resizable
+                        settingsWindow.styleMask = [.titled, .closable, .resizable]
                     }
                 }
         }
+        .windowResizability(.contentSize)
         #endif
     }
 }
