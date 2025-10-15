@@ -22,7 +22,6 @@ struct PluginListView: View {
     @State private var cachedConsolidated: [ConsolidatedPlugin] = []
     @State private var cachedSectioned: [(key: String, plugins: [ConsolidatedPlugin])] = []
     @State private var cachedFilteredSorted: [PluginItem] = []
-    @State private var lastPluginCount = 0
 
     enum SortOrder {
         case name, publisher, type, style
@@ -329,11 +328,9 @@ struct PluginListView: View {
             .onChange(of: selectedStyle) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
-            .onChange(of: plugins.count) { newCount in
-                if newCount != lastPluginCount {
-                    lastPluginCount = newCount
-                    computeFilteredAndSorted()
-                }
+            .onChange(of: plugins) { _ in
+                // Recompute whenever plugins array changes
+                computeFilteredAndSorted()
             }
             .onAppear {
                 // Always recompute when view appears to ensure cache is current
