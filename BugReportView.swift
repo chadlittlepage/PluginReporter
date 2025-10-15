@@ -4,6 +4,7 @@ import SwiftUI
 
 struct BugReportView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
 
     @State private var title: String = ""
     @State private var description: String = ""
@@ -36,106 +37,223 @@ struct BugReportView: View {
         }
     }
 
+    // Match Settings card background colors
+    private var cardBackground: Color {
+        colorScheme == .dark ? Color(red: 28/255, green: 28/255, blue: 30/255) : Color(red: 242/255, green: 242/255, blue: 247/255)
+    }
+
+    private var appBackground: Color {
+        colorScheme == .dark ? Color.black : Color(red: 0.95, green: 0.95, blue: 0.97)
+    }
+
+    private var textEditorBackground: Color {
+        colorScheme == .dark ? Color(red: 20/255, green: 20/255, blue: 22/255) : Color.white.opacity(0.5)
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section {
-                TextField("", text: $title, prompt: Text("Bug Title"))
-                    .textFieldStyle(.roundedBorder)
-                TextEditor(text: $description)
-                    .frame(height: 150)
-                    .padding(8)
-                    .background(Color(red: 24/255, green: 24/255, blue: 26/255))
-                    .cornerRadius(8)
-            }
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 20) {
 
-            Section {
-                HStack(spacing: 4) {
-                    ForEach(BugSeverity.allCases, id: \.self) { sev in
-                        Button(action: {
-                            severity = sev
-                        }) {
-                            Text(sev.rawValue)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
-                                .background(severity == sev ? sev.color : Color.clear)
-                                .foregroundColor(severity == sev ? .white : sev.color)
-                                .cornerRadius(6)
+                // MARK: - Bug Details
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Bug Details")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Title")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            TextField("", text: $title, prompt: Text("Bug Title"))
+                                .textFieldStyle(.roundedBorder)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Description")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            TextEditor(text: $description)
+                                .frame(height: 150)
+                                .padding(8)
+                                .background(textEditorBackground)
+                                .cornerRadius(8)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
                     }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
                 }
-            }
 
-            Section("Additional Information") {
+                // MARK: - Severity
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Steps to Reproduce")
+                    Text("Severity")
                         .font(.subheadline)
-                    TextEditor(text: $stepsToReproduce)
-                        .frame(height: 120)
-                        .padding(8)
-                        .background(Color(red: 24/255, green: 24/255, blue: 26/255))
-                        .cornerRadius(8)
-                }
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Expected Behavior")
-                        .font(.subheadline)
-                    TextEditor(text: $expectedBehavior)
-                        .frame(height: 100)
-                        .padding(8)
-                        .background(Color(red: 24/255, green: 24/255, blue: 26/255))
-                        .cornerRadius(8)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Actual Behavior")
-                        .font(.subheadline)
-                    TextEditor(text: $actualBehavior)
-                        .frame(height: 100)
-                        .padding(8)
-                        .background(Color(red: 24/255, green: 24/255, blue: 26/255))
-                        .cornerRadius(8)
-                }
-            }
-
-            Section("Diagnostic Data") {
-                Toggle("Include system information", isOn: $includeSystemInfo)
-                Toggle("Include recent crash logs", isOn: $includeCrashLog)
-                Text("System info helps us diagnose the issue. No personal data is sent.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Section("Contact") {
-                TextField("", text: $email, prompt: Text("Email"))
-                    .textFieldStyle(.roundedBorder)
-                Text("Provide your email if you'd like a response.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Color(red: 24/255, green: 24/255, blue: 26/255))
-
-            HStack {
-                Spacer()
-                Button(action: sendBugReport) {
-                    if isSending {
-                        ProgressView()
-                            .scaleEffect(0.8)
+                    HStack(spacing: 4) {
+                        ForEach(BugSeverity.allCases, id: \.self) { sev in
+                            Button(action: {
+                                severity = sev
+                            }) {
+                                Text(sev.rawValue)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 6)
+                                    .background(severity == sev ? sev.color : Color.clear)
+                                    .foregroundColor(severity == sev ? .white : sev.color)
+                                    .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    Text(isSending ? "Sending..." : "Send Bug Report")
+                    .padding(16)
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
                 }
-                .disabled(isSending || title.isEmpty || description.isEmpty)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+
+                // MARK: - Additional Information
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Additional Information")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Steps to Reproduce")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            TextEditor(text: $stepsToReproduce)
+                                .frame(height: 120)
+                                .padding(8)
+                                .background(textEditorBackground)
+                                .cornerRadius(8)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Expected Behavior")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            TextEditor(text: $expectedBehavior)
+                                .frame(height: 100)
+                                .padding(8)
+                                .background(textEditorBackground)
+                                .cornerRadius(8)
+                        }
+                        .padding(.horizontal, 16)
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Actual Behavior")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            TextEditor(text: $actualBehavior)
+                                .frame(height: 100)
+                                .padding(8)
+                                .background(textEditorBackground)
+                                .cornerRadius(8)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                    }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+
+                // MARK: - Diagnostic Data
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Diagnostic Data")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 12) {
+                        Toggle("Include system information", isOn: $includeSystemInfo)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        Toggle("Include recent crash logs", isOn: $includeCrashLog)
+                            .padding(.horizontal, 16)
+
+                        Text("System info helps us diagnose the issue. No personal data is sent.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 16)
+                    }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+
+                // MARK: - Contact
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Contact")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 8) {
+                        TextField("", text: $email, prompt: Text("Email"))
+                            .textFieldStyle(.roundedBorder)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+
+                        Text("Provide your email if you'd like a response.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 16)
+                    }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+
+                // MARK: - Send Button
+                HStack {
+                    Spacer()
+                    Button(action: sendBugReport) {
+                        if isSending {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                        Text(isSending ? "Sending..." : "Send Bug Report")
+                    }
+                    .disabled(isSending || title.isEmpty || description.isEmpty)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Spacer()
+                }
+                .padding(.vertical, 16)
+
+                Spacer(minLength: 40)
             }
-            .padding(.top, 8)
+            .padding(.top, 20)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 20)
-        .background(Color(red: 24/255, green: 24/255, blue: 26/255))
+        .background(appBackground)
+        .frame(minWidth: 700, minHeight: 800)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Done") {
