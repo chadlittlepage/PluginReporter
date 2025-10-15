@@ -51,13 +51,8 @@ struct ContentView: View {
         .preferredColorScheme(colorScheme)
         .task {
             // Auto-load plugins on launch
-            AppLogger.info("iPad .task called - hasLoadedOnce: \(hasLoadedOnce)")
-            guard !hasLoadedOnce else {
-                AppLogger.info("iPad skipping load - already loaded once")
-                return
-            }
+            guard !hasLoadedOnce else { return }
             hasLoadedOnce = true
-            AppLogger.info("iPad starting async plugin load...")
             await loadPluginsSilentlyAsync()
         }
         .onAppear {
@@ -122,11 +117,9 @@ struct ContentView: View {
             await MainActor.run {
                 plugins = loadedPlugins
                 isLoading = false
-                AppLogger.info("Auto-loaded \(plugins.count) plugins on iPad launch")
             }
         } catch {
             await MainActor.run {
-                AppLogger.error("Failed to auto-load plugins on iPad: \(error.localizedDescription)")
                 plugins = []
                 isLoading = false
             }

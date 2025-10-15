@@ -53,13 +53,8 @@ struct ContentView: View {
         .preferredColorScheme(colorScheme)
         .task {
             // Auto-load plugins on launch (simulating iCloud sync)
-            AppLogger.info("iPhone .task called - hasLoadedOnce: \(hasLoadedOnce)")
-            guard !hasLoadedOnce else {
-                AppLogger.info("iPhone skipping load - already loaded once")
-                return
-            }
+            guard !hasLoadedOnce else { return }
             hasLoadedOnce = true
-            AppLogger.info("iPhone starting async plugin load...")
             await loadPluginsSilentlyAsync()
         }
         .alert("Plugins Loaded", isPresented: $showImportAlert) {
@@ -149,11 +144,9 @@ struct ContentView: View {
             await MainActor.run {
                 plugins = loadedPlugins
                 isLoading = false
-                AppLogger.info("Auto-loaded \(plugins.count) plugins on launch")
             }
         } catch {
             await MainActor.run {
-                AppLogger.error("Failed to auto-load plugins: \(error.localizedDescription)")
                 plugins = []
                 isLoading = false
             }

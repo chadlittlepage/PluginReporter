@@ -562,12 +562,11 @@ struct PluginListView: View {
             .onChange(of: selectedStyle) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
-            .onAppear {
-                // Always recompute when view appears to ensure cache is current
+            .task(id: plugins.count) {
+                // Recompute when plugins change (much faster than .id() view recreation)
                 computeFilteredAndSorted()
                 filteredPluginsForExport = filteredAndSortedPlugins
             }
-            .id(plugins.count) // Force view update when plugin count changes
         }
     }
 

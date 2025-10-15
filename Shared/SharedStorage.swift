@@ -60,33 +60,19 @@ public enum SharedStorage {
 
     /// Load plugins from shared storage
     public static func loadPlugins() throws -> [PluginItem] {
-        AppLogger.info("SharedStorage.loadPlugins() called")
-
         guard let url = pluginsURL else {
-            AppLogger.error("Could not get plugins URL")
             return []
         }
 
-        AppLogger.info("Plugins URL: \(url.path)")
-
-        let exists = FileManager.default.fileExists(atPath: url.path)
-        AppLogger.info("File exists: \(exists)")
-
-        guard exists else {
-            AppLogger.info("No plugins file at \(url.path)")
+        guard FileManager.default.fileExists(atPath: url.path) else {
             return [] // No plugins yet
         }
 
-        AppLogger.info("Loading plugins from: \(url.path)")
         let data = try Data(contentsOf: url)
-        AppLogger.info("Read \(data.count) bytes")
 
         guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            AppLogger.error("Invalid JSON format")
             throw StorageError.invalidFormat
         }
-
-        AppLogger.info("Found \(jsonArray.count) items in JSON")
 
         let plugins = jsonArray.compactMap { dict -> PluginItem? in
             guard let name = dict["Name"] as? String,
@@ -112,7 +98,6 @@ public enum SharedStorage {
             )
         }
 
-        AppLogger.info("Successfully parsed \(plugins.count) plugins")
         return plugins
     }
 
