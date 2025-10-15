@@ -402,7 +402,7 @@ struct SettingsView: View {
             .padding(.top, 20)
         }
         .background(appBackground)
-        .frame(minWidth: 700, minHeight: 800)
+        .frame(minWidth: 700, idealWidth: 900, maxWidth: .infinity, minHeight: 800, idealHeight: 1000, maxHeight: .infinity)
     }
 
     // MARK: Helpers
