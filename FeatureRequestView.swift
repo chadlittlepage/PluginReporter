@@ -229,13 +229,6 @@ struct FeatureRequestView: View {
         }
         .background(appBackground)
         .frame(minWidth: 700, minHeight: 800)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Done") {
-                    dismiss()
-                }
-            }
-        }
         .alert("Request Submitted!", isPresented: $showSuccess) {
                 Button("OK") {
                     dismiss()
