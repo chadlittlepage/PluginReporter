@@ -123,7 +123,7 @@ struct ContentView: View {
 
                             // AI Suggestions button (shown when plugin is selected)
                             if let firstSelected = appState.selected.first {
-                                AISuggestionsButton(plugin: firstSelected, ownedPlugins: scanner.plugins.map(PluginItem.init))
+                                AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
                             }
                         }
 
@@ -187,7 +187,7 @@ struct ContentView: View {
 
                         // AI Suggestions button (shown when plugin is selected) - centered
                         if let firstSelected = appState.selected.first {
-                            AISuggestionsButton(plugin: firstSelected, ownedPlugins: scanner.plugins.map(PluginItem.init))
+                            AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
                         }
 
                         Spacer()

@@ -43,7 +43,7 @@ struct ConsolidatedPluginDetailView: View {
                             runtimeRequirement: "",
                             obsolete: false
                         ),
-                        ownedPlugins: consolidated.originalPlugins
+                        ownedPlugins: [] // Don't pass all plugins - AI service doesn't need them all
                     )
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
