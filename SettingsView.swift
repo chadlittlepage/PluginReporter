@@ -418,6 +418,8 @@ struct SettingsView: View {
         window.title = "Report a Bug"
         window.level = .floating
         window.isMovableByWindowBackground = true
+        window.titlebarAppearsTransparent = false
+        window.titleVisibility = .visible
 
         let hostingView = NSHostingView(rootView: BugReportView())
         window.contentView = hostingView
@@ -427,7 +429,7 @@ struct SettingsView: View {
 
     func openFeatureRequestWindow() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 850, height: 900),
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 900),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -436,6 +438,8 @@ struct SettingsView: View {
         window.title = "Request a Feature"
         window.level = .floating
         window.isMovableByWindowBackground = true
+        window.titlebarAppearsTransparent = false
+        window.titleVisibility = .visible
 
         let hostingView = NSHostingView(rootView: FeatureRequestView())
         window.contentView = hostingView
