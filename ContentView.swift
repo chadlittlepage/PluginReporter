@@ -40,6 +40,12 @@ struct ContentView: View {
     private func updateDisplayedPlugins() {
         let allPlugins = scanner.plugins.map(AppPluginItem.init)
 
+        print("📱 updateDisplayedPlugins called")
+        print("   All plugins: \(allPlugins.count)")
+        print("   Search text: '\(searchText)'")
+        print("   Selected formats: \(prefs.selectedFormats)")
+
+        print("🔥🔥🔥 ABOUT TO CALL FastFilterEngine.filter")
         displayedPlugins = FastFilterEngine.filter(
             plugins: allPlugins,
             formats: prefs.selectedFormats,
@@ -47,6 +53,15 @@ struct ContentView: View {
             styles: prefs.selectedStyles,
             searchText: searchText
         )
+        print("🔥🔥🔥 FINISHED CALLING FastFilterEngine.filter")
+
+        print("   Result: \(displayedPlugins.count) plugins")
+    }
+
+    private func handleSearchTextChange(_ newValue: String) {
+        print("⌨️ Search text changed to: '\(newValue)'")
+        // Search is completely independent from filters
+        updateDisplayedPlugins()
     }
 
     private var appBG: Color {
@@ -133,6 +148,27 @@ struct ContentView: View {
                 onTap: { toggleFormat(.OBSLT) },
                 isSelected: prefs.selectedFormats.contains(.OBSLT)
             )
+
+            // Clear All button
+            if !prefs.selectedFormats.isEmpty {
+                Button(action: {
+                    prefs.selectedFormats.removeAll()
+                    updateDisplayedPlugins()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Clear All")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .foregroundColor(.red)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -287,7 +323,7 @@ struct ContentView: View {
                 ZStack {
                     appBG
                     PlatformTable(rows: displayedPlugins, selection: $appState.selected, sortStatus: $sortStatus)
-                        .id(displayedPlugins.count)
+                        .id(displayedPlugins.map(\.id))
                         .scrollContentBackground(.hidden)
                         .background(Color.clear)
                 }
@@ -333,30 +369,32 @@ struct ContentView: View {
                                     .font(.headline)
                                     .foregroundColor(.primary)
                                     .frame(maxWidth: .infinity, alignment: .center)
-                                
-                                // Close button aligned to trailing edge
+
+                                // Close button aligned to trailing edge (top right corner)
                                 HStack {
                                     Spacer()
                                     Button(action: {
-                                        withAnimation(.easeInOut) { 
-                                            showOverlaySidebar = false 
+                                        withAnimation(.easeInOut) {
+                                            showOverlaySidebar = false
                                         }
                                     }) {
                                         Image(systemName: "xmark")
                                             .font(.system(size: 12, weight: .medium))
                                             .foregroundColor(.secondary)
-                                            .padding(8)
+                                            .padding(6)
                                             .background(Circle().fill(Color.white.opacity(0.1)))
                                     }
                                     .buttonStyle(.plain)
+                                    .offset(x: 8, y: -8)  // Push into top right corner
                                 }
                             }
                             .padding(.horizontal, 4)
                             
                             FormatsCloud(selectedFormats: $prefs.selectedFormats)
                                 .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.bottom, 10)  // 10px padding under OBSLT
                         }
-                        
+
                         Divider()
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -364,16 +402,19 @@ struct ContentView: View {
                                 .font(.headline)
                                 .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 10)  // 10px padding above Styles
                             StyleDropdown(
                                 allStyles: Array(Set(scanner.plugins.map(\.style).filter { !$0.isEmpty })).sorted(),
                                 selectedStyles: $prefs.selectedStyles
                             )
+                            .padding(.bottom, 10)  // 10px padding below All Styles
                         }
 
                         Divider()
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Publishers")
+                                .padding(.top, 10)  // 10px padding above Publishers
                                 .font(.headline)
                                 .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity, alignment: .center)
@@ -421,8 +462,8 @@ struct ContentView: View {
         .onChange(of: prefs.selectedStyles) { _ in
             updateDisplayedPlugins()
         }
-        .onChange(of: searchText) { _ in
-            updateDisplayedPlugins()
+        .onChange(of: searchText) { newValue in
+            handleSearchTextChange(newValue)
         }
         .onChange(of: scanner.plugins.count) { _ in
             updateDisplayedPlugins()
@@ -511,6 +552,27 @@ struct ContentView: View {
                 onTap: { toggleFormat(.OBSLT) },
                 isSelected: prefs.selectedFormats.contains(.OBSLT)
             )
+
+            // Clear All button
+            if !prefs.selectedFormats.isEmpty {
+                Button(action: {
+                    prefs.selectedFormats.removeAll()
+                    updateDisplayedPlugins()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Clear All")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .foregroundColor(.red)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 12)
@@ -1060,67 +1122,4 @@ extension View {
 
 // MARK: - Fast Filter Engine (NEW - SIMPLE & CORRECT)
 
-/// Ultra-simple, ultra-fast filtering engine
-/// NO complex logic - just straightforward filtering that WORKS
-struct FastFilterEngine {
-
-    /// Filter plugins based on selected criteria
-    static func filter(
-        plugins: [AppPluginItem],
-        formats: Set<PluginFormat>,
-        publishers: Set<String>,
-        styles: Set<String>,
-        searchText: String
-    ) -> [AppPluginItem] {
-
-        var result = plugins
-
-        // STEP 1: Format filter - Empty set = show all
-        if !formats.isEmpty {
-            result = result.filter { plugin in
-                // Check each selected format
-                for format in formats {
-                    if format == .OBSLT {
-                        // OBSLT means: show plugins where obsolete == true
-                        if plugin.obsolete {
-                            return true
-                        }
-                    } else {
-                        // Normal format: show plugins where type matches
-                        if plugin.type == format.rawValue {
-                            return true
-                        }
-                    }
-                }
-                return false
-            }
-        }
-
-        // STEP 2: Publisher filter - Empty set = show all
-        if !publishers.isEmpty {
-            result = result.filter { publishers.contains($0.publisher) }
-        }
-
-        // STEP 3: Style filter - Empty set = show all
-        if !styles.isEmpty {
-            result = result.filter { styles.contains($0.style) }
-        }
-
-        // STEP 4: Search filter - Empty string = show all
-        if !searchText.isEmpty {
-            let query = searchText.lowercased()
-            result = result.filter { plugin in
-                // Search across all fields
-                plugin.name.lowercased().contains(query) ||
-                plugin.publisher.lowercased().contains(query) ||
-                plugin.style.lowercased().contains(query) ||
-                plugin.architectures.lowercased().contains(query) ||
-                plugin.version.lowercased().contains(query) ||
-                plugin.runtimeRequirement.lowercased().contains(query) ||
-                plugin.type.lowercased() == query  // Exact match for type to avoid VST matching VST3
-            }
-        }
-
-        return result
-    }
-}
+// FastFilterEngine moved to separate file: FastFilterEngine.swift

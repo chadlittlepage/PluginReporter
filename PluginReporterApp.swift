@@ -139,7 +139,7 @@ struct PluginReporterApp: App {
         }
 
         #if os(macOS)
-        Window("Settings", id: "settings") {
+        Settings {
             SettingsView(prefs: prefs)
                 .preferredColorScheme(.dark)
                 .onAppear {
@@ -163,9 +163,6 @@ struct PluginReporterApp: App {
                     }
                 }
         }
-        .windowResizability(.contentSize)
-        .defaultSize(width: 900, height: 1000)
-        .keyboardShortcut(",", modifiers: .command)
         #endif
     }
 }

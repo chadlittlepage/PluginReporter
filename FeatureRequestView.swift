@@ -54,9 +54,94 @@ struct FeatureRequestView: View {
         Color.black
     }
 
+    // Gradient background matching Settings window
+    private var gradientBackground: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.15, green: 0.15, blue: 0.17),
+                Color(red: 0.10, green: 0.10, blue: 0.12)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
+    }
+
     var body: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 20) {
+        #if os(macOS)
+        macOSView
+        #else
+        iOSView
+        #endif
+    }
+
+    // macOS-specific view with gradient
+    @ViewBuilder
+    private var macOSView: some View {
+        ZStack {
+            gradientBackground
+
+            ScrollView(.vertical, showsIndicators: true) {
+                contentView
+            }
+        }
+        .frame(minWidth: 700, minHeight: 800)
+        .alert("Request Submitted!", isPresented: $showSuccess) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text("Thank you for your suggestion! We'll review it and consider it for future updates.")
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    #if os(iOS)
+    // iOS-specific view with navigation
+    @ViewBuilder
+    private var iOSView: some View {
+        NavigationView {
+            ScrollView(.vertical, showsIndicators: true) {
+                contentView
+            }
+            .background(appBackground)
+            .navigationTitle("Request a Feature")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+        }
+        .alert("Request Submitted!", isPresented: $showSuccess) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text("Thank you for your suggestion! We'll review it and consider it for future updates.")
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    #endif
+
+    // Shared content view
+    @ViewBuilder
+    private var contentView: some View {
+                VStack(alignment: .leading, spacing: 20) {
 
                 // MARK: - Feature Details
                 VStack(alignment: .leading, spacing: 8) {
@@ -226,21 +311,6 @@ struct FeatureRequestView: View {
                 Spacer(minLength: 40)
             }
             .padding(.top, 20)
-        }
-        .background(appBackground)
-        .frame(minWidth: 700, minHeight: 800)
-        .alert("Request Submitted!", isPresented: $showSuccess) {
-                Button("OK") {
-                    dismiss()
-                }
-            } message: {
-                Text("Thank you for your suggestion! We'll review it and consider it for future updates.")
-            }
-            .alert("Error", isPresented: $showError) {
-                Button("OK") { }
-            } message: {
-                Text(errorMessage)
-            }
     }
 
     private func sendFeatureRequest() {

@@ -27,6 +27,8 @@ struct FastFilterEngine {
         searchText: String
     ) -> [AppPluginItem] {
 
+        print("🚀 FastFilterEngine.filter() CALLED with searchText: '\(searchText)'")
+
         var result = plugins
 
         // STEP 1: Format filter
@@ -66,15 +68,44 @@ struct FastFilterEngine {
         // STEP 4: Search filter
         // Empty string = show all, otherwise search all fields
         if !searchText.isEmpty {
-            let query = searchText.lowercased()
-            result = result.filter { plugin in
-                plugin.name.lowercased().contains(query) ||
-                plugin.publisher.lowercased().contains(query) ||
-                plugin.style.lowercased().contains(query) ||
-                plugin.architectures.lowercased().contains(query) ||
-                plugin.version.lowercased().contains(query) ||
-                plugin.runtimeRequirement.lowercased().contains(query) ||
-                plugin.type.lowercased() == query  // Exact match for type to avoid VST matching VST3
+            let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let queryUpper = trimmed.uppercased()
+            let queryLower = trimmed.lowercased()
+
+            print("🔎 Search filter - raw: '\(searchText)', trimmed: '\(trimmed)', upper: '\(queryUpper)'")
+
+            // Check if search query is a known plugin format (use EXACT same logic as format filter)
+            let knownFormats = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2", "OBSLT", "OBSOLETE"]
+            let isFormatSearch = knownFormats.contains(queryUpper)
+
+            print("🔎 Is format search? \(isFormatSearch) (checking if '\(queryUpper)' is in \(knownFormats))")
+
+            if isFormatSearch {
+                // Format search: Use EXACT same comparison as format filter (case-sensitive)
+                print("🔍 Format search detected: '\(queryUpper)' - Before filter: \(result.count) plugins")
+                result = result.filter { plugin in
+                    // Handle "OBSOLETE" synonym
+                    if queryUpper == "OBSOLETE" {
+                        return plugin.type == "OBSLT" || plugin.obsolete
+                    }
+                    // EXACT match with plugin.type (same as format filter logic)
+                    let matches = plugin.type == queryUpper
+                    if !matches {
+                        print("  ❌ Excluding: \(plugin.name) - Type: \(plugin.type)")
+                    }
+                    return matches
+                }
+                print("🔍 After filter: \(result.count) plugins")
+            } else {
+                // Regular search: search all fields except path
+                result = result.filter { plugin in
+                    plugin.name.lowercased().contains(queryLower) ||
+                    plugin.publisher.lowercased().contains(queryLower) ||
+                    plugin.style.lowercased().contains(queryLower) ||
+                    plugin.architectures.lowercased().contains(queryLower) ||
+                    plugin.version.lowercased().contains(queryLower) ||
+                    plugin.runtimeRequirement.lowercased().contains(queryLower)
+                }
             }
         }
 

@@ -35,25 +35,23 @@ struct ConsolidatedPluginRow: View, Equatable {
                 Text("•")
                     .foregroundColor(.secondary)
 
-                // Show all type badges
+                // Show all type badges (uniform width)
                 ForEach(consolidated.types, id: \.self) { type in
                     Text(type)
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .frame(width: 48, height: 18)  // Fixed uniform size for mobile
                         .background(ColorUtilities.colorForFormat(type).opacity(0.2))
                         .foregroundColor(ColorUtilities.colorForFormat(type))
                         .cornerRadius(Constants.Layout.badgeCornerRadius)
                 }
 
-                // Show OBSLT badge if obsolete
+                // Show OBSLT badge if obsolete (matching uniform width)
                 if consolidated.isObsolete {
                     Text("OBSLT")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .frame(width: 48, height: 18)  // Fixed uniform size for mobile
                         .background(ColorUtilities.colorForFormat("OBSLT").opacity(0.2))
                         .foregroundColor(ColorUtilities.colorForFormat("OBSLT"))
                         .cornerRadius(Constants.Layout.badgeCornerRadius)
@@ -94,23 +92,21 @@ struct PluginRow: View, Equatable {
                 Text("•")
                     .foregroundColor(.secondary)
 
-                // Show actual type badge
+                // Show actual type badge (uniform width)
                 Text(plugin.type)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .frame(width: 48, height: 18)  // Fixed uniform size for mobile
                     .background(ColorUtilities.colorForFormat(plugin.type).opacity(0.2))
                     .foregroundColor(ColorUtilities.colorForFormat(plugin.type))
                     .cornerRadius(6)
 
-                // Show OBSLT badge if obsolete
+                // Show OBSLT badge if obsolete (matching uniform width)
                 if plugin.obsolete {
                     Text("OBSLT")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .frame(width: 48, height: 18)  // Fixed uniform size for mobile
                         .background(ColorUtilities.colorForFormat("OBSLT").opacity(0.2))
                         .foregroundColor(ColorUtilities.colorForFormat("OBSLT"))
                         .cornerRadius(Constants.Layout.badgeCornerRadius)

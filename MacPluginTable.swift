@@ -49,15 +49,9 @@ struct SizeCell: View {
     @State private var wSize: CGFloat = 70         // Narrower for file sizes
     @State private var wRequirement: CGFloat = 110 // Good for "Universal" etc
     @State private var wObsolete: CGFloat = 70     // Narrow for Yes/No
+    @State private var wPath: CGFloat = 300        // Narrower so vertical scrollbar sits near regular columns
     private let dividerWidth: CGFloat = 1
-    private let minColWidth: CGFloat = 60
-
-    // Path column width scales with font size
-    private var wPath: CGFloat {
-        let baseWidth: CGFloat = 300
-        let scaleFactor = 1 + (prefs.uiFontSizeOffset / 13.0) // Scale proportionally to font size change
-        return baseWidth * scaleFactor
-    }
+    private let minColWidth: CGFloat = 30          // Allow columns to squeeze much narrower
 
     // MARK: Header background color to match search field
     private var headerBackgroundColor: Color {
@@ -247,6 +241,13 @@ struct SizeCell: View {
         rows.count != lastRowsCount
     }
     
+    private func updatePathWidth() {
+        let baseWidth: CGFloat = 600
+        // Scale more aggressively - add 20pt for each font size point
+        let additionalWidth = prefs.uiFontSizeOffset * 20
+        wPath = baseWidth + additionalWidth
+    }
+
     private func moveSelection(delta: Int, extendingSelection: Bool = false, scrollProxy: ScrollViewProxy? = nil) {
         // Ensure we have rows to select
         guard !displayedRows.isEmpty else { return }
@@ -380,13 +381,14 @@ struct SizeCell: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 0) {
-                // Single clickable header row with arrows
-                HStack(spacing: 0) {
-                    MacSortHeaderButton(title: "Name", active: manualSortKey == .name, ascending: manualAscending, width: wName, height: headerHeight) {
-                        if manualSortKey == .name { manualAscending.toggle() } else { manualSortKey = .name; manualAscending = true }
-                        sortStatus = makeSortStatus()
-                    }
+            ScrollView(.horizontal, showsIndicators: true) {
+                VStack(spacing: 0) {
+                    // Single clickable header row with arrows
+                    HStack(spacing: 0) {
+                        MacSortHeaderButton(title: "Name", active: manualSortKey == .name, ascending: manualAscending, width: wName, height: headerHeight) {
+                            if manualSortKey == .name { manualAscending.toggle() } else { manualSortKey = .name; manualAscending = true }
+                            sortStatus = makeSortStatus()
+                        }
                     MacColumnDivider(leftWidth: $wName, minWidth: minColWidth, height: rowDividerHeight)
 
                     MacSortHeaderButton(title: "Publisher", active: manualSortKey == .publisher, ascending: manualAscending, width: wPublisher, height: headerHeight) {
@@ -447,17 +449,17 @@ struct SizeCell: View {
                         if manualSortKey == .path { manualAscending.toggle() } else { manualSortKey = .path; manualAscending = true }
                         sortStatus = makeSortStatus()
                     }
-                    // No divider after last column
-                    Spacer(minLength: 0)
-                }
-                .frame(height: headerHeight)
-                .background(headerBackgroundColor)
+                        // No divider after last column
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: headerHeight)
+                    .background(headerBackgroundColor)
 
-                Divider()
+                    Divider()
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: true) {
+                            LazyVStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(displayedRows.enumerated()), id: \.element.id) { idx, row in
                                 let zebra = idx % 2 == 0  // Enable zebra for both light and dark mode
                                 OptimizedTableRow(
@@ -513,15 +515,21 @@ struct SizeCell: View {
                 }
             }
             .onChange(of: rows.count) { _ in
-                if sortChanged() {
-                    computeDisplayedRows()
-                }
+                computeDisplayedRows()
+            }
+            .onChange(of: rows) { _ in
+                // Recompute whenever rows array changes at all
+                computeDisplayedRows()
             }
             .onAppear {
                 if cachedDisplayedRows.isEmpty {
                     computeDisplayedRows()
                 }
                 sortStatus = makeSortStatus()
+                updatePathWidth()
+            }
+            .onChange(of: prefs.uiFontSizeOffset) { _ in
+                updatePathWidth()
             }
             .scrollContentBackground(.hidden)
             .background(Color.clear)
@@ -530,8 +538,10 @@ struct SizeCell: View {
                     revealInFinder(ids: selection.isEmpty ? macSelection : selection)
                 }
             }
-        }
-    }
+            }  // Close horizontal ScrollView
+            .background(FadingScrollbarConfigurator())
+        }  // Close outer VStack
+    }  // Close body
 
     private struct MacSortHeaderButton: View {
         let title: String
@@ -802,13 +812,15 @@ private struct ColoredTypeCell: View {
 
     @EnvironmentObject private var prefs: Preferences
 
+    // Fixed badge width to match CLAP (the widest plugin type)
+    private let badgeWidth: CGFloat = 52
+
     var body: some View {
         HStack(spacing: 4) {
             Text(type)
                 .font(.system(size: prefs.scaledSize(12), weight: .semibold))
                 .foregroundColor(colorForPluginType(type))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .frame(width: badgeWidth, height: 20)  // Fixed uniform size
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(colorForPluginType(type).opacity(0.2))
@@ -842,6 +854,63 @@ private extension View {
         #endif
     }
 }
+
+// MARK: - Simple Fading Scrollbar
+
+private struct FadingScrollbarConfigurator: NSViewRepresentable {
+
+    func makeNSView(context: Context) -> NSView {
+        let view = ConfigView()
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    class ConfigView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil else { return }
+
+            // Find and configure the ScrollView with retries
+            for delay in [0.0, 0.2, 0.5] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    self.findAndConfigure()
+                }
+            }
+        }
+
+        func findAndConfigure() {
+            guard let contentView = window?.contentView else { return }
+
+            // Search for ALL ScrollViews (horizontal and vertical)
+            var queue: [NSView] = [contentView]
+            var configured = 0
+
+            while !queue.isEmpty {
+                let view = queue.removeFirst()
+
+                if let scrollView = view as? NSScrollView {
+                    // Configure with overlay style (auto-fading) for both horizontal and vertical
+                    scrollView.scrollerStyle = .overlay
+                    scrollView.autohidesScrollers = true // Let macOS handle fade
+
+                    // Keep whatever scrollers it has (horizontal or vertical)
+                    // Just make them overlay style
+
+                    configured += 1
+                    print("✅ Configured fading scrollbar #\(configured)")
+                }
+
+                queue.append(contentsOf: view.subviews)
+            }
+
+            if configured > 0 {
+                print("✅ Total: Configured \(configured) scrollbar(s)")
+            }
+        }
+    }
+}
+
 
 #endif
 

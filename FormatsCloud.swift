@@ -46,18 +46,39 @@ struct FormatsCloud: View {
                 chip(for: .obsolete)
             }
             .frame(maxWidth: .infinity, alignment: .center)
+
+            // Clear All button (only shown when formats are selected)
+            if !selectedFormats.isEmpty {
+                Button(action: {
+                    selectedFormats.removeAll()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                        Text("Clear All")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .foregroundColor(.red)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 4)
+            }
         }
     }
 
     @ViewBuilder private func chip(for item: ChipItem) -> some View {
         switch item {
         case .format(let format):
-            ChipView(title: format.rawValue, selected: selectedFormats.contains(format)) {
+            let color = colorForPluginFormat(format)
+            ChipView(title: format.rawValue, selected: selectedFormats.contains(format), accent: color) {
                 if selectedFormats.contains(format) { selectedFormats.remove(format) }
                 else { selectedFormats.insert(format) }
             }
         case .obsolete:
-            ChipView(title: "OBSOLETE", selected: selectedFormats.contains(.OBSLT), accent: .red) {
+            ChipView(title: "OBSLT", selected: selectedFormats.contains(.OBSLT), accent: .red, accessibilityTitle: "OBSOLETE") {
                 if selectedFormats.contains(.OBSLT) {
                     selectedFormats.remove(.OBSLT)
                 } else {
@@ -66,31 +87,47 @@ struct FormatsCloud: View {
             }
         }
     }
+
+    // Match colors from table badges
+    private func colorForPluginFormat(_ format: PluginFormat) -> Color {
+        switch format {
+        case .AU:   return .blue
+        case .VST:  return .green
+        case .VST3: return .teal
+        case .AAX:  return .purple
+        case .CLAP: return .orange
+        case .LV2:  return .gray
+        case .OBSLT: return .red
+        }
+    }
 }
 
-/// Local chip view (capsule-style) used by FormatsCloud.
+/// Local chip view (badge-style matching table types) used by FormatsCloud.
 private struct ChipView: View {
     let title: String
     let selected: Bool
     var accent: Color = .accentColor
+    var accessibilityTitle: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.caption)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(accent)
+                .frame(width: 52, height: 20)  // Match table badge size
                 .background(
-                    Capsule().fill(selected ? accent.opacity(0.25) : Color.white.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(accent.opacity(selected ? 0.3 : 0.2))
                 )
                 .overlay(
-                    Capsule().stroke(selected ? accent : Color.white.opacity(0.25), lineWidth: selected ? 1.5 : 1)
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(selected ? accent : Color.clear, lineWidth: selected ? 2 : 0)
                 )
         }
         .buttonStyle(.plain)
-        .contentShape(Capsule())
-        .accessibilityLabel(title)
+        .contentShape(RoundedRectangle(cornerRadius: 5))
+        .accessibilityLabel(accessibilityTitle ?? title)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
