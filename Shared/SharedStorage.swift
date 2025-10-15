@@ -26,16 +26,19 @@ public enum SharedStorage {
         return appDir.appendingPathComponent("plugins.json")
 
         #else
-        // iOS: In simulator, read from Mac's Application Support
-        // On device, will use iCloud later
+        // iOS/iPadOS
         #if targetEnvironment(simulator)
-        // Simulator: For now, user must manually copy plugins.json to simulator's Documents
+        // Simulator: Read directly from Mac's Application Support (auto-sync for testing!)
         // The Mac app saves to: ~/Library/Application Support/PluginReporter/plugins.json
-        // User can copy it to the simulator via Finder or drag-drop
-        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return nil
         }
-        return docs.appendingPathComponent("plugins.json")
+        let appDir = appSupport.appendingPathComponent("PluginReporter", isDirectory: true)
+
+        // Create directory if needed
+        try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+
+        return appDir.appendingPathComponent("plugins.json")
         #else
         // Real device: Use Documents (later will be iCloud)
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
