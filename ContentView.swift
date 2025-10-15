@@ -462,25 +462,67 @@ struct ContentView: View {
 
         return VStack(alignment: .leading, spacing: 6) {
             if counts.au > 0 {
-                BarRow(label: "AU",    value: counts.au,       fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0, color: Color.blue)
+                BarRow(
+                    label: "AU", value: counts.au,
+                    fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0,
+                    color: Color.blue,
+                    onTap: { toggleFormat(.AU) },
+                    isSelected: prefs.selectedFormats.contains(.AU)
+                )
             }
             if counts.vst > 0 {
-                BarRow(label: "VST",   value: counts.vst,      fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0, color: Color.green)
+                BarRow(
+                    label: "VST", value: counts.vst,
+                    fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0,
+                    color: Color.green,
+                    onTap: { toggleFormat(.VST) },
+                    isSelected: prefs.selectedFormats.contains(.VST)
+                )
             }
             if counts.vst3 > 0 {
-                BarRow(label: "VST3",  value: counts.vst3,     fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0, color: Color.teal)
+                BarRow(
+                    label: "VST3", value: counts.vst3,
+                    fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0,
+                    color: Color.teal,
+                    onTap: { toggleFormat(.VST3) },
+                    isSelected: prefs.selectedFormats.contains(.VST3)
+                )
             }
             if counts.aax > 0 {
-                BarRow(label: "AAX",   value: counts.aax,      fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0, color: Color.purple)
+                BarRow(
+                    label: "AAX", value: counts.aax,
+                    fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0,
+                    color: Color.purple,
+                    onTap: { toggleFormat(.AAX) },
+                    isSelected: prefs.selectedFormats.contains(.AAX)
+                )
             }
             if counts.clap > 0 {
-                BarRow(label: "CLAP",  value: counts.clap,     fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0, color: Color.orange)
+                BarRow(
+                    label: "CLAP", value: counts.clap,
+                    fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0,
+                    color: Color.orange,
+                    onTap: { toggleFormat(.CLAP) },
+                    isSelected: prefs.selectedFormats.contains(.CLAP)
+                )
             }
             if counts.lv2 > 0 {
-                BarRow(label: "LV2",   value: counts.lv2,      fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0, color: Color.gray)
+                BarRow(
+                    label: "LV2", value: counts.lv2,
+                    fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0,
+                    color: Color.gray,
+                    onTap: { toggleFormat(.LV2) },
+                    isSelected: prefs.selectedFormats.contains(.LV2)
+                )
             }
             if counts.obsolete > 0 {
-                BarRow(label: "OBSLT", value: counts.obsolete, fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0, color: Color.red)
+                BarRow(
+                    label: "OBSLT", value: counts.obsolete,
+                    fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0,
+                    color: Color.red,
+                    onTap: { toggleFormat(.OBSLT) },
+                    isSelected: prefs.selectedFormats.contains(.OBSLT)
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
