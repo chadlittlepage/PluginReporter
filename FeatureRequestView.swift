@@ -84,9 +84,9 @@ struct FeatureRequestView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             TextEditor(text: $description)
-                                .frame(height: 150)
-                                .padding(8)
+                                .scrollContentBackground(.hidden)
                                 .background(textEditorBackground)
+                                .frame(height: 150)
                                 .cornerRadius(8)
                         }
                         .padding(.horizontal, 16)
@@ -163,9 +163,9 @@ struct FeatureRequestView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             TextEditor(text: $useCase)
-                                .frame(height: 120)
-                                .padding(8)
+                                .scrollContentBackground(.hidden)
                                 .background(textEditorBackground)
+                                .frame(height: 120)
                                 .cornerRadius(8)
                         }
                         .padding(.horizontal, 16)
