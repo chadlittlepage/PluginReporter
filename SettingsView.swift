@@ -16,188 +16,226 @@ struct SettingsView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
             Form {
-                // Cloud Sync Status
-                Section("iCloud Sync") {
-                HStack {
-                    Toggle("Sync Preferences", isOn: $prefs.cloudSyncEnabled)
-                    Spacer()
-                    if prefs.cloudSyncEnabled {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.icloud.fill")
-                                .foregroundColor(.green)
-                            Text("Active")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                // MARK: - Display
+                Section {
+                    Picker("Appearance", selection: $prefs.appearance) {
+                        ForEach(Preferences.Appearance.allCases) { mode in
+                            Text(title(for: mode)).tag(mode)
                         }
                     }
-                }
-                Text("Syncs appearance, formats, scan paths, and export settings across all your devices")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            // Appearance
-            Section("Appearance") {
-                Picker("Interface", selection: $prefs.appearance) {
-                    ForEach(Preferences.Appearance.allCases) { mode in
-                        Text(title(for: mode)).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                HStack {
-                    Text("UI Font Size")
-                    Slider(value: $prefs.uiFontSizeOffset, in: -5...5, step: 1)
-                    Text("\(Int(prefs.uiFontSizeOffset) >= 0 ? "+" : "")\(Int(prefs.uiFontSizeOffset)) pt")
-                        .monospacedDigit()
-                        .frame(width: 50, alignment: .trailing)
-                    Button("Reset") {
-                        prefs.uiFontSizeOffset = 0
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(prefs.uiFontSizeOffset == 0)
-                }
-                Text("Adjusts all font sizes throughout the interface")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            // Formats visibility
-            Section("Format Filters") {
-                Text("Check formats to show only those types. Leave all unchecked to show all plugins.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                HStack(spacing: 16) {
-                    ForEach(PluginFormat.allCases, id: \.self) { fmt in
-                        Toggle(isOn: Binding(
-                            get: { prefs.selectedFormats.contains(fmt) },
-                            set: { on in
-                                if on { prefs.selectedFormats.insert(fmt) }
-                                else { prefs.selectedFormats.remove(fmt) }
-                            })) {
-                                Text(fmt.rawValue)
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                            }
-                    }
-                }
-            }
-
-            // Extra scan paths
-            Section("Extra Scan Folders") {
-                if prefs.extraScanPaths.isEmpty {
-                    Text("No extra folders").foregroundStyle(.secondary)
-                } else {
-                    // Avoid generic inference issues by using enumerated() + \.offset
-                    ForEach(Array(prefs.extraScanPaths.enumerated()), id: \.offset) { idx, path in
-                        HStack {
-                            Text(path).lineLimit(1).truncationMode(.middle)
-                            Spacer()
-                            Button(role: .destructive) {
-                                prefs.extraScanPaths.remove(at: idx)
-                            } label: { Image(systemName: "trash") }
-                            .buttonStyle(.borderless)
-                            .help("Remove")
-                        }
-                    }
-                }
-
-                HStack {
-                    Spacer()
-                    Button {
-                        addFolder()
-                    } label: {
-                        Label("Add Folder…", systemImage: "plus")
-                    }
-                }
-            }
-
-            // AI Suggestions
-            Section("AI Suggestions") {
-                AISettingsView()
-            }
-
-            // PDF Export
-            Section("PDF Export") {
-                HStack {
-                    Picker("Page Size", selection: $prefs.pdfPage) {
-                        ForEach(PDFExportOptions.Page.allCases) { p in
-                            Text(p.rawValue).tag(p)
-                        }
-                    }
-                    Toggle("Landscape", isOn: $prefs.pdfLandscape)
-                }
-                HStack {
-                    Text("Margins")
-                    Slider(value: Binding(get: { Double(prefs.pdfMargin) }, set: { prefs.pdfMargin = CGFloat($0) }), in: 12...72)
-                    Text("\(Int(prefs.pdfMargin)) pt").monospacedDigit()
-                }
-                HStack {
-                    Text("Font Size")
-                    Slider(value: Binding(get: { Double(prefs.pdfFontSize) }, set: { prefs.pdfFontSize = CGFloat($0) }), in: 7...14)
-                    Text("\(Int(prefs.pdfFontSize)) pt").monospacedDigit()
-                }
-            }
-
-            // Dashboard Reporting
-            Section("Dashboard Reporting") {
-                DashboardSettingsView()
-            }
-
-            // Support
-            Section("Support") {
-                VStack(spacing: 12) {
-                    Button {
-                        openBugReportWindow()
-                    } label: {
-                        HStack {
-                            Image(systemName: "ant.fill")
-                                .foregroundColor(.red)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Report a Bug")
-                                    .font(.headline)
-                                Text("Send crash reports and bug details")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+                    .pickerStyle(.segmented)
 
                     Divider()
 
-                    Button {
-                        openFeatureRequestWindow()
-                    } label: {
-                        HStack {
-                            Image(systemName: "lightbulb.fill")
-                                .foregroundColor(.yellow)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Request a Feature")
-                                    .font(.headline)
-                                Text("Suggest new features or improvements")
+                    HStack {
+                        Text("UI Font Size")
+                        Slider(value: $prefs.uiFontSizeOffset, in: -5...5, step: 1)
+                        Text("\(Int(prefs.uiFontSizeOffset) >= 0 ? "+" : "")\(Int(prefs.uiFontSizeOffset)) pt")
+                            .monospacedDigit()
+                            .frame(width: 50, alignment: .trailing)
+                        Button("Reset") {
+                            prefs.uiFontSizeOffset = 0
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(prefs.uiFontSizeOffset == 0)
+                    }
+
+                    Text("Adjusts all font sizes throughout the interface")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Display")
+                }
+
+                // MARK: - Data Sync
+                Section {
+                    HStack {
+                        Toggle("Sync Preferences", isOn: $prefs.cloudSyncEnabled)
+                        Spacer()
+                        if prefs.cloudSyncEnabled {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.icloud.fill")
+                                    .foregroundColor(.green)
+                                Text("Active")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
                         }
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                }
-                .padding(.vertical, 4)
 
-                Text("Your device information will be automatically included to help us assist you better.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+                    Text("Syncs appearance, formats, scan paths, and export settings across all your devices")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Data Sync")
+                }
+
+                // MARK: - Format Filters
+                Section {
+                    Text("Check formats to show only those types. Leave all unchecked to show all plugins.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 16) {
+                        ForEach(PluginFormat.allCases, id: \.self) { fmt in
+                            Toggle(isOn: Binding(
+                                get: { prefs.selectedFormats.contains(fmt) },
+                                set: { on in
+                                    if on { prefs.selectedFormats.insert(fmt) }
+                                    else { prefs.selectedFormats.remove(fmt) }
+                                })) {
+                                    Text(fmt.rawValue)
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                }
+                        }
+                    }
+                } header: {
+                    Text("Format Filters")
+                }
+
+                // MARK: - Extra Scan Folders
+                Section {
+                    if prefs.extraScanPaths.isEmpty {
+                        Text("No extra folders").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(prefs.extraScanPaths.enumerated()), id: \.offset) { idx, path in
+                            HStack {
+                                Text(path).lineLimit(1).truncationMode(.middle)
+                                Spacer()
+                                Button(role: .destructive) {
+                                    prefs.extraScanPaths.remove(at: idx)
+                                } label: { Image(systemName: "trash") }
+                                .buttonStyle(.borderless)
+                                .help("Remove")
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button {
+                            addFolder()
+                        } label: {
+                            Label("Add Folder…", systemImage: "plus")
+                        }
+                    }
+                } header: {
+                    Text("Extra Scan Folders")
+                }
+
+                // MARK: - AI Suggestions
+                Section {
+                    AISettingsView()
+                } header: {
+                    Text("AI Suggestions")
+                }
+
+                // MARK: - PDF Export
+                Section {
+                    HStack {
+                        Picker("Page Size", selection: $prefs.pdfPage) {
+                            ForEach(PDFExportOptions.Page.allCases) { p in
+                                Text(p.rawValue).tag(p)
+                            }
+                        }
+                        Toggle("Landscape", isOn: $prefs.pdfLandscape)
+                    }
+                    HStack {
+                        Text("Margins")
+                        Slider(value: Binding(get: { Double(prefs.pdfMargin) }, set: { prefs.pdfMargin = CGFloat($0) }), in: 12...72)
+                        Text("\(Int(prefs.pdfMargin)) pt").monospacedDigit()
+                    }
+                    HStack {
+                        Text("Font Size")
+                        Slider(value: Binding(get: { Double(prefs.pdfFontSize) }, set: { prefs.pdfFontSize = CGFloat($0) }), in: 7...14)
+                        Text("\(Int(prefs.pdfFontSize)) pt").monospacedDigit()
+                    }
+                } header: {
+                    Text("PDF Export")
+                }
+
+                // MARK: - Dashboard Reporting
+                Section {
+                    DashboardSettingsView()
+                } header: {
+                    Text("Dashboard Reporting")
+                }
+
+                // MARK: - Support
+                Section {
+                    VStack(spacing: 12) {
+                        Button {
+                            openBugReportWindow()
+                        } label: {
+                            HStack {
+                                Image(systemName: "ant.fill")
+                                    .foregroundColor(.red)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Report a Bug")
+                                        .font(.headline)
+                                    Text("Send crash reports and bug details")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        Divider()
+
+                        Button {
+                            openFeatureRequestWindow()
+                        } label: {
+                            HStack {
+                                Image(systemName: "lightbulb.fill")
+                                    .foregroundColor(.yellow)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Request a Feature")
+                                        .font(.headline)
+                                    Text("Suggest new features or improvements")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 4)
+
+                    Text("Your device information will be automatically included to help us assist you better.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Support")
+                }
+
+                // MARK: - About
+                Section {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Text("Platform")
+                        Spacer()
+                        Text("macOS")
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("About")
+                }
             }
         }
         .padding(20)
