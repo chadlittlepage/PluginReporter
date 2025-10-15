@@ -323,6 +323,7 @@ struct PluginListView: View {
                                         ForEach(section.plugins) { consolidated in
                                             NavigationLink(value: consolidated) {
                                                 ConsolidatedPluginRow(consolidated: consolidated)
+                                                    .equatable()
                                             }
                                             .listRowBackground(Color.clear)
                                         }

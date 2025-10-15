@@ -7,8 +7,13 @@ import SwiftUI
 
 // MARK: - Consolidated Plugin Row
 
-struct ConsolidatedPluginRow: View {
+struct ConsolidatedPluginRow: View, Equatable {
     let consolidated: PluginListView.ConsolidatedPlugin
+
+    // SPEED: Only redraw if the actual plugin data changed
+    static func == (lhs: ConsolidatedPluginRow, rhs: ConsolidatedPluginRow) -> Bool {
+        lhs.consolidated.id == rhs.consolidated.id
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -61,8 +66,13 @@ struct ConsolidatedPluginRow: View {
 
 // MARK: - Plugin Row
 
-struct PluginRow: View {
+struct PluginRow: View, Equatable {
     let plugin: PluginItem
+
+    // SPEED: Only redraw if the actual plugin changed
+    static func == (lhs: PluginRow, rhs: PluginRow) -> Bool {
+        lhs.plugin.id == rhs.plugin.id
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
