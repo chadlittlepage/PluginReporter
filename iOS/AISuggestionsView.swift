@@ -57,7 +57,7 @@ struct AISuggestionsView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
             }
-            .background(Color(UIColor.systemBackground))
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -120,6 +120,7 @@ struct AISuggestionsView: View {
                 }
             }
         }
+        .background(.ultraThinMaterial)
         .navigationTitle(selectedCategory?.rawValue ?? "AI Suggestions")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -233,11 +234,11 @@ struct SuggestionRow: View {
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(UIColor.secondarySystemBackground))
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.secondary.opacity(0.1), lineWidth: 0.5)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
@@ -260,12 +261,12 @@ struct CategoryChip: View {
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.accentColor : Color(UIColor.secondarySystemBackground))
+                        .fill(isSelected ? Color.accentColor : .ultraThinMaterial)
                 )
                 .foregroundColor(isSelected ? .white : .primary)
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.2), lineWidth: 1)
+                        .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.3), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
