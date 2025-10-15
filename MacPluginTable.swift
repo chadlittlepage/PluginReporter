@@ -643,6 +643,7 @@ private struct OptimizedTableRow: View {
     let ownedPlugins: [PluginItem]
 
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var prefs: Preferences
     @State private var showAISuggestions = false
 
     private var zebraColor: Color {
@@ -735,7 +736,7 @@ private struct OptimizedTableRow: View {
                 TableCell(text: row.obsoleteText, width: columnWidths.wObsolete)
                 TableDivider()
                 Text(row.path)
-                    .font(.callout)
+                    .font(.system(size: prefs.scaledSize(13)))
                     .padding(.leading, 6)
                     .frame(width: columnWidths.wPath, height: 32, alignment: .leading)
                     .help(row.path)
