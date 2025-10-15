@@ -467,7 +467,7 @@ struct SizeCell: View {
                                     onTap: {
                                         handleRowClick(row)
                                     },
-                                    ownedPlugins: rows
+                                    ownedPlugins: []  // SPEED: AI service doesn't need all 2643 plugins!
                                 )
                             }
                         }
