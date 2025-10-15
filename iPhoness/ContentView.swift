@@ -50,10 +50,10 @@ struct ContentView: View {
                 .tag(2)
         }
         .preferredColorScheme(colorScheme)
-        .onAppear {
+        .task {
             // Auto-load plugins on launch (simulating iCloud sync)
             if plugins.isEmpty {
-                loadPluginsSilently()
+                await loadPluginsSilentlyAsync()
             }
         }
         .alert("Plugins Loaded", isPresented: $showImportAlert) {
@@ -131,6 +131,26 @@ struct ContentView: View {
             AppLogger.error("Failed to auto-load plugins: \(error.localizedDescription)")
             plugins = []
             isLoading = false
+        }
+    }
+
+    func loadPluginsSilentlyAsync() async {
+        // Auto-load on launch without showing alerts - async version
+        do {
+            let loadedPlugins = try await Task.detached {
+                try SharedStorage.loadPlugins()
+            }.value
+            await MainActor.run {
+                plugins = loadedPlugins
+                isLoading = false
+                AppLogger.info("Auto-loaded \(plugins.count) plugins on launch")
+            }
+        } catch {
+            await MainActor.run {
+                AppLogger.error("Failed to auto-load plugins: \(error.localizedDescription)")
+                plugins = []
+                isLoading = false
+            }
         }
     }
 
