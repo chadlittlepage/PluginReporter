@@ -467,7 +467,8 @@ struct SizeCell: View {
                                     onTap: {
                                         handleRowClick(row)
                                     },
-                                    ownedPlugins: []  // SPEED: AI service doesn't need all 2643 plugins!
+                                    ownedPlugins: [],  // SPEED: AI service doesn't need all 2643 plugins!
+                                    prefs: prefs
                                 )
                             }
                         }
@@ -641,9 +642,9 @@ private struct OptimizedTableRow: View {
     let zebra: Bool
     let onTap: () -> Void
     let ownedPlugins: [PluginItem]
+    let prefs: Preferences
 
     @Environment(\.colorScheme) private var colorScheme
-    @EnvironmentObject private var prefs: Preferences
     @State private var showAISuggestions = false
 
     private var zebraColor: Color {
