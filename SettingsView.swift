@@ -122,7 +122,7 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                             .padding(16)
 
-                        HStack(spacing: 12) {
+                        HStack(spacing: 8) {
                             ForEach(PluginFormat.allCases, id: \.self) { fmt in
                                 Toggle(isOn: Binding(
                                     get: { prefs.selectedFormats.contains(fmt) },
@@ -132,6 +132,7 @@ struct SettingsView: View {
                                     })) {
                                         Text(fmt.rawValue)
                                             .font(.caption)
+                                            .frame(maxWidth: .infinity)
                                     }
                                     .toggleStyle(.button)
                                     .buttonStyle(.bordered)
