@@ -13,7 +13,7 @@ struct ConsolidatedPluginDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(consolidated.name)
                         .font(.largeTitle)
@@ -78,35 +78,36 @@ struct ConsolidatedPluginDetailView: View {
                         DetailInfoRow(label: "Style", value: consolidated.style)
                     }
 
-                    // Show details for each format
-                    ForEach(consolidated.originalPlugins) { plugin in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("\(plugin.type) Details")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(ColorUtilities.colorForFormat(plugin.type))
+                    // Show details for each format - LAZY loading for speed
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(consolidated.originalPlugins) { plugin in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("\(plugin.type) Details")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(ColorUtilities.colorForFormat(plugin.type))
 
-                            DetailInfoRow(label: "Version", value: plugin.version.isEmpty ? "Unknown" : plugin.version)
-                            DetailInfoRow(label: "Architecture", value: plugin.architectures.isEmpty ? "Unknown" : plugin.architectures)
-                            DetailInfoRow(label: "Size", value: plugin.displaySize)
+                                DetailInfoRow(label: "Version", value: plugin.version.isEmpty ? "Unknown" : plugin.version)
+                                DetailInfoRow(label: "Architecture", value: plugin.architectures.isEmpty ? "Unknown" : plugin.architectures)
+                                DetailInfoRow(label: "Size", value: plugin.displaySize)
 
-                            if !plugin.path.isEmpty {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Path")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    ScrollView(.horizontal, showsIndicators: false) {
+                                if !plugin.path.isEmpty {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Path")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
                                         Text(plugin.path)
                                             .font(.caption)
                                             .fontWeight(.medium)
                                             .padding(10)
                                             .background(Color(.systemGray6).opacity(0.5))
                                             .cornerRadius(8)
+                                            .lineLimit(2)
                                     }
                                 }
-                            }
 
-                            Divider()
+                                Divider()
+                            }
                         }
                     }
                 }
@@ -145,7 +146,7 @@ struct PluginDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(plugin.name)
                         .font(.largeTitle)
@@ -187,14 +188,13 @@ struct PluginDetailView: View {
                             Text("Path")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                Text(plugin.path)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .padding(10)
-                                    .background(Color(.systemGray6).opacity(0.5))
-                                    .cornerRadius(8)
-                            }
+                            Text(plugin.path)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .padding(10)
+                                .background(Color(.systemGray6).opacity(0.5))
+                                .cornerRadius(8)
+                                .lineLimit(2)
                         }
                     }
                 }
