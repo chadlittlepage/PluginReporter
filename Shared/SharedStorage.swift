@@ -28,17 +28,26 @@ public enum SharedStorage {
         #else
         // iOS/iPadOS
         #if targetEnvironment(simulator)
-        // Simulator: Read directly from Mac's Application Support (auto-sync for testing!)
+        // Simulator: Read directly from Mac's REAL Application Support (not simulator's sandbox!)
         // The Mac app saves to: ~/Library/Application Support/PluginReporter/plugins.json
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        // Extract username from simulator's home directory
+        // Format: /Users/username/Library/Developer/CoreSimulator/.../
+        let homeDir = NSHomeDirectory()
+        let components = homeDir.split(separator: "/")
+
+        // Get username (should be at index 1: /Users/username/...)
+        guard components.count >= 2, components[0] == "Users" else {
             return nil
         }
-        let appDir = appSupport.appendingPathComponent("PluginReporter", isDirectory: true)
+
+        let username = String(components[1])
+        let realAppSupport = "/Users/\(username)/Library/Application Support/PluginReporter"
+        let appSupportURL = URL(fileURLWithPath: realAppSupport)
 
         // Create directory if needed
-        try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
 
-        return appDir.appendingPathComponent("plugins.json")
+        return appSupportURL.appendingPathComponent("plugins.json")
         #else
         // Real device: Use Documents (later will be iCloud)
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
