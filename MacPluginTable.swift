@@ -49,9 +49,15 @@ struct SizeCell: View {
     @State private var wSize: CGFloat = 70         // Narrower for file sizes
     @State private var wRequirement: CGFloat = 110 // Good for "Universal" etc
     @State private var wObsolete: CGFloat = 70     // Narrow for Yes/No
-    @State private var wPath: CGFloat = 300        // Wider for full paths
     private let dividerWidth: CGFloat = 1
     private let minColWidth: CGFloat = 60
+
+    // Path column width scales with font size
+    private var wPath: CGFloat {
+        let baseWidth: CGFloat = 300
+        let scaleFactor = 1 + (prefs.uiFontSizeOffset / 13.0) // Scale proportionally to font size change
+        return baseWidth * scaleFactor
+    }
 
     // MARK: Header background color to match search field
     private var headerBackgroundColor: Color {
