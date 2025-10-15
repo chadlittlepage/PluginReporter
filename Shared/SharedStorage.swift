@@ -51,12 +51,19 @@ public enum SharedStorage {
 
     /// Load plugins from shared storage
     public static func loadPlugins() throws -> [PluginItem] {
+        AppLogger.info("SharedStorage.loadPlugins() called")
+
         guard let url = pluginsURL else {
             AppLogger.error("Could not get plugins URL")
             return []
         }
 
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        AppLogger.info("Plugins URL: \(url.path)")
+
+        let exists = FileManager.default.fileExists(atPath: url.path)
+        AppLogger.info("File exists: \(exists)")
+
+        guard exists else {
             AppLogger.info("No plugins file at \(url.path)")
             return [] // No plugins yet
         }
