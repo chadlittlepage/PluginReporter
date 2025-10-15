@@ -136,7 +136,7 @@ struct SettingsView: View {
                                     }
                                     .toggleStyle(.button)
                                     .buttonStyle(.bordered)
-                                    .tint(.accentColor)
+                                    .tint(ColorUtilities.colorForFormat(fmt.rawValue))
                             }
                         }
                         .padding(.horizontal, 16)
