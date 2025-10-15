@@ -77,9 +77,9 @@ struct ContentView: View {
         }
     }
     
-    // Real bar graph that updates with data
+    // SPEED: Real bar graph using cached counts
     private var realBarGraph: some View {
-        let counts = formatCounts(for: scanner.plugins)
+        let counts = cachedBarCounts  // Use cached value instead of recalculating!
         let isEmpty = scanner.plugins.isEmpty
         let total = Swift.max(1, counts.au + counts.vst + counts.vst3 + counts.aax + counts.clap + counts.lv2 + counts.obsolete)
 
