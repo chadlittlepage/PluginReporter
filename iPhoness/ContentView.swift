@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var showImportAlert = false
     @State private var debugMessage = ""
     @State private var showDebugAlert = false
+    @State private var hasLoadedOnce = false
     @AppStorage("appearance") private var appearance: String = "space"
 
     var colorScheme: ColorScheme? {
@@ -52,9 +53,9 @@ struct ContentView: View {
         .preferredColorScheme(colorScheme)
         .task {
             // Auto-load plugins on launch (simulating iCloud sync)
-            if plugins.isEmpty {
-                await loadPluginsSilentlyAsync()
-            }
+            guard !hasLoadedOnce else { return }
+            hasLoadedOnce = true
+            await loadPluginsSilentlyAsync()
         }
         .alert("Plugins Loaded", isPresented: $showImportAlert) {
             Button("OK", role: .cancel) { }

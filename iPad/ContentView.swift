@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var showImportAlert = false
     @State private var debugMessage = ""
     @State private var showDebugAlert = false
+    @State private var hasLoadedOnce = false
     @AppStorage("appearance") private var appearance: String = "space"
 
     var colorScheme: ColorScheme? {
@@ -48,12 +49,13 @@ struct ContentView: View {
                 .tag(2)
         }
         .preferredColorScheme(colorScheme)
-        .onAppear {
+        .task {
             // Auto-load plugins on launch
-            if plugins.isEmpty {
-                loadPluginsSilently()
-            }
-
+            guard !hasLoadedOnce else { return }
+            hasLoadedOnce = true
+            await loadPluginsSilentlyAsync()
+        }
+        .onAppear {
             // Request full screen on iPad
             #if os(iOS)
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
@@ -103,6 +105,26 @@ struct ContentView: View {
             AppLogger.error("Failed to auto-load plugins on iPad: \(error.localizedDescription)")
             plugins = []
             isLoading = false
+        }
+    }
+
+    func loadPluginsSilentlyAsync() async {
+        // Auto-load on launch without showing alerts - async version
+        do {
+            let loadedPlugins = try await Task.detached {
+                try SharedStorage.loadPlugins()
+            }.value
+            await MainActor.run {
+                plugins = loadedPlugins
+                isLoading = false
+                AppLogger.info("Auto-loaded \(plugins.count) plugins on iPad launch")
+            }
+        } catch {
+            await MainActor.run {
+                AppLogger.error("Failed to auto-load plugins on iPad: \(error.localizedDescription)")
+                plugins = []
+                isLoading = false
+            }
         }
     }
 }
