@@ -21,18 +21,15 @@ struct DashboardSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Toggle
-            HStack {
-                Spacer()
-                Toggle("Enable Daily Reports", isOn: $dashboardEnabled)
-                    .onChange(of: dashboardEnabled) { newValue in
-                        UserDefaults.standard.set(newValue, forKey: "dashboard_enabled")
-                        if newValue && !serverEndpoint.isEmpty {
-                            scheduler.start()
-                        } else {
-                            scheduler.stop()
-                        }
+            Toggle("Enable Daily Reports", isOn: $dashboardEnabled)
+                .onChange(of: dashboardEnabled) { newValue in
+                    UserDefaults.standard.set(newValue, forKey: "dashboard_enabled")
+                    if newValue && !serverEndpoint.isEmpty {
+                        scheduler.start()
+                    } else {
+                        scheduler.stop()
                     }
-            }
+                }
 
             Text("Send daily usage reports to your server for analytics and monitoring.")
                 .font(.caption)
