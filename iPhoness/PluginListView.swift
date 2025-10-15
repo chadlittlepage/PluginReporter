@@ -21,6 +21,11 @@ struct PluginListView: View {
     @State private var cachedConsolidated: [ConsolidatedPlugin] = []
     @State private var cachedSectioned: [(key: String, plugins: [ConsolidatedPlugin])] = []
     @State private var cachedFilteredSorted: [PluginItem] = []
+    @State private var cachedUniquePublishers: [String] = []
+    @State private var cachedUniqueFormats: [String] = []
+    @State private var cachedUniqueStyles: [String] = []
+    @State private var cachedFormatCounts: [String: Int] = [:]
+    @State private var cachedStyleCounts: [String: Int] = [:]
 
     enum SortOrder {
         case name, publisher, type, style
@@ -170,8 +175,9 @@ struct PluginListView: View {
             .sorted { $0.key < $1.key }
     }
 
+    // SPEED: Return cached values instantly
     var uniquePublishers: [String] {
-        Array(Set(plugins.map { $0.publisher })).sorted()
+        cachedUniquePublishers
     }
 
     var sortOrderBadge: String {
@@ -184,44 +190,57 @@ struct PluginListView: View {
     }
 
     var uniqueFormats: [String] {
+        cachedUniqueFormats
+    }
+
+    var uniqueStyles: [String] {
+        cachedUniqueStyles
+    }
+
+    var formatCounts: [String: Int] {
+        cachedFormatCounts
+    }
+
+    var styleCounts: [String: Int] {
+        cachedStyleCounts
+    }
+
+    // SPEED: Compute all metadata once when plugins change
+    private func computeMetadata() {
+        // Publishers
+        cachedUniquePublishers = Array(Set(plugins.map { $0.publisher })).sorted()
+
+        // Formats
         var types = Set(plugins.map { $0.type.uppercased() })
-        // Always include OBSLT as an option
         types.insert("OBSLT")
-        // Sort in same order as bar graph: AU, VST, VST3, AAX, CLAP, LV2, OBSLT
         let order = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2", "OBSLT"]
-        return Array(types).sorted { format1, format2 in
+        cachedUniqueFormats = Array(types).sorted { format1, format2 in
             let index1 = order.firstIndex(of: format1) ?? Int.max
             let index2 = order.firstIndex(of: format2) ?? Int.max
             return index1 < index2
         }
-    }
 
-    var uniqueStyles: [String] {
-        Array(Set(plugins.map { $0.style }.filter { !$0.isEmpty })).sorted()
-    }
+        // Styles
+        cachedUniqueStyles = Array(Set(plugins.map { $0.style }.filter { !$0.isEmpty })).sorted()
 
-    var formatCounts: [String: Int] {
-        var counts: [String: Int] = [:]
+        // Format counts
+        var fCounts: [String: Int] = [:]
         for plugin in plugins {
-            // Count by actual type
-            counts[plugin.type.uppercased(), default: 0] += 1
-
-            // Also count obsolete separately
+            fCounts[plugin.type.uppercased(), default: 0] += 1
             if plugin.obsolete {
-                counts["OBSLT", default: 0] += 1
+                fCounts["OBSLT", default: 0] += 1
             }
         }
-        return counts
-    }
+        cachedFormatCounts = fCounts
 
-    var styleCounts: [String: Int] {
-        var counts: [String: Int] = [:]
+        // Style counts
+        var sCounts: [String: Int] = [:]
         for plugin in plugins {
             if !plugin.style.isEmpty {
-                counts[plugin.style, default: 0] += 1
+                sCounts[plugin.style, default: 0] += 1
             }
         }
-        return counts
+        cachedStyleCounts = sCounts
     }
 
     @AppStorage("appearance") private var appearance: String = "space"
@@ -576,6 +595,7 @@ struct PluginListView: View {
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
             .task(id: plugins.count) {
                 // Recompute when plugins change (much faster than .id() view recreation)
+                computeMetadata()
                 computeFilteredAndSorted()
                 filteredPluginsForExport = filteredAndSortedPlugins
             }
