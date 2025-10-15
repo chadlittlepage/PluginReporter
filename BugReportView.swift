@@ -47,7 +47,7 @@ struct BugReportView: View {
     }
 
     private var textEditorBackground: Color {
-        colorScheme == .dark ? Color(red: 20/255, green: 20/255, blue: 22/255) : Color.white.opacity(0.5)
+        Color.black
     }
 
     var body: some View {
