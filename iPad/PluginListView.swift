@@ -336,9 +336,8 @@ struct PluginListView: View {
                 }
             }
             .onAppear {
-                if cachedFilteredSorted.isEmpty {
-                    computeFilteredAndSorted()
-                }
+                // Always recompute when view appears to ensure cache is current
+                computeFilteredAndSorted()
                 filteredPluginsForExport = filteredAndSortedPlugins
             }
             .safeAreaInset(edge: .top, spacing: 0) {
