@@ -356,10 +356,13 @@ struct CategoryChip: View {
                 .fontWeight(isSelected ? .semibold : .regular)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? Color.accentColor : .ultraThinMaterial)
-                )
+                .background {
+                    if isSelected {
+                        Capsule().fill(Color.accentColor)
+                    } else {
+                        Capsule().fill(.ultraThinMaterial)
+                    }
+                }
                 .foregroundColor(isSelected ? .white : .primary)
                 .overlay(
                     Capsule()
