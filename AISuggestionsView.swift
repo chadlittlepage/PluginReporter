@@ -81,7 +81,7 @@ struct AISuggestionsView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             }
-            .background(Color(white: 0.5, opacity: 0.05))
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -143,8 +143,9 @@ struct AISuggestionsView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(Color(white: 0.5, opacity: 0.05))
+            .background(.ultraThinMaterial)
         }
+        .background(.ultraThinMaterial)
         #if os(macOS)
         .frame(width: 600, height: 550)
         #endif
@@ -320,11 +321,11 @@ struct SuggestionRow: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(white: 0.5, opacity: 0.05))
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
             )
             .contentShape(Rectangle())
         }
@@ -357,12 +358,12 @@ struct CategoryChip: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.accentColor : Color(white: 0.5, opacity: 0.1))
+                        .fill(isSelected ? Color.accentColor : .ultraThinMaterial)
                 )
                 .foregroundColor(isSelected ? .white : .primary)
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.2), lineWidth: 1)
+                        .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.3), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
