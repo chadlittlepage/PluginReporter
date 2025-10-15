@@ -34,14 +34,20 @@ struct ContentView: View {
     @State private var cachedBarCounts = FormatCounts()
     @State private var lastBarUpdateCount = 0
 
-    // SPEED: Cache filtered plugins to avoid recalculation on every render
-    @State private var cachedFilteredPlugins: [AppPluginItem] = []
-    @State private var lastSearchText = ""
-    @State private var lastSelectedFormats = Set<PluginFormat>()
-    @State private var lastSelectedPublishers = Set<String>()
-    @State private var lastSelectedStyles = Set<String>()
-    @State private var lastShowObsoleteOnly = false
-    @State private var lastPluginCount = 0
+    // REACTIVE: Filtered plugins that updates automatically
+    @State private var displayedPlugins: [AppPluginItem] = []
+
+    private func updateDisplayedPlugins() {
+        let allPlugins = scanner.plugins.map(AppPluginItem.init)
+
+        displayedPlugins = FastFilterEngine.filter(
+            plugins: allPlugins,
+            formats: prefs.selectedFormats,
+            publishers: prefs.selectedPublishers,
+            styles: prefs.selectedStyles,
+            searchText: searchText
+        )
+    }
 
     private var appBG: Color {
         // Space mode: pure black background
@@ -58,60 +64,6 @@ struct ContentView: View {
         }
     }
 
-    // SPEED: Return cached value directly
-    var filteredPlugins: [AppPluginItem] {
-        cachedFilteredPlugins
-    }
-
-    // SPEED: Compute filtered plugins only when inputs change
-    private func computeFilteredPlugins() {
-        let all = scanner.plugins
-
-        // Early exit if no filters applied - return converted array
-        guard !searchText.isEmpty || !prefs.selectedFormats.isEmpty ||
-              !prefs.selectedPublishers.isEmpty || !prefs.selectedStyles.isEmpty || prefs.showObsoleteOnly else {
-            cachedFilteredPlugins = all.map(AppPluginItem.init)
-            return
-        }
-
-        // Convert to AppPluginItem for filtering
-        let allConverted = all.map(AppPluginItem.init)
-
-        // Optional obsolete-only filter applied after search
-        func applyObsolete(_ rows: [AppPluginItem]) -> [AppPluginItem] {
-            prefs.showObsoleteOnly ? rows.filter { $0.obsolete } : rows
-        }
-
-        let rows = SearchEngine.filter(
-            items: allConverted,
-            queryRaw: searchText,
-            selectedFormats: prefs.selectedFormats,
-            selectedPublishers: prefs.selectedPublishers,
-            selectedStyles: prefs.selectedStyles
-        )
-        cachedFilteredPlugins = applyObsolete(rows)
-    }
-
-    // SPEED: Check if filters changed
-    private func filtersChanged() -> Bool {
-        searchText != lastSearchText ||
-        prefs.selectedFormats != lastSelectedFormats ||
-        prefs.selectedPublishers != lastSelectedPublishers ||
-        prefs.selectedStyles != lastSelectedStyles ||
-        prefs.showObsoleteOnly != lastShowObsoleteOnly ||
-        scanner.plugins.count != lastPluginCount
-    }
-
-    // SPEED: Update tracking variables
-    private func updateLastFilterState() {
-        lastSearchText = searchText
-        lastSelectedFormats = prefs.selectedFormats
-        lastSelectedPublishers = prefs.selectedPublishers
-        lastSelectedStyles = prefs.selectedStyles
-        lastShowObsoleteOnly = prefs.showObsoleteOnly
-        lastPluginCount = scanner.plugins.count
-    }
-    
     // INSTANT bar graph with INSTANT fake results - shows immediately
     private var instantBarGraphWithResults: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -177,14 +129,26 @@ struct ContentView: View {
 
                         // Export actions in a compact menu
                         HStack {
+                            // Ready indicator
+                            if !scanner.isScanning {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "checkmark.icloud.fill")
+                                        .foregroundColor(.green)
+                                        .font(.system(size: 14))
+                                    Text("Ready")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
                             Menu {
-                                Button("Export CSV") { ExportManager.exportCSV(rows: filteredPlugins) }
-                                Button("Export JSON") { ExportManager.exportJSON(rows: filteredPlugins) }
-                                Button("Export HTML") { ExportManager.exportHTML(rows: filteredPlugins) }
+                                Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
+                                Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
+                                Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
                                 #if os(macOS)
                                 Button("Export PDF") {
                                     let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
-                                    ExportManager.exportPDF(rows: filteredPlugins, options: opts)
+                                    ExportManager.exportPDF(rows: displayedPlugins, options: opts)
                                 }
                                 #endif
                             } label: {
@@ -228,16 +192,28 @@ struct ContentView: View {
 
                         Spacer()
 
+                        // Ready indicator
+                        if !scanner.isScanning {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.icloud.fill")
+                                    .foregroundColor(.green)
+                                    .font(.system(size: 14))
+                                Text("Ready")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
                         Menu {
                             #if os(macOS)
                             Button("Export PDF") {
                                 let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
-                                ExportManager.exportPDF(rows: filteredPlugins, options: opts)
+                                ExportManager.exportPDF(rows: displayedPlugins, options: opts)
                             }
                             #endif
-                            Button("Export CSV") { ExportManager.exportCSV(rows: filteredPlugins) }
-                            Button("Export HTML") { ExportManager.exportHTML(rows: filteredPlugins) }
-                            Button("Export JSON") { ExportManager.exportJSON(rows: filteredPlugins) }
+                            Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
+                            Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
+                            Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
                         } label: {
                             Text("Export")
                         }
@@ -250,7 +226,7 @@ struct ContentView: View {
                 
                 // BAR GRAPH - INSTANT DISPLAY with batched updates!
                 // Uses cached counts - only updates every 100 plugins for instant feel
-                instantBarsWithBatchedCounts(rows: filteredPlugins)
+                instantBarsWithBatchedCounts(rows: displayedPlugins)
                     .padding(.top, 12)
                     .padding(.bottom, 6)
                     .background(appBG)
@@ -258,14 +234,15 @@ struct ContentView: View {
                 Divider()
                 ZStack {
                     appBG
-                    PlatformTable(rows: filteredPlugins, selection: $appState.selected, sortStatus: $sortStatus)
+                    PlatformTable(rows: displayedPlugins, selection: $appState.selected, sortStatus: $sortStatus)
+                        .id(displayedPlugins.count)
                         .scrollContentBackground(.hidden)
                         .background(Color.clear)
                 }
                 Divider()
                 ZStack {
                     // Centered items count
-                    Text("\(filteredPlugins.count) items")
+                    Text("\(displayedPlugins.count) items")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -324,7 +301,7 @@ struct ContentView: View {
                             }
                             .padding(.horizontal, 4)
                             
-                            FormatsCloud(selectedFormats: $prefs.selectedFormats, obsoleteOnly: $prefs.showObsoleteOnly)
+                            FormatsCloud(selectedFormats: $prefs.selectedFormats)
                                 .frame(maxWidth: .infinity, alignment: .center)
                         }
                         
@@ -381,46 +358,22 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            if cachedFilteredPlugins.isEmpty {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
-        }
-        .onChange(of: searchText) { _ in
-            if filtersChanged() {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
+            updateDisplayedPlugins()
         }
         .onChange(of: prefs.selectedFormats) { _ in
-            if filtersChanged() {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
+            updateDisplayedPlugins()
         }
         .onChange(of: prefs.selectedPublishers) { _ in
-            if filtersChanged() {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
+            updateDisplayedPlugins()
         }
         .onChange(of: prefs.selectedStyles) { _ in
-            if filtersChanged() {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
+            updateDisplayedPlugins()
         }
-        .onChange(of: prefs.showObsoleteOnly) { _ in
-            if filtersChanged() {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
+        .onChange(of: searchText) { _ in
+            updateDisplayedPlugins()
         }
         .onChange(of: scanner.plugins.count) { _ in
-            if filtersChanged() {
-                computeFilteredPlugins()
-                updateLastFilterState()
-            }
+            updateDisplayedPlugins()
         }
         .onChange(of: prefs.appearance) { newValue in
             if newValue == AppPreferences.Appearance.system {
@@ -1001,5 +954,72 @@ struct ScaledFont: ViewModifier {
 extension View {
     func scaledFont(size: CGFloat, weight: Font.Weight = .regular) -> some View {
         modifier(ScaledFont(size: size, weight: weight))
+    }
+}
+
+// MARK: - Fast Filter Engine (NEW - SIMPLE & CORRECT)
+
+/// Ultra-simple, ultra-fast filtering engine
+/// NO complex logic - just straightforward filtering that WORKS
+struct FastFilterEngine {
+
+    /// Filter plugins based on selected criteria
+    static func filter(
+        plugins: [AppPluginItem],
+        formats: Set<PluginFormat>,
+        publishers: Set<String>,
+        styles: Set<String>,
+        searchText: String
+    ) -> [AppPluginItem] {
+
+        var result = plugins
+
+        // STEP 1: Format filter - Empty set = show all
+        if !formats.isEmpty {
+            result = result.filter { plugin in
+                // Check each selected format
+                for format in formats {
+                    if format == .OBSLT {
+                        // OBSLT means: show plugins where obsolete == true
+                        if plugin.obsolete {
+                            return true
+                        }
+                    } else {
+                        // Normal format: show plugins where type matches
+                        if plugin.type == format.rawValue {
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+        }
+
+        // STEP 2: Publisher filter - Empty set = show all
+        if !publishers.isEmpty {
+            result = result.filter { publishers.contains($0.publisher) }
+        }
+
+        // STEP 3: Style filter - Empty set = show all
+        if !styles.isEmpty {
+            result = result.filter { styles.contains($0.style) }
+        }
+
+        // STEP 4: Search filter - Empty string = show all
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            result = result.filter { plugin in
+                // Search across all fields
+                plugin.name.lowercased().contains(query) ||
+                plugin.publisher.lowercased().contains(query) ||
+                plugin.style.lowercased().contains(query) ||
+                plugin.architectures.lowercased().contains(query) ||
+                plugin.version.lowercased().contains(query) ||
+                plugin.runtimeRequirement.lowercased().contains(query) ||
+                plugin.type.lowercased() == query  // Exact match for type to avoid VST matching VST3
+            }
+        }
+
+        return result
     }
 }

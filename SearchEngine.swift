@@ -23,8 +23,24 @@ enum SearchEngine {
         // Fast pre-filter by format and publisher using lazy evaluation
         let formatFiltered = selectedFormats.isEmpty ? items :
             items.lazy.compactMap { item -> PluginItem? in
-                guard let format = PluginFormat(rawValue: item.type) else { return nil }
-                return selectedFormats.contains(format) ? item : nil
+                // Special handling for OBSLT - filter by obsolete flag
+                if selectedFormats.contains(.OBSLT) {
+                    // If OBSLT is the only selection, return only obsolete plugins
+                    if selectedFormats.count == 1 {
+                        return item.obsolete ? item : nil
+                    }
+                    // If OBSLT is combined with other formats, include obsolete OR matching format
+                    let otherFormats = selectedFormats.filter { $0 != .OBSLT }
+                    if item.obsolete {
+                        return item
+                    }
+                    guard let format = PluginFormat(rawValue: item.type) else { return nil }
+                    return otherFormats.contains(format) ? item : nil
+                } else {
+                    // Standard format filtering
+                    guard let format = PluginFormat(rawValue: item.type) else { return nil }
+                    return selectedFormats.contains(format) ? item : nil
+                }
             }
 
         let publisherFiltered = selectedPublishers.isEmpty ? Array(formatFiltered) :
@@ -131,9 +147,9 @@ enum SearchEngine {
     /// Checks if a string matches a known plugin format type
     ///
     /// - Parameter str: String to check
-    /// - Returns: true if the string is a recognized plugin format (AU, VST, VST3, AAX, CLAP, LV2)
+    /// - Returns: true if the string is a recognized plugin format (AU, VST, VST3, AAX, CLAP, LV2, OBSLT)
     private static func isPluginFormat(_ str: String) -> Bool {
-        let knownFormats = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2"]
+        let knownFormats = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2", "OBSLT"]
         return knownFormats.contains(str.uppercased())
     }
 }

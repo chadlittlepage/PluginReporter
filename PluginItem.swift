@@ -1,7 +1,7 @@
 import Foundation
 
 public enum PluginFormat: String, CaseIterable, Codable, Identifiable {
-    case AU, VST, VST3, AAX, CLAP, LV2
+    case AU, VST, VST3, AAX, CLAP, LV2, OBSLT
     public var id: String { rawValue }
 }
 

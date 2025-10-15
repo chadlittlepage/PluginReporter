@@ -6,12 +6,15 @@ struct SettingsView: View {
     /// initializer provides a local instance so the view always compiles.
     @ObservedObject var prefs: Preferences
 
+    @State private var showBugReport = false
+    @State private var showFeatureRequest = false
+
     init(prefs: Preferences = Preferences()) {
         self._prefs = ObservedObject(initialValue: prefs)
     }
 
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             Form {
                 // Cloud Sync Status
                 Section("iCloud Sync") {
@@ -41,10 +44,30 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+
+                HStack {
+                    Text("UI Font Size")
+                    Slider(value: $prefs.uiFontSizeOffset, in: -5...5, step: 1)
+                    Text("\(Int(prefs.uiFontSizeOffset) >= 0 ? "+" : "")\(Int(prefs.uiFontSizeOffset)) pt")
+                        .monospacedDigit()
+                        .frame(width: 50, alignment: .trailing)
+                    Button("Reset") {
+                        prefs.uiFontSizeOffset = 0
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(prefs.uiFontSizeOffset == 0)
+                }
+                Text("Adjusts all font sizes throughout the interface")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             // Formats visibility
-            Section("Visible Formats") {
+            Section("Format Filters") {
+                Text("Check formats to show only those types. Leave all unchecked to show all plugins.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
                 HStack(spacing: 16) {
                     ForEach(PluginFormat.allCases, id: \.self) { fmt in
                         Toggle(isOn: Binding(
@@ -91,7 +114,7 @@ struct SettingsView: View {
             }
 
             // AI Suggestions
-            Section {
+            Section("AI Suggestions") {
                 AISettingsView()
             }
 
@@ -116,13 +139,108 @@ struct SettingsView: View {
                     Text("\(Int(prefs.pdfFontSize)) pt").monospacedDigit()
                 }
             }
+
+            // Dashboard Reporting
+            Section("Dashboard Reporting") {
+                DashboardSettingsView()
+            }
+
+            // Support
+            Section("Support") {
+                VStack(spacing: 12) {
+                    Button {
+                        openBugReportWindow()
+                    } label: {
+                        HStack {
+                            Image(systemName: "ant.fill")
+                                .foregroundColor(.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Report a Bug")
+                                    .font(.headline)
+                                Text("Send crash reports and bug details")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider()
+
+                    Button {
+                        openFeatureRequestWindow()
+                    } label: {
+                        HStack {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundColor(.yellow)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Request a Feature")
+                                    .font(.headline)
+                                Text("Suggest new features or improvements")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 4)
+
+                Text("Your device information will be automatically included to help us assist you better.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
             }
         }
         .padding(20)
-        .frame(minWidth: 700, minHeight: 600)
+        .frame(minWidth: 700, minHeight: 800)
     }
 
     // MARK: Helpers
+
+    func openBugReportWindow() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 950),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.center()
+        window.title = "Report a Bug"
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+
+        let hostingView = NSHostingView(rootView: BugReportView())
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        window.isReleasedWhenClosed = false
+    }
+
+    func openFeatureRequestWindow() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 850, height: 900),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.center()
+        window.title = "Request a Feature"
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+
+        let hostingView = NSHostingView(rootView: FeatureRequestView())
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        window.isReleasedWhenClosed = false
+    }
 
     func title(for a: Preferences.Appearance) -> String {
         switch a {

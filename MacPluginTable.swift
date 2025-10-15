@@ -25,6 +25,7 @@ struct SizeCell: View {
 
     @State private var macSelection = Set<UUID>()
     @State private var lastAnchorIndex: Int? = nil
+    @State private var lastEdgeIndex: Int? = nil  // Track the moving edge separately
     @State private var lastScrollTime: Date = .distantPast
 //    @State private var sortOrder: [SortDescriptor<PluginItem>] = []
 
@@ -85,6 +86,7 @@ struct SizeCell: View {
             macSelection = [row.id]
             selection = [row]
             lastAnchorIndex = nil
+            lastEdgeIndex = nil
             return
         }
 
@@ -96,6 +98,7 @@ struct SizeCell: View {
             macSelection = Set(slice.map { $0.id })
             selection = Array(slice)
             lastAnchorIndex = anchor
+            lastEdgeIndex = clickedIndex
         } else if flags.contains(.command) {
             // Toggle membership
             if macSelection.contains(row.id) {
@@ -106,10 +109,12 @@ struct SizeCell: View {
             let selectedSet = macSelection
             selection = displayedRows.filter { selectedSet.contains($0.id) }
             lastAnchorIndex = clickedIndex
+            lastEdgeIndex = clickedIndex
         } else {
             macSelection = [row.id]
             selection = [row]
             lastAnchorIndex = clickedIndex
+            lastEdgeIndex = clickedIndex
         }
         #else
         selection = [row]
@@ -241,38 +246,39 @@ struct SizeCell: View {
         guard !displayedRows.isEmpty else { return }
 
         if extendingSelection {
-            // SHIFT+ARROW: Extend from anchor point
-            // Find the anchor point (or establish one)
+            // SHIFT+ARROW: Extend/contract selection from anchor point
+            // Find or establish the anchor point (this stays fixed)
             let anchor: Int
             if let existing = lastAnchorIndex, existing >= 0, existing < displayedRows.count {
                 anchor = existing
             } else {
-                // No anchor set - use current selection edge
+                // No anchor set - establish one from current selection
                 if !macSelection.isEmpty {
                     let selectedIndices = displayedRows.enumerated()
                         .filter { macSelection.contains($0.element.id) }
                         .map { $0.offset }
-                    // Use edge of selection based on direction
-                    if delta > 0 {
-                        anchor = selectedIndices.min() ?? 0
-                    } else {
-                        anchor = selectedIndices.max() ?? displayedRows.count - 1
-                    }
+                    // Use first selected item as anchor
+                    anchor = selectedIndices.min() ?? 0
                 } else {
-                    // No selection at all - start from top for down, bottom for up
+                    // No selection at all - start from top or bottom
                     anchor = delta > 0 ? 0 : displayedRows.count - 1
                 }
                 lastAnchorIndex = anchor
+                lastEdgeIndex = anchor
             }
 
-            // Find the current edge of selection (opposite of anchor)
+            // Find the current edge (the moving end of selection)
             let currentEdge: Int
-            if !macSelection.isEmpty {
+            if let existing = lastEdgeIndex, existing >= 0, existing < displayedRows.count {
+                // Use the tracked edge
+                currentEdge = existing
+            } else if !macSelection.isEmpty {
+                // Fallback: find edge from selection
                 let selectedIndices = displayedRows.enumerated()
                     .filter { macSelection.contains($0.element.id) }
                     .map { $0.offset }
-                // Use the edge furthest from anchor
-                if delta > 0 {
+                // Edge is the item furthest from anchor
+                if anchor <= (selectedIndices.max() ?? anchor) {
                     currentEdge = selectedIndices.max() ?? anchor
                 } else {
                     currentEdge = selectedIndices.min() ?? anchor
@@ -281,8 +287,11 @@ struct SizeCell: View {
                 currentEdge = anchor
             }
 
-            // Calculate new edge position
+            // Move the edge by delta
             let newEdge = min(max(currentEdge + delta, 0), displayedRows.count - 1)
+
+            // Store the new edge position
+            lastEdgeIndex = newEdge
 
             // Select range from anchor to new edge
             let lower = min(anchor, newEdge)
@@ -291,7 +300,7 @@ struct SizeCell: View {
             macSelection = Set(slice.map { $0.id })
             selection = Array(slice)
 
-            // Auto-scroll ONLY when new edge moves beyond visible area - FAST and SMOOTH
+            // Auto-scroll ONLY when new edge moves beyond visible area - SMOOTH CENTER ANCHOR
             if let proxy = scrollProxy {
                 let edgeItem = displayedRows[newEdge]
                 let now = Date()
@@ -302,14 +311,14 @@ struct SizeCell: View {
                 if newEdge != currentEdge {
                     // Use faster animation for rapid scrolling (< 100ms between keypresses)
                     if timeSinceLastScroll < 0.1 {
-                        // Ultra-fast for rapid key repeats
+                        // Ultra-fast for rapid key repeats - keep selection centered
                         withAnimation(.interpolatingSpring(stiffness: 500, damping: 50)) {
-                            proxy.scrollTo(edgeItem.id, anchor: delta > 0 ? .bottom : .top)
+                            proxy.scrollTo(edgeItem.id, anchor: .center)
                         }
                     } else {
-                        // Smooth spring for normal pace
+                        // Smooth spring for normal pace - keep selection centered
                         withAnimation(.spring(response: 0.25, dampingFraction: 1.0)) {
-                            proxy.scrollTo(edgeItem.id, anchor: delta > 0 ? .bottom : .top)
+                            proxy.scrollTo(edgeItem.id, anchor: .center)
                         }
                     }
                 }
@@ -337,10 +346,11 @@ struct SizeCell: View {
             let newItem = displayedRows[newIndex]
             macSelection = [newItem.id]
             selection = [newItem]
-            // Set anchor for future shift-selection
+            // Set anchor and edge for future shift-selection
             lastAnchorIndex = newIndex
+            lastEdgeIndex = newIndex
 
-            // Auto-scroll ONLY when selection moves - FAST and SMOOTH
+            // Auto-scroll ONLY when selection moves - SMOOTH CENTER ANCHOR
             if let proxy = scrollProxy, newIndex != currentIndex {
                 let now = Date()
                 let timeSinceLastScroll = now.timeIntervalSince(lastScrollTime)
@@ -348,14 +358,14 @@ struct SizeCell: View {
 
                 // Use faster animation for rapid scrolling (< 100ms between keypresses)
                 if timeSinceLastScroll < 0.1 {
-                    // Ultra-fast for rapid key repeats
+                    // Ultra-fast for rapid key repeats - keep selection centered
                     withAnimation(.interpolatingSpring(stiffness: 500, damping: 50)) {
-                        proxy.scrollTo(newItem.id, anchor: delta > 0 ? .bottom : .top)
+                        proxy.scrollTo(newItem.id, anchor: .center)
                     }
                 } else {
-                    // Smooth spring for normal pace
+                    // Smooth spring for normal pace - keep selection centered
                     withAnimation(.spring(response: 0.25, dampingFraction: 1.0)) {
-                        proxy.scrollTo(newItem.id, anchor: delta > 0 ? .bottom : .top)
+                        proxy.scrollTo(newItem.id, anchor: .center)
                     }
                 }
             }
@@ -524,21 +534,24 @@ struct SizeCell: View {
         let height: CGFloat
         let action: () -> Void
 
+        @EnvironmentObject private var prefs: Preferences
+
         var body: some View {
             Button(action: action) {
                 HStack(spacing: 0) {
                     HStack(spacing: 4) {  // Inner HStack with controlled spacing
                         Text(title)
+                            .font(.system(size: prefs.scaledSize(13)))
                             .fontWeight(active ? .bold : .regular)
                         if active {
                             Image(systemName: ascending ? "arrow.up" : "arrow.down")
-                                .font(.caption2)
+                                .font(.system(size: prefs.scaledSize(10)))
                                 .foregroundColor(.accentColor)
                         }
                     }
                     .frame(width: width - 20, alignment: .leading)  // Leave more room on the right
                     .padding(.leading, 6)
-                    
+
                     Spacer()  // Push everything left, away from the divider
                 }
                 .frame(width: width)
@@ -592,6 +605,20 @@ struct SizeCell: View {
 }
 
 // MARK: - Optimized Table Components
+
+// Helper function to get color for plugin type (matching bar graph colors)
+private func colorForPluginType(_ type: String) -> Color {
+    switch type.uppercased() {
+    case "AU":   return .blue
+    case "VST":  return .green
+    case "VST3": return .teal
+    case "AAX":  return .purple
+    case "CLAP": return .orange
+    case "LV2":  return .gray
+    case "OBSLT", "OBSOLETE": return .red
+    default:     return .secondary
+    }
+}
 
 private struct ColumnWidths {
     let wName: CGFloat
@@ -691,7 +718,7 @@ private struct OptimizedTableRow: View {
                 TableDivider()
                 TableCell(text: row.publisher, width: columnWidths.wPublisher)
                 TableDivider()
-                TableCell(text: row.type, width: columnWidths.wType)
+                ColoredTypeCell(type: row.type, width: columnWidths.wType)
                 TableDivider()
                 TableCell(text: row.style, width: columnWidths.wStyle)
                 TableDivider()
@@ -749,12 +776,38 @@ private struct TableCell: View {
     var truncationMode: Text.TruncationMode = .tail
     var lineLimit: Int? = 1
 
+    @EnvironmentObject private var prefs: Preferences
+
     var body: some View {
         Text(text)
+            .font(.system(size: prefs.scaledSize(13)))
             .lineLimit(lineLimit)
             .truncationMode(truncationMode)
             .padding(.leading, 6)
             .frame(width: width, height: 32, alignment: .leading)
+    }
+}
+
+private struct ColoredTypeCell: View {
+    let type: String
+    let width: CGFloat
+
+    @EnvironmentObject private var prefs: Preferences
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(type)
+                .font(.system(size: prefs.scaledSize(12), weight: .semibold))
+                .foregroundColor(colorForPluginType(type))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(colorForPluginType(type).opacity(0.2))
+                )
+        }
+        .padding(.leading, 6)
+        .frame(width: width, height: 32, alignment: .leading)
     }
 }
 

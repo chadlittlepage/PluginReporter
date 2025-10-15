@@ -61,7 +61,13 @@ struct ExportManager {
         let defaultName = defaultFileName(prefix: "Plugins", ext: "csv")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["csv"]) else { return }
         let csv = makeCSV(rows: rows)
-        do { try csv.data(using: .utf8)?.write(to: url) } catch { NSAlert(error: error).runModal() }
+        do {
+            try csv.data(using: .utf8)?.write(to: url)
+            dashboardTrackExport()
+        } catch {
+            NSAlert(error: error).runModal()
+            dashboardLogError(message: "CSV export failed: \(error.localizedDescription)", severity: "error")
+        }
     }
 
     static func exportJSON(rows: [PluginItem]) {
@@ -72,14 +78,24 @@ struct ExportManager {
             enc.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try enc.encode(rows.map(JSONRow.init))
             try data.write(to: url)
-        } catch { NSAlert(error: error).runModal() }
+            dashboardTrackExport()
+        } catch {
+            NSAlert(error: error).runModal()
+            dashboardLogError(message: "JSON export failed: \(error.localizedDescription)", severity: "error")
+        }
     }
 
     static func exportHTML(rows: [PluginItem]) {
         let defaultName = defaultFileName(prefix: "Plugins", ext: "html")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["html", "htm"]) else { return }
         let html = makeHTML(rows: rows)
-        do { try html.data(using: .utf8)?.write(to: url) } catch { NSAlert(error: error).runModal() }
+        do {
+            try html.data(using: .utf8)?.write(to: url)
+            dashboardTrackExport()
+        } catch {
+            NSAlert(error: error).runModal()
+            dashboardLogError(message: "HTML export failed: \(error.localizedDescription)", severity: "error")
+        }
     }
 
     static func exportPDF(rows: [PluginItem], options: PDFExportOptions) {
@@ -163,8 +179,10 @@ struct ExportManager {
                 }
 
                 ctx.closePDF()
+                dashboardTrackExport()
             } catch {
                 NSAlert(error: error).runModal()
+                dashboardLogError(message: "PDF export failed: \(error.localizedDescription)", severity: "error")
             }
         }
     }

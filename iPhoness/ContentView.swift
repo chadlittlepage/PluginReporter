@@ -72,10 +72,9 @@ struct ContentView: View {
         // Load from shared storage (same location as macOS)
         isLoading = true
 
-        // Debug: Show what URL we're trying to read
         guard let url = SharedStorage.pluginsURL else {
             debugMessage = "❌ Could not determine plugins URL"
-            print("📱 ERROR: Could not get plugins URL")
+            AppLogger.error("Could not get plugins URL")
             showDebugAlert = true
             isLoading = false
             return
@@ -88,13 +87,12 @@ struct ContentView: View {
             fileInfo = "\nFile size: \(size) bytes"
         }
 
+        AppLogger.debug("iPhone loading from: \(url.path), exists: \(exists)")
         debugMessage = "📍 Loading from:\n\(url.path)\n\n✅ Exists: \(exists)\(fileInfo)"
-        print("📱 iPhone trying to load from: \(url.path)")
-        print("📱 File exists: \(exists)")
 
         do {
             let loadedPlugins = try SharedStorage.loadPlugins()
-            print("📱 Loaded \(loadedPlugins.count) plugins")
+            AppLogger.info("Loaded \(loadedPlugins.count) plugins on iPhone")
 
             plugins = loadedPlugins
             isLoading = false
@@ -118,8 +116,7 @@ struct ContentView: View {
     }
 
     func loadPluginsFromFile() {
-        // Reload from shared storage with debug info
-        print("📱 loadPluginsFromFile() called")
+        AppLogger.debug("iPhone loadPluginsFromFile called")
         loadPlugins()
     }
 

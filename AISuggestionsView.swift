@@ -1,6 +1,10 @@
 // AISuggestionsView.swift — UI for AI plugin suggestions
 import SwiftUI
+import Combine
 import Security
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Suggestion Categories
 
@@ -141,7 +145,9 @@ struct AISuggestionsView: View {
             .padding(.vertical, 8)
             .background(Color(white: 0.5, opacity: 0.05))
         }
+        #if os(macOS)
         .frame(width: 600, height: 550)
+        #endif
         .task {
             await aiService.fetchSuggestions(for: plugin, ownedPlugins: ownedPlugins)
         }
@@ -262,15 +268,25 @@ struct SuggestionRow: View {
         // Try to find direct link, fallback to Google search
         if let directURL = directLinks[suggestion.name], let url = URL(string: directURL) {
             return url
-        } else {
-            let query = suggestion.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.name
-            return URL(string: "https://www.google.com/search?q=\(query)+audio+plugin") ?? URL(string: "https://www.google.com")!
         }
+
+        // Try Google search with encoded query
+        let query = suggestion.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.name
+        if let searchURL = URL(string: "https://www.google.com/search?q=\(query)+audio+plugin") {
+            return searchURL
+        }
+
+        // Final safe fallback - this URL is guaranteed to be valid
+        return URL(string: "https://www.google.com")!
     }
 
     var body: some View {
         Button {
+            #if os(macOS)
             NSWorkspace.shared.open(pluginURL)
+            #else
+            UIApplication.shared.open(pluginURL)
+            #endif
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 // Icon
@@ -291,7 +307,7 @@ struct SuggestionRow: View {
                         Spacer()
                         Image(systemName: "arrow.up.right")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.accentColor)
                     }
                     Text(suggestion.reason)
                         .font(.caption)
@@ -314,11 +330,13 @@ struct SuggestionRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
+            #if os(macOS)
             if hovering {
                 NSCursor.pointingHand.push()
             } else {
                 NSCursor.pop()
             }
+            #endif
         }
     }
 }
@@ -349,11 +367,13 @@ struct CategoryChip: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
+            #if os(macOS)
             if hovering {
                 NSCursor.pointingHand.push()
             } else {
                 NSCursor.pop()
             }
+            #endif
         }
     }
 }
@@ -370,12 +390,27 @@ struct AISuggestionsButton: View {
             showingSuggestions = true
         } label: {
             Label("AI Suggestions", systemImage: "sparkles")
-                .font(.caption)
+                .font(.system(size: 13))
+                .foregroundColor(.accentColor)
         }
         .buttonStyle(.borderless)
+        #if os(iOS)
+        .popover(isPresented: $showingSuggestions) {
+            NavigationView {
+                AISuggestionsView(plugin: plugin, ownedPlugins: ownedPlugins)
+            }
+            .navigationViewStyle(.stack)
+            .frame(
+                width: min(400, UIScreen.main.bounds.width * 0.92),
+                height: min(600, UIScreen.main.bounds.height * 0.75)
+            )
+            .presentationCompactAdaptation(.popover)
+        }
+        #else
         .sheet(isPresented: $showingSuggestions) {
             AISuggestionsView(plugin: plugin, ownedPlugins: ownedPlugins)
         }
+        #endif
     }
 }
 
@@ -473,9 +508,6 @@ struct AISettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("AI Suggestions")
-                .font(.headline)
-
             Text("Optional: Add your OpenAI API key for smarter suggestions. Leave blank to use local AI only.")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -535,11 +567,6 @@ struct AISettingsView: View {
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(white: 0.5, opacity: 0.05))
-        )
     }
 }
 

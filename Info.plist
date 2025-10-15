@@ -48,11 +48,19 @@
 
     <!-- Copyright -->
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025 Chad Littlepage. All rights reserved.</string>
+    <string>Copyright © 2024 Chad Littlepage. All rights reserved.</string>
 
-    <!-- Support URLs (Update these before submission) -->
+    <!-- Configuration (populated from build settings) -->
+    <key>SENTRY_DSN</key>
+    <string>$(SENTRY_DSN)</string>
+    <key>PRIVACY_POLICY_URL</key>
+    <string>$(PRIVACY_POLICY_URL)</string>
+    <key>SUPPORT_URL</key>
+    <string>$(SUPPORT_URL)</string>
+
+    <!-- Support URLs -->
     <key>NSPrivacyPolicyURL</key>
-    <string>https://yourwebsite.com/pluginreporter/privacy</string>
+    <string>$(PRIVACY_POLICY_URL)</string>
 
     <!-- Launch Screen Background Color (Black) -->
     <key>UILaunchScreen</key>

@@ -1,5 +1,6 @@
 // AIPluginSuggestions.swift — Hybrid AI suggestion system (OpenAI + Local fallback)
 import Foundation
+import Combine
 
 /// AI-powered plugin suggestion service
 @MainActor
@@ -12,9 +13,9 @@ class AIPluginSuggestions: ObservableObject {
     private var previouslyShownSuggestions: Set<String> = []
 
     // OpenAI API key (optional - falls back to local if not set)
+    // Stored securely in Keychain
     private var openAIKey: String? {
-        // User can set this in Settings or leave empty for local-only mode
-        UserDefaults.standard.string(forKey: "openai_api_key")
+        KeychainHelper.load(key: "openai_api_key")
     }
 
     /// Reset tracking (call when switching plugins or categories)
@@ -26,6 +27,9 @@ class AIPluginSuggestions: ObservableObject {
     func fetchSuggestions(for plugin: PluginItem, ownedPlugins: [PluginItem], appendMode: Bool = false) async {
         isLoading = true
         errorMessage = nil
+
+        // Track AI request for dashboard reporting
+        dashboardTrackAIRequest()
 
         // Combine owned plugins + previously shown suggestions to exclude
         let excludedPlugins = ownedPlugins + previouslyShownSuggestions.map { name in
@@ -58,6 +62,7 @@ class AIPluginSuggestions: ObservableObject {
                 }
             } catch {
                 AppLogger.warning("OpenAI API failed, using local suggestions: \(error.localizedDescription)")
+                dashboardLogError(message: "OpenAI API failed: \(error.localizedDescription)", severity: "warning", context: "AI Suggestions")
                 // Fall through to local AI
             }
         }
@@ -87,6 +92,9 @@ class AIPluginSuggestions: ObservableObject {
     func fetchCategorySuggestions(for category: SuggestionCategory, plugin: PluginItem, ownedPlugins: [PluginItem], appendMode: Bool = false) async {
         isLoading = true
         errorMessage = nil
+
+        // Track AI request for dashboard reporting
+        dashboardTrackAIRequest()
 
         // Combine owned plugins + previously shown suggestions to exclude
         let excludedPlugins = ownedPlugins + previouslyShownSuggestions.map { name in
@@ -118,6 +126,7 @@ class AIPluginSuggestions: ObservableObject {
                     }
                 } catch {
                     AppLogger.warning("OpenAI free plugins API failed, using local suggestions: \(error.localizedDescription)")
+                    dashboardLogError(message: "OpenAI free plugins API failed: \(error.localizedDescription)", severity: "warning", context: "AI Suggestions - Free")
                 }
             }
 

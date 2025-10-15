@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var showFilePicker = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
+    @State private var showBugReport = false
+    @State private var showFeatureRequest = false
 
     // Pre-computed colors
     private let spaceBackground = Color.black
@@ -75,6 +77,60 @@ struct SettingsView: View {
                     Text("Instructions")
                 }
 
+                Section {
+                    AISettingsView()
+                } header: {
+                    Text("AI Suggestions")
+                }
+
+                Section {
+                    Button(action: {
+                        showBugReport = true
+                    }) {
+                        HStack {
+                            Image(systemName: "ant.fill")
+                                .foregroundColor(.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Report a Bug")
+                                    .foregroundColor(.primary)
+                                Text("Send crash reports and bug details")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Button(action: {
+                        showFeatureRequest = true
+                    }) {
+                        HStack {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundColor(.yellow)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Request a Feature")
+                                    .foregroundColor(.primary)
+                                Text("Suggest new features or improvements")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Text("Your device information will be automatically included to help us assist you better.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Support")
+                }
+
                 Section(header: Text("About")) {
                     HStack {
                         Text("Version")
@@ -115,6 +171,26 @@ struct SettingsView: View {
                 Button(NSLocalizedString("OK", comment: "Dismiss button"), role: .cancel) { }
             } message: {
                 Text(errorMessage)
+            }
+            .sheet(isPresented: $showBugReport) {
+                NavigationView {
+                    BugReportView()
+                        .navigationTitle("Report a Bug")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(Color(red: 24/255, green: 24/255, blue: 26/255), for: .navigationBar)
+                        .toolbarBackground(.visible, for: .navigationBar)
+                }
+                .presentationDetents([.large])
+            }
+            .sheet(isPresented: $showFeatureRequest) {
+                NavigationView {
+                    FeatureRequestView()
+                        .navigationTitle("Request a Feature")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(Color(red: 24/255, green: 24/255, blue: 26/255), for: .navigationBar)
+                        .toolbarBackground(.visible, for: .navigationBar)
+                }
+                .presentationDetents([.large])
             }
         }
         .navigationViewStyle(.stack)

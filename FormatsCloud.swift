@@ -3,7 +3,6 @@ import SwiftUI
 /// A centered, wrapping cloud of format chips plus an "OBSLT" chip.
 struct FormatsCloud: View {
     @Binding var selectedFormats: Set<PluginFormat>
-    @Binding var obsoleteOnly: Bool
 
     private enum ChipItem: Identifiable {
         case format(PluginFormat)
@@ -17,7 +16,8 @@ struct FormatsCloud: View {
     }
 
     var body: some View {
-        let formatItems: [ChipItem] = PluginFormat.allCases.map { .format($0) }
+        // Exclude OBSLT from format list since it has special handling below
+        let formatItems: [ChipItem] = PluginFormat.allCases.filter { $0 != .OBSLT }.map { .format($0) }
         let left  = formatItems.enumerated().compactMap { $0.offset % 2 == 0 ? $0.element : nil }
         let right = formatItems.enumerated().compactMap { $0.offset % 2 == 1 ? $0.element : nil }
 
@@ -57,8 +57,12 @@ struct FormatsCloud: View {
                 else { selectedFormats.insert(format) }
             }
         case .obsolete:
-            ChipView(title: "OBSOLETE", selected: obsoleteOnly, accent: .red) {
-                obsoleteOnly.toggle()
+            ChipView(title: "OBSOLETE", selected: selectedFormats.contains(.OBSLT), accent: .red) {
+                if selectedFormats.contains(.OBSLT) {
+                    selectedFormats.remove(.OBSLT)
+                } else {
+                    selectedFormats.insert(.OBSLT)
+                }
             }
         }
     }
@@ -166,13 +170,10 @@ private extension PluginFormat {
 #Preview {
     struct Demo: View {
         @State private var formats: Set<PluginFormat> = Set(PluginFormat.allCases)
-        @State private var obsolete: Bool = false
         var body: some View {
             VStack(alignment: .center) {
                 Text("Formats").font(.headline)
-                ForEach(Array(PluginFormat.allCases), id: \.rawValue) { format in
-                    FormatsCloud(selectedFormats: $formats, obsoleteOnly: $obsolete)
-                }
+                FormatsCloud(selectedFormats: $formats)
             }
             .padding()
             .frame(width: 280)

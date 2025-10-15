@@ -73,11 +73,6 @@ struct FilterSidebarView: View {
                     }
                 }
 
-                // Obsolete Filter
-                Section("Other") {
-                    Toggle("Show Obsolete Only", isOn: $prefs.showObsoleteOnly)
-                }
-
                 // Actions
                 Section {
                     Button(role: .destructive) {
@@ -115,7 +110,6 @@ struct FilterSidebarView: View {
         prefs.selectedFormats.removeAll()
         prefs.selectedStyles.removeAll()
         prefs.selectedPublishers.removeAll()
-        prefs.showObsoleteOnly = false
     }
 }
 

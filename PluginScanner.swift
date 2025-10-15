@@ -5,7 +5,7 @@ import AppKit
 #endif
 
 // MARK: - Data Model expected by UI
-public struct ScannerPluginItem: Identifiable, Hashable {
+public struct ScannerPluginItem: Identifiable, Hashable, Codable {
     public let id: UUID
     public let name: String
     public let publisher: String
@@ -61,6 +61,10 @@ public final class PluginScanner: ObservableObject {
     @Published public var shouldShowPrivacyDisclosure: Bool = false
     private static let privacyDisclosureKey = "hasShownFileAccessDisclosure"
 
+    // Persistent storage for scanned plugins
+    private static let pluginsCacheKey = "cachedScannedPlugins"
+    private static let lastScanDateKey = "lastPluginScanDate"
+
     // Optimized background processing
     private let scanQueue = DispatchQueue(label: "plugin.scanner.queue", qos: .userInitiated, attributes: .concurrent)
     private let discoveryQueue = DispatchQueue(label: "plugin.discovery.queue", qos: .utility)
@@ -70,6 +74,9 @@ public final class PluginScanner: ObservableObject {
     public init() {
         // Check if we need to show privacy disclosure on first scan
         checkPrivacyDisclosureStatus()
+
+        // Load previously scanned plugins
+        loadCachedPlugins()
     }
 
     // MARK: - Privacy Disclosure
@@ -82,6 +89,48 @@ public final class PluginScanner: ObservableObject {
     public func acknowledgePrivacyDisclosure() {
         UserDefaults.standard.set(true, forKey: Self.privacyDisclosureKey)
         shouldShowPrivacyDisclosure = false
+    }
+
+    // MARK: - Persistent Storage
+
+    private func loadCachedPlugins() {
+        guard let data = UserDefaults.standard.data(forKey: Self.pluginsCacheKey) else {
+            return
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            let cachedPlugins = try decoder.decode([ScannerPluginItem].self, from: data)
+            self.plugins = cachedPlugins
+            self.totalToScan = cachedPlugins.count
+
+            if let lastScanDate = UserDefaults.standard.object(forKey: Self.lastScanDateKey) as? Date {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                self.status = "Loaded \(cachedPlugins.count) plugins (scanned \(formatter.string(from: lastScanDate)))"
+            } else {
+                self.status = "Loaded \(cachedPlugins.count) plugins"
+            }
+
+            AppLogger.info("Loaded \(cachedPlugins.count) cached plugins from persistent storage")
+        } catch {
+            AppLogger.error("Failed to load cached plugins: \(error.localizedDescription)")
+            dashboardLogError(message: "Failed to load cached plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Cache Load")
+        }
+    }
+
+    private func saveCachedPlugins() {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(plugins)
+            UserDefaults.standard.set(data, forKey: Self.pluginsCacheKey)
+            UserDefaults.standard.set(Date(), forKey: Self.lastScanDateKey)
+            AppLogger.info("Saved \(plugins.count) plugins to persistent storage")
+        } catch {
+            AppLogger.error("Failed to save cached plugins: \(error.localizedDescription)")
+            dashboardLogError(message: "Failed to save cached plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Cache Save")
+        }
     }
     
     // MARK: Async Semaphore Helper
@@ -260,8 +309,14 @@ public final class PluginScanner: ObservableObject {
             self.status = "Scan complete."
             self.totalToScan = allItems.count
 
+            // Save to persistent storage
+            self.saveCachedPlugins()
+
             // Auto-save to shared location for iOS app
             self.saveToSharedLocation()
+
+            // Track scan completion for dashboard reporting
+            dashboardTrackScan()
         }
     }
 
@@ -1094,6 +1149,7 @@ public final class PluginScanner: ObservableObject {
             AppLogger.info("Auto-saved \(plugins.count) plugins")
         } catch {
             AppLogger.error("Failed to auto-save plugins: \(error.localizedDescription)")
+            dashboardLogError(message: "Failed to auto-save plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Auto Save")
         }
     }
 

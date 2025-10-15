@@ -26,6 +26,32 @@ struct ConsolidatedPluginDetailView: View {
                 .padding(.horizontal)
                 .padding(.top)
 
+                // AI Suggestions Button - Top Center
+                HStack {
+                    Spacer()
+                    AISuggestionsButton(
+                        plugin: consolidated.originalPlugins.first ?? PluginItem(
+                            name: consolidated.name,
+                            publisher: consolidated.publisher,
+                            version: "",
+                            type: consolidated.types.first ?? "",
+                            style: consolidated.style,
+                            architectures: "",
+                            date: nil,
+                            sizeBytes: 0,
+                            path: "",
+                            runtimeRequirement: "",
+                            obsolete: false
+                        ),
+                        ownedPlugins: consolidated.originalPlugins
+                    )
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
                 Divider()
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -131,6 +157,20 @@ struct PluginDetailView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
+
+                // AI Suggestions Button - Top Center
+                HStack {
+                    Spacer()
+                    AISuggestionsButton(
+                        plugin: plugin,
+                        ownedPlugins: [plugin]
+                    )
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
 
                 Divider()
 

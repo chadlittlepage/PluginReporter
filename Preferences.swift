@@ -49,6 +49,17 @@ final class Preferences: ObservableObject {
     /// Which plugin styles are visible in the table/filter. Empty means "all".
     @Published var selectedStyles: Set<String> = []
 
+    // MARK: UI Font Size
+    /// Base font size offset for the entire UI (-5 to +5 pt increments)
+    /// Default is 0, which uses standard system sizes
+    @Published var uiFontSizeOffset: CGFloat = 0
+
+    // MARK: Font Size Helpers
+    /// Helper to get scaled font sizes
+    func scaledSize(_ baseSize: CGFloat) -> CGFloat {
+        return baseSize + uiFontSizeOffset
+    }
+
     // MARK: PDF Export Options (shown in Settings)
     @Published var pdfPage: PDFExportOptions.Page = .letter
     @Published var pdfLandscape: Bool = true  // Default to landscape

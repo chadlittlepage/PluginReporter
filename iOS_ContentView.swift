@@ -38,36 +38,13 @@ struct PluginListView: View {
     @State private var selectedPlugin: PluginItem?
 
     var filteredPlugins: [PluginItem] {
-        var plugins = cloudSync.plugins
-
-        // Apply search
-        if !searchText.isEmpty {
-            plugins = plugins.filter { plugin in
-                plugin.name.localizedCaseInsensitiveContains(searchText) ||
-                plugin.publisher.localizedCaseInsensitiveContains(searchText) ||
-                plugin.style.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-
-        // Apply format filters
-        if !prefs.selectedFormats.isEmpty {
-            plugins = plugins.filter { plugin in
-                guard let format = PluginFormat(rawValue: plugin.type) else { return false }
-                return prefs.selectedFormats.contains(format)
-            }
-        }
-
-        // Apply style filters
-        if !prefs.selectedStyles.isEmpty {
-            plugins = plugins.filter { prefs.selectedStyles.contains($0.style) }
-        }
-
-        // Apply publisher filters
-        if !prefs.selectedPublishers.isEmpty {
-            plugins = plugins.filter { prefs.selectedPublishers.contains($0.publisher) }
-        }
-
-        return plugins
+        return FastFilterEngine.filter(
+            plugins: cloudSync.plugins,
+            formats: prefs.selectedFormats,
+            publishers: prefs.selectedPublishers,
+            styles: prefs.selectedStyles,
+            searchText: searchText
+        )
     }
 
     var body: some View {

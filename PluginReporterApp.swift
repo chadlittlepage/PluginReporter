@@ -10,29 +10,55 @@ struct PluginReporterApp: App {
     @StateObject private var prefs = Preferences()
     @State private var sync = makeSyncServices(backend: .none) // CloudKit disabled until Apple ID is added to Xcode
     @StateObject private var zoomState = ZoomState()
+    @StateObject private var dashboardScheduler = DashboardScheduler.shared
 
     init() {
-        // Initialize Sentry for crash reporting and performance monitoring
-        SentrySDK.start { options in
-            options.dsn = "https://2e4766b1965fd54a27939749c41484e0@o4510140548055040.ingest.us.sentry.io/4510140566929408"
-            options.debug = false // Set to true for debugging
-            options.tracesSampleRate = 1.0 // Performance monitoring
-            options.environment = "production"
-            options.enableAutoSessionTracking = true
+        // Initialize Sentry for crash reporting (only if configured)
+        if let dsn = SentryConfig.dsn {
+            SentrySDK.start { options in
+                options.dsn = dsn
+                options.debug = false
+                options.tracesSampleRate = 1.0
+                options.environment = "production"
+                options.enableAutoSessionTracking = true
+            }
+            AppLogger.info("Sentry crash reporting initialized")
+        } else {
+            AppLogger.info("Sentry not configured - running without crash reporting")
         }
     }
 
     private func applyAppAppearance(_ appearance: Preferences.Appearance) {
         #if os(macOS)
+        let targetAppearance: NSAppearance?
         switch appearance {
         case .system:
-            NSApp.appearance = nil
+            targetAppearance = nil
         case .light:
-            NSApp.appearance = NSAppearance(named: .aqua)
+            targetAppearance = NSAppearance(named: .aqua)
         case .dark:
-            NSApp.appearance = NSAppearance(named: .darkAqua)
+            targetAppearance = NSAppearance(named: .darkAqua)
         case .space:
-            NSApp.appearance = NSAppearance(named: .darkAqua)  // Space mode uses dark appearance
+            targetAppearance = NSAppearance(named: .darkAqua)  // Space mode uses dark appearance
+        }
+
+        // Apply to main app
+        NSApp.appearance = targetAppearance
+
+        // Force update all windows to ensure they adopt the new appearance
+        // Exception: Keep Settings window always in dark mode and floating on top
+        for window in NSApp.windows {
+            // Keep Settings window in dark mode regardless of chosen appearance
+            if window.title.contains("Settings") {
+                window.appearance = NSAppearance(named: .darkAqua)
+                window.level = .floating  // Always float on top
+                window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+            } else {
+                window.appearance = targetAppearance
+            }
+            // Force the window to redraw with new appearance
+            window.invalidateShadow()
+            window.contentView?.needsDisplay = true
         }
         #endif
     }
@@ -43,7 +69,6 @@ struct PluginReporterApp: App {
                 .environmentObject(scanner)
                 .environmentObject(prefs)
                 .environmentObject(zoomState)
-                .id(prefs.appearance)
                 .preferredColorScheme(prefs.appearance.colorScheme)
                 .onAppear { applyAppAppearance(prefs.appearance) }
                 .onChange(of: prefs.appearance) { newValue in applyAppAppearance(newValue) }
@@ -53,6 +78,48 @@ struct PluginReporterApp: App {
                 }
                 .onAppear {
                     if prefs.cloudSyncEnabled { sync.preferences.startSync(prefs: prefs) }
+
+                    // Initialize dashboard reporting
+                    Task { @MainActor in
+                        let plugins = scanner.plugins.map { PluginItem(
+                            name: $0.name,
+                            publisher: $0.publisher,
+                            version: $0.version,
+                            type: $0.type,
+                            style: $0.style,
+                            architectures: $0.architectures,
+                            date: $0.date,
+                            sizeBytes: $0.sizeBytes,
+                            path: $0.path,
+                            runtimeRequirement: $0.runtimeRequirement,
+                            obsolete: $0.obsolete
+                        )}
+                        dashboardScheduler.updatePlugins(plugins)
+                    }
+
+                    // Auto-start scheduler if enabled
+                    if UserDefaults.standard.bool(forKey: "dashboard_enabled") {
+                        dashboardScheduler.start()
+                    }
+                }
+                .onChange(of: scanner.plugins) { newPlugins in
+                    // Update dashboard with latest plugin list
+                    Task { @MainActor in
+                        let plugins = newPlugins.map { PluginItem(
+                            name: $0.name,
+                            publisher: $0.publisher,
+                            version: $0.version,
+                            type: $0.type,
+                            style: $0.style,
+                            architectures: $0.architectures,
+                            date: $0.date,
+                            sizeBytes: $0.sizeBytes,
+                            path: $0.path,
+                            runtimeRequirement: $0.runtimeRequirement,
+                            obsolete: $0.obsolete
+                        )}
+                        dashboardScheduler.updatePlugins(plugins)
+                    }
                 }
         }
 
@@ -71,10 +138,25 @@ struct PluginReporterApp: App {
         #if os(macOS)
         Settings {
             SettingsView(prefs: prefs)
-                .id(prefs.appearance)
-                .preferredColorScheme(prefs.appearance.colorScheme)
-                .onAppear { applyAppAppearance(prefs.appearance) }
-                .onChange(of: prefs.appearance) { newValue in applyAppAppearance(newValue) }
+                .preferredColorScheme(.dark)  // Always use dark mode for Settings
+                .onAppear {
+                    applyAppAppearance(prefs.appearance)
+                    // Force Settings window to always use dark appearance and float on top
+                    if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
+                        settingsWindow.appearance = NSAppearance(named: .darkAqua)
+                        settingsWindow.level = .floating  // Always float on top
+                        settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+                    }
+                }
+                .onChange(of: prefs.appearance) { newValue in
+                    applyAppAppearance(newValue)
+                    // Keep Settings window in dark mode and floating on top
+                    if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
+                        settingsWindow.appearance = NSAppearance(named: .darkAqua)
+                        settingsWindow.level = .floating  // Always float on top
+                        settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+                    }
+                }
         }
         #endif
     }
@@ -85,27 +167,24 @@ class ZoomState: ObservableObject {
     @Published var scale: CGFloat = 1.0
 
     func zoomIn() {
-        print("🔍 ZOOM IN called - current: \(scale)")
         scale = min(scale + 0.1, 2.0)
-        print("🔍 New scale: \(scale)")
+        AppLogger.debug("Zoom in: scale = \(scale)")
         #if os(macOS)
         applyWindowScale()
         #endif
     }
 
     func zoomOut() {
-        print("🔍 ZOOM OUT called - current: \(scale)")
         scale = max(scale - 0.1, 0.5)
-        print("🔍 New scale: \(scale)")
+        AppLogger.debug("Zoom out: scale = \(scale)")
         #if os(macOS)
         applyWindowScale()
         #endif
     }
 
     func reset() {
-        print("🔍 RESET called")
         scale = 1.0
-        print("🔍 New scale: \(scale)")
+        AppLogger.debug("Zoom reset: scale = \(scale)")
         #if os(macOS)
         applyWindowScale()
         #endif
@@ -116,7 +195,7 @@ class ZoomState: ObservableObject {
         DispatchQueue.main.async {
             guard let window = NSApplication.shared.windows.first(where: { $0.isKeyWindow }),
                   let hostingView = window.contentView?.subviews.first(where: { String(describing: type(of: $0)).contains("HostingView") }) else {
-                print("❌ Could not find hosting view")
+                AppLogger.warning("Could not find hosting view for zoom")
                 return
             }
 
@@ -131,8 +210,7 @@ class ZoomState: ObservableObject {
 
             hostingView.bounds = scaledBounds
             hostingView.setBoundsSize(scaledBounds.size)
-
-            print("✅ Applied bounds scale: \(self.scale), new bounds: \(scaledBounds)")
+            AppLogger.debug("Applied zoom scale: \(self.scale)")
         }
     }
     #endif

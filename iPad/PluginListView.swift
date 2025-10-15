@@ -12,7 +12,7 @@ struct PluginListView: View {
     var onImport: (() -> Void)? = nil
     @Binding var filteredPluginsForExport: [PluginItem]
     @State private var searchText = ""
-    @State private var selectedFormat: String? = nil
+    @State private var selectedFormats: Set<String> = []
     @State private var selectedStyle: String? = nil
     @State private var selectedPublisher: String? = nil
     @State private var sortOrder: SortOrder = .name
@@ -58,22 +58,31 @@ struct PluginListView: View {
     private func computeFilteredAndSorted() {
         var result = plugins
 
-        // Apply search filter
+        // Apply search filter - search all fields
         if !searchText.isEmpty {
             let searchLower = searchText.lowercased()
             result = result.filter { plugin in
                 plugin.name.lowercased().contains(searchLower) ||
                 plugin.publisher.lowercased().contains(searchLower) ||
-                plugin.style.lowercased().contains(searchLower)
+                plugin.style.lowercased().contains(searchLower) ||
+                plugin.architectures.lowercased().contains(searchLower) ||
+                plugin.version.lowercased().contains(searchLower) ||
+                plugin.runtimeRequirement.lowercased().contains(searchLower) ||
+                plugin.type.lowercased() == searchLower  // Exact match for type to avoid VST matching VST3
             }
         }
 
-        // Apply format filter
-        if let format = selectedFormat {
-            if format == "OBSLT" {
-                result = result.filter { $0.obsolete }
-            } else {
-                result = result.filter { $0.type.uppercased() == format }
+        // Apply format filter - multi-select with OR logic
+        if !selectedFormats.isEmpty {
+            result = result.filter { plugin in
+                for format in selectedFormats {
+                    if format == "OBSLT" {
+                        if plugin.obsolete { return true }
+                    } else {
+                        if plugin.type.uppercased() == format { return true }
+                    }
+                }
+                return false
             }
         }
 
@@ -168,7 +177,16 @@ struct PluginListView: View {
     }
 
     var uniqueFormats: [String] {
-        Array(Set(plugins.map { $0.type.uppercased() })).sorted()
+        var types = Set(plugins.map { $0.type.uppercased() })
+        // Always include OBSLT as an option
+        types.insert("OBSLT")
+        // Sort in same order as bar graph: AU, VST, VST3, AAX, CLAP, LV2, OBSLT
+        let order = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2", "OBSLT"]
+        return Array(types).sorted { format1, format2 in
+            let index1 = order.firstIndex(of: format1) ?? Int.max
+            let index2 = order.firstIndex(of: format2) ?? Int.max
+            return index1 < index2
+        }
     }
 
     var uniqueStyles: [String] {
@@ -235,8 +253,8 @@ struct PluginListView: View {
                                 SortBadge(title: sortOrderBadge, onRemove: { sortOrder = .name })
                             }
 
-                            if let format = selectedFormat {
-                                FilterChip(title: format, onRemove: { selectedFormat = nil })
+                            ForEach(Array(selectedFormats), id: \.self) { format in
+                                FilterChip(title: format, onRemove: { selectedFormats.remove(format) })
                             }
                             if let style = selectedStyle {
                                 FilterChip(title: style, onRemove: { selectedStyle = nil })
@@ -307,7 +325,7 @@ struct PluginListView: View {
                 filteredPluginsForExport = newValue
             }
             .onChange(of: searchText) { _ in computeFilteredAndSorted() }
-            .onChange(of: selectedFormat) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedFormats) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedStyle) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
@@ -423,8 +441,8 @@ struct PluginListView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                if selectedFormat != nil {
-                                    Button(action: { selectedFormat = nil }) {
+                                if !selectedFormats.isEmpty {
+                                    Button(action: { selectedFormats.removeAll() }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
@@ -436,7 +454,11 @@ struct PluginListView: View {
                         ) {
                             ForEach(uniqueFormats, id: \.self) { format in
                                 Button(action: {
-                                    selectedFormat = selectedFormat == format ? nil : format
+                                    if selectedFormats.contains(format) {
+                                        selectedFormats.remove(format)
+                                    } else {
+                                        selectedFormats.insert(format)
+                                    }
                                 }) {
                                     HStack {
                                         Text(format)
@@ -446,7 +468,7 @@ struct PluginListView: View {
                                                 .foregroundColor(.secondary)
                                                 .font(.caption)
                                         }
-                                        if selectedFormat == format {
+                                        if selectedFormats.contains(format) {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .foregroundColor(ColorUtilities.colorForFormat(format))
                                         }
@@ -530,7 +552,7 @@ struct PluginListView: View {
                         Section {
                             Button(role: .destructive, action: {
                                 sortOrder = .name
-                                selectedFormat = nil
+                                selectedFormats.removeAll()
                                 selectedStyle = nil
                                 selectedPublisher = nil
                             }) {
@@ -548,13 +570,14 @@ struct PluginListView: View {
     }
 
     private var hasActiveFilters: Bool {
-        selectedFormat != nil || selectedStyle != nil || selectedPublisher != nil
+        !selectedFormats.isEmpty || selectedStyle != nil || selectedPublisher != nil
     }
 
     private var statsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .center, spacing: 12) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                Spacer()
+                VStack(alignment: .center, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(hasActiveFilters ? "Filtered Plugins" : "Plugins")
                             .font(.headline)
@@ -592,10 +615,14 @@ struct PluginListView: View {
                         count: item.count,
                         maxCount: counts.max(by: { $0.count < $1.count })?.count ?? 1,
                         color: ColorUtilities.colorForFormat(item.format),
-                        isSelected: selectedFormat == item.format
+                        isSelected: selectedFormats.contains(item.format)
                     )
                     .onTapGesture {
-                        selectedFormat = selectedFormat == item.format ? nil : item.format
+                        if selectedFormats.contains(item.format) {
+                            selectedFormats.remove(item.format)
+                        } else {
+                            selectedFormats.insert(item.format)
+                        }
                     }
                 }
             }
@@ -607,7 +634,7 @@ struct PluginListView: View {
     }
 
     private var dynamicFormatCounts: [(format: String, count: Int)] {
-        let pluginsToCount = selectedFormat != nil || selectedStyle != nil || selectedPublisher != nil ? filteredAndSortedPlugins : plugins
+        let pluginsToCount = !selectedFormats.isEmpty || selectedStyle != nil || selectedPublisher != nil ? filteredAndSortedPlugins : plugins
 
         var counts: [String: Int] = [
             "AU": 0,
@@ -642,7 +669,7 @@ struct SectionIndexView: View {
     @State private var selectedSection: String?
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 8) {
             ForEach(sections, id: \.self) { section in
                 Text(section)
                     .font(.system(size: 10, weight: .medium))

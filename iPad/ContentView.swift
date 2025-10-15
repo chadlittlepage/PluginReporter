@@ -76,8 +76,7 @@ struct ContentView: View {
     }
 
     func loadPluginsFromFile() {
-        // Reload from shared storage with debug info
-        print("📱 iPad loadPluginsFromFile() called")
+        AppLogger.debug("iPad loadPluginsFromFile called")
         do {
             let loadedPlugins = try SharedStorage.loadPlugins()
             plugins = loadedPlugins
