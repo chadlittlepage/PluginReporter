@@ -27,7 +27,7 @@ struct PluginListView: View {
     }
 
     // Consolidated plugin structure
-    struct ConsolidatedPlugin: Identifiable {
+    struct ConsolidatedPlugin: Identifiable, Hashable {
         let id = UUID()
         let name: String
         let publisher: String
@@ -35,6 +35,15 @@ struct PluginListView: View {
         let types: [String]
         let isObsolete: Bool
         let originalPlugins: [PluginItem]
+
+        // Hashable conformance
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+
+        static func == (lhs: ConsolidatedPlugin, rhs: ConsolidatedPlugin) -> Bool {
+            lhs.id == rhs.id
+        }
     }
 
     // SPEED: Return cached value directly
@@ -238,7 +247,7 @@ struct PluginListView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Stats Card
                 statsCard
@@ -293,7 +302,7 @@ struct PluginListView: View {
                                 ForEach(sectionedPlugins, id: \.key) { section in
                                     Section(header: EmptyView()) {
                                         ForEach(section.plugins) { consolidated in
-                                            NavigationLink(destination: ConsolidatedPluginDetailView(consolidated: consolidated)) {
+                                            NavigationLink(value: consolidated) {
                                                 ConsolidatedPluginRow(consolidated: consolidated)
                                             }
                                             .listRowBackground(Color.clear)
@@ -553,6 +562,9 @@ struct PluginListView: View {
                             .accessibilityLabel("Filter and sort options")
                     }
                 }
+            }
+            .navigationDestination(for: ConsolidatedPlugin.self) { consolidated in
+                ConsolidatedPluginDetailView(consolidated: consolidated)
             }
             .onChange(of: filteredAndSortedPlugins) { newValue in
                 filteredPluginsForExport = newValue
