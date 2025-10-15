@@ -1,7 +1,7 @@
 # 🛟 Safe Restore Guide
 ## How to Restore Your App Store Ready Version
 
-**Backup Created**: October 14, 2024
+**Backup Created**: October 14, 2025
 **Version Tag**: v1.0-app-store-ready
 **Status**: App Store Ready (95%)
 
@@ -17,7 +17,7 @@ You now have **TWO independent backups** of your App Store-ready code:
 **Location**: Git repository
 
 ### 2. Physical Backup (Safest)
-**Folder**: `/Users/chadlittlepage/Documents/APPs/PluginReporter_BACKUP_AppStoreReady_Oct14_2024`
+**Folder**: `/Users/chadlittlepage/Documents/APPs/PluginReporter_BACKUP_AppStoreReady_Oct14_2025`
 **Size**: 2.1 GB
 **Complete**: Full copy including build artifacts
 
@@ -63,7 +63,7 @@ cd /Users/chadlittlepage/Documents/APPs
 mv PluginReporter PluginReporter_BROKEN_$(date +%Y%m%d)
 
 # 2. Restore from backup
-cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2024 PluginReporter
+cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2025 PluginReporter
 
 # 3. Open in Xcode
 open PluginReporter/PluginReporter.xcodeproj
@@ -166,7 +166,7 @@ git checkout v1.0-app-store-ready -- .
 ```bash
 cd /Users/chadlittlepage/Documents/APPs
 rm -rf PluginReporter
-cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2024 PluginReporter
+cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2025 PluginReporter
 ```
 
 ---
@@ -229,12 +229,12 @@ git reset --hard checkpoint-before-big-change
 ### Available Restore Points:
 
 **1. Git Tag: v1.0-app-store-ready** ⭐ (Use this)
-- Date: October 14, 2024
+- Date: October 14, 2025
 - Status: App Store Ready (95%)
 - Changes: 114 files modified, 8599 insertions
 
 **2. Physical Backup Folder:**
-- Path: `/Users/chadlittlepage/Documents/APPs/PluginReporter_BACKUP_AppStoreReady_Oct14_2024`
+- Path: `/Users/chadlittlepage/Documents/APPs/PluginReporter_BACKUP_AppStoreReady_Oct14_2025`
 - Size: 2.1 GB
 - Complete: Yes (includes DerivedData)
 
@@ -273,7 +273,7 @@ If this works → ✅ Your restore process is working!
 ## 💡 PRO TIPS
 
 **1. Never delete the backup folder**
-Keep `PluginReporter_BACKUP_AppStoreReady_Oct14_2024` as your ultimate safety net.
+Keep `PluginReporter_BACKUP_AppStoreReady_Oct14_2025` as your ultimate safety net.
 
 **2. Make new backups before major changes**
 ```bash
@@ -320,7 +320,7 @@ git diff v1.0-app-store-ready
 ```bash
 cd /Users/chadlittlepage/Documents/APPs
 rm -rf PluginReporter
-cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2024 PluginReporter
+cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2025 PluginReporter
 ```
 
 ---

@@ -131,7 +131,7 @@ struct iOS_SettingsView: View {
                 VStack(alignment: .center, spacing: 8) {
                     Text("Plugin Reporter")
                         .font(.headline)
-                    Text("© 2024 Chad Littlepage")
+                    Text("© 2025 Chad Littlepage")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

@@ -1,7 +1,7 @@
 # ✅ App Store Submission Checklist
 ## Plugin Reporter - Final Pre-Submission Guide
 
-**Last Updated**: October 14, 2024
+**Last Updated**: October 14, 2025
 **Target Version**: 1.0.0 (Build 1)
 
 ---

@@ -13,7 +13,7 @@
    - Restore anytime with: `git reset --hard v1.0-app-store-ready`
 
 **2. Physical Backup (Ultimate Safety Net)**:
-   - Location: `/Users/chadlittlepage/Documents/APPs/PluginReporter_BACKUP_AppStoreReady_Oct14_2024`
+   - Location: `/Users/chadlittlepage/Documents/APPs/PluginReporter_BACKUP_AppStoreReady_Oct14_2025`
    - Size: 2.1 GB
    - Use if git fails
 
@@ -106,7 +106,7 @@ git checkout -b development
 ```bash
 cd /Users/chadlittlepage/Documents/APPs
 rm -rf PluginReporter
-cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2024 PluginReporter
+cp -R PluginReporter_BACKUP_AppStoreReady_Oct14_2025 PluginReporter
 cd PluginReporter
 git checkout -b development
 ```
