@@ -14,7 +14,10 @@ struct PluginReporterApp: App {
 
     init() {
         // Initialize Sentry for crash reporting (only if configured)
-        if let dsn = SentryConfig.dsn {
+        // Read DSN directly from Info.plist to avoid dependency on SentryConfig file
+        if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
+           !dsn.isEmpty,
+           !dsn.contains("YOUR_") {
             SentrySDK.start { options in
                 options.dsn = dsn
                 options.debug = false
