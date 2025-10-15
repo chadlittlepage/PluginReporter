@@ -127,7 +127,7 @@ struct FeatureRequestView: View {
         .padding(.vertical, 20)
         .background(Color(red: 24/255, green: 24/255, blue: 26/255))
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .cancellationAction) {
                 Button("Done") {
                     dismiss()
                 }
