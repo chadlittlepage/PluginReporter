@@ -77,22 +77,74 @@ struct ContentView: View {
         }
     }
     
-    // SPEED: Real bar graph using cached counts
+    // SPEED: Real bar graph using cached counts - CLICKABLE to filter!
     private var realBarGraph: some View {
         let counts = cachedBarCounts  // Use cached value instead of recalculating!
         let isEmpty = scanner.plugins.isEmpty
         let total = Swift.max(1, counts.au + counts.vst + counts.vst3 + counts.aax + counts.clap + counts.lv2 + counts.obsolete)
 
         return VStack(alignment: .leading, spacing: 6) {
-            BarRow(label: "AU",    value: counts.au,       fraction: isEmpty ? 0.0 : Double(counts.au) / Double(total), color: .blue)
-            BarRow(label: "VST",   value: counts.vst,      fraction: isEmpty ? 0.0 : Double(counts.vst) / Double(total), color: .green)
-            BarRow(label: "VST3",  value: counts.vst3,     fraction: isEmpty ? 0.0 : Double(counts.vst3) / Double(total), color: .teal)
-            BarRow(label: "AAX",   value: counts.aax,      fraction: isEmpty ? 0.0 : Double(counts.aax) / Double(total), color: .purple)
-            BarRow(label: "CLAP",  value: counts.clap,     fraction: isEmpty ? 0.0 : Double(counts.clap) / Double(total), color: .orange)
-            BarRow(label: "LV2",   value: counts.lv2,      fraction: isEmpty ? 0.0 : Double(counts.lv2) / Double(total), color: .gray)
-            BarRow(label: "OBSLT", value: counts.obsolete, fraction: isEmpty ? 0.0 : Double(counts.obsolete) / Double(total), color: .red)
+            BarRow(
+                label: "AU", value: counts.au,
+                fraction: isEmpty ? 0.0 : Double(counts.au) / Double(total),
+                color: .blue,
+                onTap: { toggleFormat(.AU) },
+                isSelected: prefs.selectedFormats.contains(.AU)
+            )
+            BarRow(
+                label: "VST", value: counts.vst,
+                fraction: isEmpty ? 0.0 : Double(counts.vst) / Double(total),
+                color: .green,
+                onTap: { toggleFormat(.VST) },
+                isSelected: prefs.selectedFormats.contains(.VST)
+            )
+            BarRow(
+                label: "VST3", value: counts.vst3,
+                fraction: isEmpty ? 0.0 : Double(counts.vst3) / Double(total),
+                color: .teal,
+                onTap: { toggleFormat(.VST3) },
+                isSelected: prefs.selectedFormats.contains(.VST3)
+            )
+            BarRow(
+                label: "AAX", value: counts.aax,
+                fraction: isEmpty ? 0.0 : Double(counts.aax) / Double(total),
+                color: .purple,
+                onTap: { toggleFormat(.AAX) },
+                isSelected: prefs.selectedFormats.contains(.AAX)
+            )
+            BarRow(
+                label: "CLAP", value: counts.clap,
+                fraction: isEmpty ? 0.0 : Double(counts.clap) / Double(total),
+                color: .orange,
+                onTap: { toggleFormat(.CLAP) },
+                isSelected: prefs.selectedFormats.contains(.CLAP)
+            )
+            BarRow(
+                label: "LV2", value: counts.lv2,
+                fraction: isEmpty ? 0.0 : Double(counts.lv2) / Double(total),
+                color: .gray,
+                onTap: { toggleFormat(.LV2) },
+                isSelected: prefs.selectedFormats.contains(.LV2)
+            )
+            BarRow(
+                label: "OBSLT", value: counts.obsolete,
+                fraction: isEmpty ? 0.0 : Double(counts.obsolete) / Double(total),
+                color: .red,
+                onTap: { toggleFormat(.OBSLT) },
+                isSelected: prefs.selectedFormats.contains(.OBSLT)
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // Toggle format filter when bar is clicked
+    private func toggleFormat(_ format: PluginFormat) {
+        if prefs.selectedFormats.contains(format) {
+            prefs.selectedFormats.remove(format)
+        } else {
+            prefs.selectedFormats.insert(format)
+        }
+        updateDisplayedPlugins()
     }
 
     var body: some View {
@@ -630,38 +682,57 @@ private struct BarRow: View {
     let value: Int
     let fraction: Double
     let color: Color
+    var onTap: (() -> Void)? = nil  // Optional click handler
+    var isSelected: Bool = false     // Show if this format is filtered
 
     var body: some View {
         HStack(spacing: 8) {
             Text(label)
                 .frame(width: 50, alignment: .leading)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSelected ? color : .secondary)
+                .fontWeight(isSelected ? .bold : .regular)
 
             ZStack(alignment: .leading) {
                 // Background - fills available space
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.secondary.opacity(0.15))
-                    .frame(height: 6)
+                    .frame(height: isSelected ? 8 : 6)
 
                 // Foreground - scales with fraction
                 GeometryReader { geometry in
                     RoundedRectangle(cornerRadius: 3)
                         .fill(color)
-                        .frame(width: geometry.size.width * fraction, height: 6)
+                        .frame(width: geometry.size.width * fraction, height: isSelected ? 8 : 6)
                 }
-                .frame(height: 6)
+                .frame(height: isSelected ? 8 : 6)
             }
             .frame(maxWidth: .infinity)
 
             Text("\(value)")
                 .font(.caption2)
+                .fontWeight(isSelected ? .bold : .regular)
                 .foregroundStyle(.secondary)
                 .frame(width: 40, alignment: .trailing)
                 .monospacedDigit()
         }
         .padding(.horizontal, 16)
         .frame(height: 14)
+        .contentShape(Rectangle())  // Make entire row tappable
+        .onTapGesture {
+            onTap?()
+        }
+        .onHover { isHovering in
+            #if os(macOS)
+            if onTap != nil {
+                if isHovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            #endif
+        }
     }
 }
 
