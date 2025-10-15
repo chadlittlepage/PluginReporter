@@ -139,26 +139,23 @@ struct PluginReporterApp: App {
         }
 
         #if os(macOS)
-        Settings {
+        Window("Settings", id: "settings") {
             SettingsView(prefs: prefs)
-                .preferredColorScheme(.dark)  // Always use dark mode for Settings
+                .preferredColorScheme(.dark)
                 .onAppear {
                     applyAppAppearance(prefs.appearance)
-                    // Force Settings window to always use dark appearance and float on top
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
+                        if let settingsWindow = NSApp.windows.first(where: { $0.title == "Settings" }) {
                             settingsWindow.appearance = NSAppearance(named: .darkAqua)
                             settingsWindow.level = .floating
                             settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-                            // Explicitly set resizable style mask
                             settingsWindow.styleMask = [.titled, .closable, .resizable]
                         }
                     }
                 }
                 .onChange(of: prefs.appearance) { newValue in
                     applyAppAppearance(newValue)
-                    // Keep Settings window in dark mode and floating on top
-                    if let settingsWindow = NSApp.windows.first(where: { $0.title.contains("Settings") }) {
+                    if let settingsWindow = NSApp.windows.first(where: { $0.title == "Settings" }) {
                         settingsWindow.appearance = NSAppearance(named: .darkAqua)
                         settingsWindow.level = .floating
                         settingsWindow.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
@@ -167,6 +164,8 @@ struct PluginReporterApp: App {
                 }
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 900, height: 1000)
+        .keyboardShortcut(",", modifiers: .command)
         #endif
     }
 }
