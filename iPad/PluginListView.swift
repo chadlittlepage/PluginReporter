@@ -13,6 +13,7 @@ struct PluginListView: View {
     @Binding var filteredPluginsForExport: [PluginItem]
     @State private var searchText = ""
     @State private var selectedFormats: Set<String> = []
+    @State private var selectedStarRatings: Set<Int> = []
     @State private var selectedStyle: String? = nil
     @State private var selectedPublisher: String? = nil
     @State private var sortOrder: SortOrder = .name
@@ -107,6 +108,15 @@ struct PluginListView: View {
         // Apply publisher filter
         if let publisher = selectedPublisher {
             result = result.filter { $0.publisher == publisher }
+        }
+
+        // Apply star rating filter
+        if !selectedStarRatings.isEmpty {
+            let ratingsManager = RatingsManager.shared
+            result = result.filter { plugin in
+                let rating = ratingsManager.getRating(for: plugin.path)
+                return selectedStarRatings.contains(rating)
+            }
         }
 
         // Apply sorting
@@ -286,6 +296,9 @@ struct PluginListView: View {
                             ForEach(Array(selectedFormats), id: \.self) { format in
                                 FilterChip(title: format, onRemove: { selectedFormats.remove(format) })
                             }
+                            ForEach(Array(selectedStarRatings).sorted(by: >), id: \.self) { rating in
+                                FilterChip(title: "\(rating)★", onRemove: { selectedStarRatings.remove(rating) })
+                            }
                             if let style = selectedStyle {
                                 FilterChip(title: style, onRemove: { selectedStyle = nil })
                             }
@@ -360,6 +373,7 @@ struct PluginListView: View {
             }
             .onChange(of: searchText) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedFormats) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedStarRatings) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedStyle) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
@@ -488,14 +502,18 @@ struct PluginListView: View {
                                         selectedFormats.insert(format)
                                     }
                                 }) {
-                                    HStack {
+                                    HStack(spacing: 12) {
                                         Text(format)
+                                            .font(.system(size: 15))
+
                                         Spacer()
+
                                         if let count = formatCounts[format] {
                                             Text("\(count)")
                                                 .foregroundColor(.secondary)
                                                 .font(.caption)
                                         }
+
                                         if selectedFormats.contains(format) {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .foregroundColor(ColorUtilities.colorForFormat(format))
@@ -503,6 +521,114 @@ struct PluginListView: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
+                            }
+                        }
+
+                        Section(header:
+                            HStack {
+                                Text("Filter by Stars")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                if !selectedStarRatings.isEmpty {
+                                    Button(action: { selectedStarRatings.removeAll() }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal)
+                        ) {
+                            Button(action: {
+                                if selectedStarRatings.contains(5) {
+                                    selectedStarRatings.remove(5)
+                                } else {
+                                    selectedStarRatings.insert(5)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️⭐️⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(5) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(4) {
+                                    selectedStarRatings.remove(4)
+                                } else {
+                                    selectedStarRatings.insert(4)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(3) {
+                                    selectedStarRatings.remove(3)
+                                } else {
+                                    selectedStarRatings.insert(3)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(3) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(2) {
+                                    selectedStarRatings.remove(2)
+                                } else {
+                                    selectedStarRatings.insert(2)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(2) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(1) {
+                                    selectedStarRatings.remove(1)
+                                } else {
+                                    selectedStarRatings.insert(1)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(1) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
                             }
                         }
 
@@ -581,6 +707,7 @@ struct PluginListView: View {
                             Button(role: .destructive, action: {
                                 sortOrder = .name
                                 selectedFormats.removeAll()
+                                selectedStarRatings.removeAll()
                                 selectedStyle = nil
                                 selectedPublisher = nil
                             }) {

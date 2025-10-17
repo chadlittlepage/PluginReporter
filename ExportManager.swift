@@ -1,5 +1,6 @@
 // ExportManager.swift — macOS-only helpers for exporting PluginItem rows
 import Foundation
+import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
 import CoreGraphics
@@ -253,7 +254,11 @@ struct ExportManager {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = suggestedName
-        panel.allowedFileTypes = allowedFileTypes
+        if #available(macOS 12.0, *) {
+            panel.allowedContentTypes = allowedFileTypes.compactMap { UTType(filenameExtension: $0) }
+        } else {
+            panel.allowedFileTypes = allowedFileTypes
+        }
         panel.isExtensionHidden = false
         let resp = panel.runModal()
         return resp == .OK ? panel.url : nil
@@ -263,7 +268,11 @@ struct ExportManager {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = suggestedName
-        panel.allowedFileTypes = allowedFileTypes
+        if #available(macOS 12.0, *) {
+            panel.allowedContentTypes = allowedFileTypes.compactMap { UTType(filenameExtension: $0) }
+        } else {
+            panel.allowedFileTypes = allowedFileTypes
+        }
         panel.isExtensionHidden = false
         // Present as app-modal (not attached as a sheet) to avoid nested sheet conflicts
         panel.begin { resp in

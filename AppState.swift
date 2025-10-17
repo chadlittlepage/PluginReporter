@@ -13,6 +13,23 @@ import AppKit
 final class AppState: ObservableObject {
     @Published var selected: [PluginItem] = []   // currently selected rows in the table
 
+    // Track selected IDs to persist selection across filter changes
+    var selectedIDs: Set<UUID> = []
+
+    // Update ID set when selection changes (called from onChange)
+    func updateSelectionIDs() {
+        selectedIDs = Set(selected.map(\.id))
+    }
+
+    // Restore selection from available plugins based on stored IDs
+    func restoreSelection(from availablePlugins: [PluginItem]) {
+        // Only update if the selection would actually change to avoid loops
+        let restoredSelection = availablePlugins.filter { selectedIDs.contains($0.id) }
+        if Set(restoredSelection.map(\.id)) != Set(selected.map(\.id)) {
+            selected = restoredSelection
+        }
+    }
+
     // MARK: Clipboard
 
     func copyPaths() {

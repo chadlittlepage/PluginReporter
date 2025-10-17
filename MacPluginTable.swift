@@ -3,31 +3,21 @@ import Foundation
 #if os(macOS)
 import AppKit
 
-struct VersionCell: View {
-    let version: String
-    var body: some View { Text(version) }
-}
-
-struct DateCell: View {
-    let text: String
-    var body: some View { Text(text) }
-}
-
-struct SizeCell: View {
-    let text: String
-    var body: some View { Text(text) }
-}
-
 @MainActor struct MacPluginTable: View {
     let rows: [PluginItem]
     @Binding var selection: [PluginItem]
     @Binding var sortStatus: String
+    var onPluginsDeleted: (() -> Void)? = nil
 
     @State private var macSelection = Set<UUID>()
+    @FocusState private var isTableFocused: Bool
     @State private var lastAnchorIndex: Int? = nil
     @State private var lastEdgeIndex: Int? = nil  // Track the moving edge separately
     @State private var lastScrollTime: Date = .distantPast
-//    @State private var sortOrder: [SortDescriptor<PluginItem>] = []
+
+    // MARK: Uninstall state
+    @State private var showUninstallConfirmation = false
+    @State private var pluginsToUninstall: [AppPluginItem] = []
 
     // SPEED: Cache sorted rows to avoid re-sorting on every render
     @State private var cachedDisplayedRows: [PluginItem] = []
@@ -39,16 +29,18 @@ struct SizeCell: View {
     @EnvironmentObject private var prefs: Preferences
 
     // MARK: Resizable column widths - Set to match user's preferred layout
-    @State private var wName: CGFloat = 190        // Wider for plugin names
-    @State private var wPublisher: CGFloat = 120   // Good for most publisher names
+    @State private var wRating: CGFloat = 90       // For 5-star rating (first column)
+    @State private var wName: CGFloat = 160        // Wider for plugin names
+    @State private var wPublisher: CGFloat = 140   // Good for most publisher names
     @State private var wType: CGFloat = 60         // Narrower since types are short
-    @State private var wStyle: CGFloat = 100       // For plugin category/style
-    @State private var wVersion: CGFloat = 80      // Adequate for version numbers
+    @State private var wStyle: CGFloat = 90        // For plugin category/style
+    @State private var wVersion: CGFloat = 90      // Adequate for version numbers
     @State private var wArch: CGFloat = 120        // Good for "Apple, Intel 64" etc
-    @State private var wDate: CGFloat = 100        // Sufficient for dates
-    @State private var wSize: CGFloat = 70         // Narrower for file sizes
+    @State private var wDate: CGFloat = 110        // Sufficient for dates
+    @State private var wSize: CGFloat = 80         // Narrower for file sizes
     @State private var wRequirement: CGFloat = 110 // Good for "Universal" etc
-    @State private var wObsolete: CGFloat = 70     // Narrow for Yes/No
+    @State private var wObsolete: CGFloat = 90     // Narrow for Yes/No
+    @State private var wNotes: CGFloat = 80        // For user notes
     @State private var wPath: CGFloat = 300        // Narrower so vertical scrollbar sits near regular columns
     private let dividerWidth: CGFloat = 1
     private let minColWidth: CGFloat = 30          // Allow columns to squeeze much narrower
@@ -74,7 +66,7 @@ struct SizeCell: View {
     private let rowDividerHeight: CGFloat = 16
 
     // MARK: Manual sorting (reliable across macOS versions)
-    enum SortKey: String, CaseIterable, Identifiable { case name, publisher, type, style, version, arch, date, size, requirement, obsolete, path; var id: String { rawValue } }
+    enum SortKey: String, CaseIterable, Identifiable { case rating, name, publisher, type, style, version, arch, date, size, requirement, obsolete, path; var id: String { rawValue } }
     @State private var manualSortKey: SortKey = .name
     @State private var manualAscending: Bool = true
 
@@ -121,37 +113,6 @@ struct SizeCell: View {
         #endif
     }
 
-    private func defaultSorted(_ input: [PluginItem]) -> [PluginItem] {
-        return input.sorted { (a: PluginItem, b: PluginItem) -> Bool in
-            if a.name != b.name { return a.name < b.name }
-            return a.versionSortKey < b.versionSortKey
-        }
-    }
-
-    private func applySort(_ input: [PluginItem], using order: [SortDescriptor<PluginItem>]) -> [PluginItem] {
-        return input.sorted(using: order)
-    }
-    
-    private func applyPrettySort(_ input: [PluginItem], using order: [SortDescriptor<PluginItem>]) -> [PluginItem] {
-        guard !order.isEmpty else { return defaultSorted(input) }
-        return input.sorted(using: order)
-    }
-    
-    private func sortRows(_ input: [PluginItem], by order: [SortDescriptor<PluginItem>]) -> [PluginItem] {
-        guard let first = order.first else { return defaultSorted(input) }
-        let d = String(describing: first).lowercased()
-        let ascending = !d.contains("reverse")
-        if d.contains("datestring") {
-            return input.sorted { a, b in ascending ? (a.tableDateSortKey < b.tableDateSortKey) : (a.tableDateSortKey > b.tableDateSortKey) }
-        } else if d.contains("sizestring") {
-            return input.sorted { a, b in ascending ? (a.sizeBytesSortKey < b.sizeBytesSortKey) : (a.sizeBytesSortKey > b.sizeBytesSortKey) }
-        } else if d.contains("version") { // covers both version and versionSortKey
-            return input.sorted { a, b in ascending ? (a.versionSortKey < b.versionSortKey) : (a.versionSortKey > b.versionSortKey) }
-        } else {
-            return input.sorted(using: order)
-        }
-    }
-    
     private func revealInFinder(ids: Set<UUID>) {
         #if os(macOS)
         let urls = rows.filter { ids.contains($0.id) }.map { URL(fileURLWithPath: $0.path) }
@@ -159,10 +120,213 @@ struct SizeCell: View {
         NSWorkspace.shared.activateFileViewerSelecting(urls)
         #endif
     }
+
+    // MARK: Bulk editing operations
+    private func applyBulkRating(_ rating: Int, to plugins: [PluginItem]) {
+        let ratingsManager = RatingsManager.shared
+        for plugin in plugins {
+            ratingsManager.setRating(forName: plugin.name, rating: rating)
+        }
+        print("⭐ Set rating \(rating) for \(plugins.count) plugins")
+    }
+
+    private func applyBulkTag(_ tag: String, to plugins: [PluginItem]) {
+        let tagsManager = TagsManager.shared
+        let normalizedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalizedTag.isEmpty else { return }
+
+        for plugin in plugins {
+            tagsManager.addTag(normalizedTag, to: plugin.path)
+        }
+        print("🏷️ Added tag '\(normalizedTag)' to \(plugins.count) plugins")
+    }
+
+    private func showBulkTagPrompt(for plugins: [PluginItem]) {
+        #if os(macOS)
+        let alert = NSAlert()
+        alert.messageText = "Add Tag to \(plugins.count) Plugins"
+        alert.informativeText = "Enter a tag to add to all selected plugins:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        input.placeholderString = "Enter tag name..."
+        alert.accessoryView = input
+
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let tag = input.stringValue
+            applyBulkTag(tag, to: plugins)
+        }
+        #endif
+    }
+
+    private func showBulkPublisherPrompt(for plugins: [PluginItem]) {
+        #if os(macOS)
+        let metadataManager = MetadataManager.shared
+
+        // Get current publishers from selected plugins
+        let currentPublishers = Set(plugins.map { metadataManager.getDisplayPublisher(for: $0) })
+        let placeholderText: String
+        if currentPublishers.count == 1, let publisher = currentPublishers.first {
+            placeholderText = "Current: \(publisher)"
+        } else {
+            placeholderText = "Multiple values: \(currentPublishers.prefix(3).joined(separator: ", "))\(currentPublishers.count > 3 ? "..." : "")"
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Set Publisher for \(plugins.count) Plugins"
+        alert.informativeText = "Enter publisher name to apply to all selected plugins:"
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = placeholderText
+        alert.accessoryView = input
+
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let publisher = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !publisher.isEmpty else { return }
+
+            for plugin in plugins {
+                let override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+                var updated = override
+                updated.publisher = publisher
+                metadataManager.setOverride(for: plugin.path, override: updated)
+            }
+            print("✏️ Set publisher '\(publisher)' for \(plugins.count) plugins")
+        }
+        #endif
+    }
+
+    private func showBulkVersionPrompt(for plugins: [PluginItem]) {
+        #if os(macOS)
+        let metadataManager = MetadataManager.shared
+
+        // Get current versions from selected plugins
+        let currentVersions = Set(plugins.map { metadataManager.getDisplayVersion(for: $0) })
+        let placeholderText: String
+        if currentVersions.count == 1, let version = currentVersions.first {
+            placeholderText = "Current: \(version)"
+        } else {
+            placeholderText = "Multiple values: \(currentVersions.prefix(3).joined(separator: ", "))\(currentVersions.count > 3 ? "..." : "")"
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Set Version for \(plugins.count) Plugins"
+        alert.informativeText = "Enter version to apply to all selected plugins:"
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = placeholderText
+        alert.accessoryView = input
+
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let version = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !version.isEmpty else { return }
+
+            for plugin in plugins {
+                let override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+                var updated = override
+                updated.version = version
+                metadataManager.setOverride(for: plugin.path, override: updated)
+            }
+            print("✏️ Set version '\(version)' for \(plugins.count) plugins")
+        }
+        #endif
+    }
+
+    private func showBulkStylePrompt(for plugins: [PluginItem]) {
+        #if os(macOS)
+        let metadataManager = MetadataManager.shared
+
+        // Get current styles from selected plugins
+        let currentStyles = Set(plugins.map { metadataManager.getDisplayStyle(for: $0) })
+        let placeholderText: String
+        if currentStyles.count == 1, let style = currentStyles.first {
+            placeholderText = "Current: \(style)"
+        } else {
+            placeholderText = "Multiple values: \(currentStyles.prefix(3).joined(separator: ", "))\(currentStyles.count > 3 ? "..." : "")"
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Set Style for \(plugins.count) Plugins"
+        alert.informativeText = "Enter style/category to apply to all selected plugins:"
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = placeholderText
+        alert.accessoryView = input
+
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let style = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !style.isEmpty else { return }
+
+            for plugin in plugins {
+                let override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+                var updated = override
+                updated.style = style
+                metadataManager.setOverride(for: plugin.path, override: updated)
+            }
+            print("✏️ Set style '\(style)' for \(plugins.count) plugins")
+        }
+        #endif
+    }
+
+    private func showBulkNotesPrompt(for plugins: [PluginItem]) {
+        #if os(macOS)
+        let alert = NSAlert()
+        alert.messageText = "Add Notes to \(plugins.count) Plugins"
+        alert.informativeText = "Enter notes to add to all selected plugins:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
+        input.isEditable = true
+        input.isSelectable = true
+        input.font = NSFont.systemFont(ofSize: 13)
+
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
+        scrollView.documentView = input
+        scrollView.hasVerticalScroller = true
+
+        alert.accessoryView = scrollView
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let notes = input.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !notes.isEmpty else { return }
+
+            let notesManager = NotesManager.shared
+            for plugin in plugins {
+                notesManager.setNote(for: plugin.path, note: notes)
+            }
+            print("📝 Added notes to \(plugins.count) plugins")
+        }
+        #endif
+    }
+
+    private func clearBulkMetadata(for plugins: [PluginItem]) {
+        let metadataManager = MetadataManager.shared
+        for plugin in plugins {
+            metadataManager.removeOverride(for: plugin.path)
+        }
+        print("🗑️ Cleared metadata for \(plugins.count) plugins")
+    }
     
     private func makeSortStatus() -> String {
         let column: String
         switch manualSortKey {
+        case .rating: column = "Rating"
         case .name: column = "Name"
         case .publisher: column = "Publisher"
         case .type: column = "Type"
@@ -204,7 +368,14 @@ struct SizeCell: View {
     // SPEED: Compute sorted rows only when sort key or data changes
     private func computeDisplayedRows() {
         let sorted: [PluginItem]
+        let ratingsManager = RatingsManager.shared
         switch manualSortKey {
+        case .rating:
+            sorted = rows.sorted { a, b in
+                let ratingA = ratingsManager.getRating(forName: a.name)
+                let ratingB = ratingsManager.getRating(forName: b.name)
+                return manualAscending ? (ratingA < ratingB) : (ratingA > ratingB)
+            }
         case .name:
             sorted = rows.sorted { manualAscending ? ($0.name < $1.name) : ($0.name > $1.name) }
         case .publisher:
@@ -234,13 +405,6 @@ struct SizeCell: View {
         lastRowsCount = rows.count
     }
 
-    // SPEED: Check if sort parameters changed
-    private func sortChanged() -> Bool {
-        manualSortKey != lastManualSortKey ||
-        manualAscending != lastManualAscending ||
-        rows.count != lastRowsCount
-    }
-    
     private func updatePathWidth() {
         let baseWidth: CGFloat = 600
         // Scale more aggressively - add 20pt for each font size point
@@ -379,12 +543,15 @@ struct SizeCell: View {
         }
     }
     
-    var body: some View {
-        VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: true) {
-                VStack(spacing: 0) {
-                    // Single clickable header row with arrows
-                    HStack(spacing: 0) {
+    // MARK: Header row (extracted to fix type-checking timeout)
+    private var headerRow: some View {
+        HStack(spacing: 0) {
+                        MacSortHeaderButton(title: "Rating", active: manualSortKey == .rating, ascending: manualSortKey == .rating ? manualAscending : false, width: wRating, height: headerHeight) {
+                            if manualSortKey == .rating { manualAscending.toggle() } else { manualSortKey = .rating; manualAscending = false }
+                            sortStatus = makeSortStatus()
+                        }
+                    MacColumnDivider(leftWidth: $wRating, minWidth: minColWidth, height: rowDividerHeight)
+
                         MacSortHeaderButton(title: "Name", active: manualSortKey == .name, ascending: manualAscending, width: wName, height: headerHeight) {
                             if manualSortKey == .name { manualAscending.toggle() } else { manualSortKey = .name; manualAscending = true }
                             sortStatus = makeSortStatus()
@@ -445,43 +612,56 @@ struct SizeCell: View {
                     }
                     MacColumnDivider(leftWidth: $wObsolete, minWidth: minColWidth, height: rowDividerHeight)
 
+                    // Notes column - static header (not sortable)
+                    Text("Notes")
+                        .font(.system(size: prefs.scaledSize(12), weight: .medium))
+                        .frame(width: wNotes, height: headerHeight)
+                        .foregroundColor(.primary)
+                    MacColumnDivider(leftWidth: $wNotes, minWidth: minColWidth, height: rowDividerHeight)
+
                     MacSortHeaderButton(title: "Path", active: manualSortKey == .path, ascending: manualSortKey == .path ? manualAscending : true, width: wPath, height: headerHeight) {
                         if manualSortKey == .path { manualAscending.toggle() } else { manualSortKey = .path; manualAscending = true }
                         sortStatus = makeSortStatus()
                     }
                         // No divider after last column
                         Spacer(minLength: 0)
-                    }
-                    .frame(height: headerHeight)
-                    .background(headerBackgroundColor)
+                }
+                .frame(height: headerHeight)
+                .background(headerBackgroundColor)
+    }
 
-                    Divider()
-
-                    ScrollViewReader { proxy in
-                        ScrollView(.vertical, showsIndicators: true) {
-                            LazyVStack(alignment: .leading, spacing: 0) {
+    // MARK: Table content (extracted to fix type-checking timeout)
+    private var tableContent: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(displayedRows.enumerated()), id: \.element.id) { idx, row in
                                 let zebra = idx % 2 == 0  // Enable zebra for both light and dark mode
                                 OptimizedTableRow(
                                     row: row,
                                     columnWidths: ColumnWidths(
-                                        wName: wName, wPublisher: wPublisher, wType: wType,
+                                        wRating: wRating, wName: wName, wPublisher: wPublisher, wType: wType,
                                         wStyle: wStyle, wVersion: wVersion, wArch: wArch,
                                         wDate: wDate, wSize: wSize, wRequirement: wRequirement,
-                                        wObsolete: wObsolete, wPath: wPath
+                                        wObsolete: wObsolete, wNotes: wNotes, wPath: wPath
                                     ),
                                     isSelected: macSelection.contains(row.id),
                                     zebra: zebra,
                                     onTap: {
                                         handleRowClick(row)
                                     },
-                                    ownedPlugins: [],  // SPEED: AI service doesn't need all 2643 plugins!
-                                    prefs: prefs
+                                    ownedPlugins: rows,  // Pass all rows for rating sync
+                                    prefs: prefs,
+                                    onUninstall: {
+                                        pluginsToUninstall = [row]
+                                        showUninstallConfirmation = true
+                                    },
+                                    selectedPlugins: selection  // Pass current selection
                                 )
                             }
                         }
-                    }
                     .focusable(true)
+                    .focused($isTableFocused)
                     .applyIfAvailableMac14FocusDisabled()
                     .onMoveCommand { direction in
                         #if os(macOS)
@@ -498,33 +678,56 @@ struct SizeCell: View {
                     }
                 }
             }
+        }
+
+    // MARK: Base scroll view
+    private var baseScrollView: some View {
+        ScrollView(.horizontal, showsIndicators: true) {
+            VStack(spacing: 0) {
+                headerRow
+                Divider()
+                tableContent
+            }
+        }
+    }
+
+    // MARK: Scroll view with selection handlers
+    private var scrollViewWithSelection: some View {
+        baseScrollView
             .onChange(of: macSelection) { (ids: Set<UUID>) in
                 selection = rows.filter { ids.contains($0.id) }
             }
             .onChange(of: selection) { (sel: [PluginItem]) in
                 macSelection = Set(sel.map(\.id))
-            }
-            .onChange(of: manualSortKey) { _ in
-                if sortChanged() {
-                    computeDisplayedRows()
+                // Auto-focus table when selection is made programmatically
+                if !sel.isEmpty && !isTableFocused {
+                    isTableFocused = true
                 }
+            }
+    }
+
+    // MARK: Scroll view with sort handlers
+    private var scrollViewWithSorting: some View {
+        scrollViewWithSelection
+            .onChange(of: manualSortKey) { _ in
+                computeDisplayedRows()
             }
             .onChange(of: manualAscending) { _ in
-                if sortChanged() {
-                    computeDisplayedRows()
-                }
+                computeDisplayedRows()
             }
             .onChange(of: rows.count) { _ in
                 computeDisplayedRows()
             }
             .onChange(of: rows) { _ in
-                // Recompute whenever rows array changes at all
                 computeDisplayedRows()
             }
+    }
+
+    // MARK: Scroll view with appearance handlers
+    private var scrollViewWithAppearance: some View {
+        scrollViewWithSorting
             .onAppear {
-                if cachedDisplayedRows.isEmpty {
-                    computeDisplayedRows()
-                }
+                if cachedDisplayedRows.isEmpty { computeDisplayedRows() }
                 sortStatus = makeSortStatus()
                 updatePathWidth()
             }
@@ -533,15 +736,99 @@ struct SizeCell: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.clear)
+    }
+
+    // MARK: Main content view with context menu and sheet
+    private var mainContentView: some View {
+        scrollViewWithAppearance
             .contextMenu(forSelectionType: UUID.self) { (selection: Set<UUID>) in
+                let ids = selection.isEmpty ? macSelection : selection
+                let selectedPlugins = rows.filter { ids.contains($0.id) }
+                let isMultiSelect = selectedPlugins.count > 1
+
+                if isMultiSelect {
+                    // Bulk editing menu for multiple selections
+                    Menu("Set Rating") {
+                        ForEach([5, 4, 3, 2, 1], id: \.self) { rating in
+                            Button("\(rating) Star\(rating == 1 ? "" : "s")") {
+                                applyBulkRating(rating, to: selectedPlugins)
+                            }
+                        }
+                        Divider()
+                        Button("Clear Ratings") {
+                            applyBulkRating(0, to: selectedPlugins)
+                        }
+                    }
+
+                    Menu("Add Tag") {
+                        Button("Add Custom Tag...") {
+                            showBulkTagPrompt(for: selectedPlugins)
+                        }
+                        Divider()
+                        let commonTags = ["favorite", "mixing", "mastering", "vocal", "guitar", "effects", "dynamics", "eq", "reverb", "delay"]
+                        ForEach(commonTags, id: \.self) { tag in
+                            Button(tag.capitalized) {
+                                applyBulkTag(tag, to: selectedPlugins)
+                            }
+                        }
+                    }
+
+                    Menu("Edit Metadata") {
+                        Button("Set Publisher...") {
+                            showBulkPublisherPrompt(for: selectedPlugins)
+                        }
+                        Button("Set Version...") {
+                            showBulkVersionPrompt(for: selectedPlugins)
+                        }
+                        Button("Set Style...") {
+                            showBulkStylePrompt(for: selectedPlugins)
+                        }
+                        Divider()
+                        Button("Clear All Metadata") {
+                            clearBulkMetadata(for: selectedPlugins)
+                        }
+                    }
+
+                    Button("Add Notes...") {
+                        showBulkNotesPrompt(for: selectedPlugins)
+                    }
+
+                    Divider()
+                }
+
+                Button("Uninstall\(isMultiSelect ? " All (\(selectedPlugins.count))..." : "...")") {
+                    pluginsToUninstall = selectedPlugins
+                    showUninstallConfirmation = true
+                }
+                .disabled(selectedPlugins.isEmpty)
+
+                Divider()
+
                 Button("Show in Finder") {
-                    revealInFinder(ids: selection.isEmpty ? macSelection : selection)
+                    revealInFinder(ids: ids)
                 }
             }
-            }  // Close horizontal ScrollView
             .background(FadingScrollbarConfigurator())
-        }  // Close outer VStack
-    }  // Close body
+            .sheet(isPresented: $showUninstallConfirmation) {
+                UninstallConfirmationView(
+                    plugins: pluginsToUninstall,
+                    onComplete: { result in
+                        // Refresh the plugin list after uninstall
+                        onPluginsDeleted?()
+
+                        // Clear selection
+                        macSelection.removeAll()
+                        selection.removeAll()
+                    }
+                )
+            }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            mainContentView
+        }
+    }
 
     private struct MacSortHeaderButton: View {
         let title: String
@@ -638,6 +925,7 @@ private func colorForPluginType(_ type: String) -> Color {
 }
 
 private struct ColumnWidths {
+    let wRating: CGFloat
     let wName: CGFloat
     let wPublisher: CGFloat
     let wType: CGFloat
@@ -648,6 +936,7 @@ private struct ColumnWidths {
     let wSize: CGFloat
     let wRequirement: CGFloat
     let wObsolete: CGFloat
+    let wNotes: CGFloat
     let wPath: CGFloat
 }
 
@@ -659,9 +948,17 @@ private struct OptimizedTableRow: View {
     let onTap: () -> Void
     let ownedPlugins: [PluginItem]
     let prefs: Preferences
+    let onUninstall: () -> Void
+    let selectedPlugins: [PluginItem]  // Add selection info
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var showAISuggestions = false
+    @State private var showMetadataEditor = false
+    @State private var showTagsEditor = false
+    @StateObject private var notesManager = NotesManager.shared
+    @StateObject private var ratingsManager = RatingsManager.shared
+    @StateObject private var metadataManager = MetadataManager.shared
+    @StateObject private var tagsManager = TagsManager.shared
 
     private var zebraColor: Color {
         if colorScheme == .dark {
@@ -718,6 +1015,183 @@ private struct OptimizedTableRow: View {
             NSWorkspace.shared.open(searchURL)
         }
     }
+
+    // MARK: Bulk editing operations (for context menu)
+    private func applyBulkRating(_ rating: Int, to plugins: [PluginItem]) {
+        for plugin in plugins {
+            ratingsManager.setRating(forName: plugin.name, rating: rating)
+        }
+        print("⭐ Set rating \(rating) for \(plugins.count) plugins")
+    }
+
+    private func applyBulkTag(_ tag: String, to plugins: [PluginItem]) {
+        let normalizedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalizedTag.isEmpty else { return }
+
+        for plugin in plugins {
+            tagsManager.addTag(normalizedTag, to: plugin.path)
+        }
+        print("🏷️ Added tag '\(normalizedTag)' to \(plugins.count) plugins")
+    }
+
+    private func showBulkTagPrompt(for plugins: [PluginItem]) {
+        let alert = NSAlert()
+        alert.messageText = "Add Tag to \(plugins.count) Plugins"
+        alert.informativeText = "Enter a tag to add to all selected plugins:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        input.placeholderString = "Enter tag name..."
+        alert.accessoryView = input
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            applyBulkTag(input.stringValue, to: plugins)
+        }
+    }
+
+    private func showBulkPublisherPrompt(for plugins: [PluginItem]) {
+        // Get current publishers from selected plugins
+        let currentPublishers = Set(plugins.map { metadataManager.getDisplayPublisher(for: $0) })
+        let placeholderText: String
+        if currentPublishers.count == 1, let publisher = currentPublishers.first {
+            placeholderText = "Current: \(publisher)"
+        } else {
+            placeholderText = "Multiple values: \(currentPublishers.prefix(3).joined(separator: ", "))\(currentPublishers.count > 3 ? "..." : "")"
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Set Publisher for \(plugins.count) Plugins"
+        alert.informativeText = "Enter publisher name to apply to all selected plugins:"
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = placeholderText
+        alert.accessoryView = input
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let publisher = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !publisher.isEmpty else { return }
+
+            for plugin in plugins {
+                let override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+                var updated = override
+                updated.publisher = publisher
+                metadataManager.setOverride(for: plugin.path, override: updated)
+            }
+            print("✏️ Set publisher '\(publisher)' for \(plugins.count) plugins")
+        }
+    }
+
+    private func showBulkVersionPrompt(for plugins: [PluginItem]) {
+        // Get current versions from selected plugins
+        let currentVersions = Set(plugins.map { metadataManager.getDisplayVersion(for: $0) })
+        let placeholderText: String
+        if currentVersions.count == 1, let version = currentVersions.first {
+            placeholderText = "Current: \(version)"
+        } else {
+            placeholderText = "Multiple values: \(currentVersions.prefix(3).joined(separator: ", "))\(currentVersions.count > 3 ? "..." : "")"
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Set Version for \(plugins.count) Plugins"
+        alert.informativeText = "Enter version to apply to all selected plugins:"
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = placeholderText
+        alert.accessoryView = input
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let version = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !version.isEmpty else { return }
+
+            for plugin in plugins {
+                let override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+                var updated = override
+                updated.version = version
+                metadataManager.setOverride(for: plugin.path, override: updated)
+            }
+            print("✏️ Set version '\(version)' for \(plugins.count) plugins")
+        }
+    }
+
+    private func showBulkStylePrompt(for plugins: [PluginItem]) {
+        // Get current styles from selected plugins
+        let currentStyles = Set(plugins.map { metadataManager.getDisplayStyle(for: $0) })
+        let placeholderText: String
+        if currentStyles.count == 1, let style = currentStyles.first {
+            placeholderText = "Current: \(style)"
+        } else {
+            placeholderText = "Multiple values: \(currentStyles.prefix(3).joined(separator: ", "))\(currentStyles.count > 3 ? "..." : "")"
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Set Style for \(plugins.count) Plugins"
+        alert.informativeText = "Enter style/category to apply to all selected plugins:"
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.placeholderString = placeholderText
+        alert.accessoryView = input
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let style = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !style.isEmpty else { return }
+
+            for plugin in plugins {
+                let override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+                var updated = override
+                updated.style = style
+                metadataManager.setOverride(for: plugin.path, override: updated)
+            }
+            print("✏️ Set style '\(style)' for \(plugins.count) plugins")
+        }
+    }
+
+    private func showBulkNotesPrompt(for plugins: [PluginItem]) {
+        let alert = NSAlert()
+        alert.messageText = "Add Notes to \(plugins.count) Plugins"
+        alert.informativeText = "Enter notes to add to all selected plugins:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+
+        let input = NSTextView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
+        input.isEditable = true
+        input.isSelectable = true
+        input.font = NSFont.systemFont(ofSize: 13)
+
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
+        scrollView.documentView = input
+        scrollView.hasVerticalScroller = true
+
+        alert.accessoryView = scrollView
+        alert.window.initialFirstResponder = input
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            let notes = input.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !notes.isEmpty else { return }
+
+            for plugin in plugins {
+                notesManager.setNote(for: plugin.path, note: notes)
+            }
+            print("📝 Added notes to \(plugins.count) plugins")
+        }
+    }
+
+    private func clearBulkMetadata(for plugins: [PluginItem]) {
+        for plugin in plugins {
+            metadataManager.removeOverride(for: plugin.path)
+        }
+        print("🗑️ Cleared metadata for \(plugins.count) plugins")
+    }
     
     var body: some View {
         ZStack(alignment: .leading) {
@@ -732,15 +1206,25 @@ private struct OptimizedTableRow: View {
 
             // Content layer
             HStack(spacing: 0) {
+                RatingCell(
+                    pluginName: row.name,
+                    pluginPublisher: row.publisher,
+                    pluginPath: row.path,
+                    allRows: ownedPlugins,
+                    width: columnWidths.wRating,
+                    ratingsManager: ratingsManager,
+                    fontSize: prefs.scaledSize(13)
+                )
+                TableDivider()
                 TableCell(text: row.name, width: columnWidths.wName)
                 TableDivider()
-                TableCell(text: row.publisher, width: columnWidths.wPublisher)
+                TableCell(text: metadataManager.getDisplayPublisher(for: row), width: columnWidths.wPublisher)
                 TableDivider()
                 ColoredTypeCell(type: row.type, width: columnWidths.wType)
                 TableDivider()
-                TableCell(text: row.style, width: columnWidths.wStyle)
+                TableCell(text: metadataManager.getDisplayStyle(for: row), width: columnWidths.wStyle)
                 TableDivider()
-                TableCell(text: row.version, width: columnWidths.wVersion)
+                TableCell(text: metadataManager.getDisplayVersion(for: row), width: columnWidths.wVersion)
                 TableDivider()
                 TableCell(text: row.architectures, width: columnWidths.wArch)
                 TableDivider()
@@ -751,6 +1235,13 @@ private struct OptimizedTableRow: View {
                 TableCell(text: row.runtimeRequirement, width: columnWidths.wRequirement)
                 TableDivider()
                 TableCell(text: row.obsoleteText, width: columnWidths.wObsolete)
+                TableDivider()
+                NotesCell(
+                    pluginPath: row.path,
+                    width: columnWidths.wNotes,
+                    notesManager: notesManager,
+                    fontSize: prefs.scaledSize(13)
+                )
                 TableDivider()
                 Text(row.path)
                     .font(.system(size: prefs.scaledSize(13)))
@@ -768,21 +1259,102 @@ private struct OptimizedTableRow: View {
         .onTapGesture(perform: onTap)
         #if os(macOS)
         .contextMenu {
-            Button("AI Suggestions") {
-                showAISuggestions = true
-            }
-            Divider()
-            Button("Check for Update") {
-                checkForUpdate(plugin: row)
-            }
-            Divider()
-            Button("Show in Finder") {
-                let url = URL(fileURLWithPath: row.path)
-                NSWorkspace.shared.activateFileViewerSelecting([url])
+            let isMultiSelect = selectedPlugins.count > 1
+
+            if isMultiSelect {
+                // Multi-selection bulk editing menu
+                Menu("Set Rating") {
+                    ForEach([5, 4, 3, 2, 1], id: \.self) { rating in
+                        Button("\(rating) Star\(rating == 1 ? "" : "s")") {
+                            applyBulkRating(rating, to: selectedPlugins)
+                        }
+                    }
+                    Divider()
+                    Button("Clear Ratings") {
+                        applyBulkRating(0, to: selectedPlugins)
+                    }
+                }
+
+                Menu("Add Tag") {
+                    Button("Add Custom Tag...") {
+                        showBulkTagPrompt(for: selectedPlugins)
+                    }
+                    Divider()
+                    let commonTags = ["favorite", "mixing", "mastering", "vocal", "guitar", "effects", "dynamics", "eq", "reverb", "delay"]
+                    ForEach(commonTags, id: \.self) { tag in
+                        Button(tag.capitalized) {
+                            applyBulkTag(tag, to: selectedPlugins)
+                        }
+                    }
+                }
+
+                Menu("Edit Metadata") {
+                    Button("Set Publisher...") {
+                        showBulkPublisherPrompt(for: selectedPlugins)
+                    }
+                    Button("Set Version...") {
+                        showBulkVersionPrompt(for: selectedPlugins)
+                    }
+                    Button("Set Style...") {
+                        showBulkStylePrompt(for: selectedPlugins)
+                    }
+                    Divider()
+                    Button("Clear All Metadata") {
+                        clearBulkMetadata(for: selectedPlugins)
+                    }
+                }
+
+                Button("Add Notes...") {
+                    showBulkNotesPrompt(for: selectedPlugins)
+                }
+
+                Divider()
+
+                Button("Uninstall All (\(selectedPlugins.count))...") {
+                    onUninstall()
+                }
+
+                Divider()
+
+                Button("Show in Finder") {
+                    let urls = selectedPlugins.map { URL(fileURLWithPath: $0.path) }
+                    NSWorkspace.shared.activateFileViewerSelecting(urls)
+                }
+            } else {
+                // Single selection menu
+                Button("AI Suggestions") {
+                    showAISuggestions = true
+                }
+                Divider()
+                Button("Edit Metadata...") {
+                    showMetadataEditor = true
+                }
+                Button("Manage Tags...") {
+                    showTagsEditor = true
+                }
+                Divider()
+                Button("Show in Finder") {
+                    let url = URL(fileURLWithPath: row.path)
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                Divider()
+                Button("Check for Update") {
+                    checkForUpdate(plugin: row)
+                }
+                Divider()
+                Button("Uninstall") {
+                    onUninstall()
+                }
             }
         }
         .sheet(isPresented: $showAISuggestions) {
             AISuggestionsView(plugin: row, ownedPlugins: ownedPlugins)
+        }
+        .sheet(isPresented: $showMetadataEditor) {
+            MetadataEditorSheet(plugin: row)
+        }
+        .sheet(isPresented: $showTagsEditor) {
+            TagsEditorSheet(plugin: row)
         }
         #endif
     }
@@ -911,6 +1483,365 @@ private struct FadingScrollbarConfigurator: NSViewRepresentable {
     }
 }
 
+// MARK: - Notes Cell
+
+private struct NotesCell: View {
+    let pluginPath: String
+    let width: CGFloat
+    @ObservedObject var notesManager: NotesManager
+    let fontSize: CGFloat
+
+    @State private var isEditing = false
+    @State private var editingText = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            if isEditing {
+                TextField("Add notes...", text: $editingText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: fontSize))
+                    .padding(.leading, 6)
+                    .frame(width: width, height: 32, alignment: .leading)
+                    .focused($isFocused)
+                    .onSubmit {
+                        saveNote()
+                    }
+                    .onAppear {
+                        isFocused = true
+                    }
+            } else {
+                let note = notesManager.getNote(for: pluginPath)
+                Text(note.isEmpty ? "" : note)
+                    .font(.system(size: fontSize))
+                    .foregroundColor(note.isEmpty ? .secondary.opacity(0.5) : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.leading, 6)
+                    .frame(width: width, height: 32, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        startEditing()
+                    }
+            }
+        }
+        .onChange(of: isFocused) { focused in
+            if !focused && isEditing {
+                saveNote()
+            }
+        }
+    }
+
+    private func startEditing() {
+        editingText = notesManager.getNote(for: pluginPath)
+        isEditing = true
+    }
+
+    private func saveNote() {
+        notesManager.setNote(for: pluginPath, note: editingText)
+        isEditing = false
+    }
+}
+
+// MARK: - Rating Cell
+
+private struct RatingCell: View {
+    let pluginName: String
+    let pluginPublisher: String
+    let pluginPath: String
+    let allRows: [PluginItem]
+    let width: CGFloat
+    @ObservedObject var ratingsManager: RatingsManager
+    let fontSize: CGFloat
+
+    var body: some View {
+        let currentRating = ratingsManager.getRating(forName: pluginName)
+
+        HStack(spacing: 2) {
+            ForEach(1...5, id: \.self) { star in
+                Button(action: {
+                    // Get the current rating
+                    let current = ratingsManager.getRating(forName: pluginName)
+                    let newRating = (current == star) ? 0 : star
+
+                    // Set rating using plugin name - all formats will share this rating
+                    ratingsManager.setRating(forName: pluginName, rating: newRating)
+                }) {
+                    Image(systemName: star <= currentRating ? "star.fill" : "star")
+                        .font(.system(size: fontSize - 2))
+                        .foregroundColor(star <= currentRating ? .yellow : .secondary.opacity(0.3))
+                }
+                .buttonStyle(.plain)
+                .help("Rate \(star) star\(star == 1 ? "" : "s")")
+            }
+        }
+        .padding(.leading, 6)
+        .frame(width: width, height: 32, alignment: .leading)
+    }
+}
+
+// MARK: - Metadata Editor Sheet
+
+private struct MetadataEditorSheet: View {
+    let plugin: PluginItem
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var metadataManager = MetadataManager.shared
+
+    @State private var publisher: String = ""
+    @State private var version: String = ""
+    @State private var style: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Edit Metadata")
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text(plugin.name)
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Override metadata for this plugin. Leave fields empty to use original values.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Publisher")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    TextField("Original: \(plugin.publisher)", text: $publisher)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Version")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    TextField("Original: \(plugin.version)", text: $version)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Style")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    TextField("Original: \(plugin.style)", text: $style)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            Spacer()
+
+            HStack {
+                Button("Reset to Original") {
+                    metadataManager.removeOverride(for: plugin.path)
+                    publisher = ""
+                    version = ""
+                    style = ""
+                }
+                .buttonStyle(.bordered)
+
+                Spacer()
+
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Save") {
+                    saveMetadata()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 500, height: 400)
+        .onAppear {
+            if let override = metadataManager.getOverride(for: plugin.path) {
+                publisher = override.publisher ?? ""
+                version = override.version ?? ""
+                style = override.style ?? ""
+            }
+        }
+    }
+
+    private func saveMetadata() {
+        let override = PluginMetadataOverride(
+            publisher: publisher.isEmpty ? nil : publisher,
+            version: version.isEmpty ? nil : version,
+            style: style.isEmpty ? nil : style
+        )
+
+        if override.hasAnyOverride {
+            metadataManager.setOverride(for: plugin.path, override: override)
+        } else {
+            metadataManager.removeOverride(for: plugin.path)
+        }
+    }
+}
+
+// MARK: - Tags Editor Sheet
+
+private struct TagsEditorSheet: View {
+    let plugin: PluginItem
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var tagsManager = TagsManager.shared
+
+    @State private var currentTags: Set<String> = []
+    @State private var newTag: String = ""
+
+    var suggestedTags: [String] {
+        return tagsManager.getSuggestedTags(for: plugin).prefix(12).map { $0 }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Manage Tags")
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text(plugin.name)
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+            Divider()
+
+            // Current Tags
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Current Tags")
+                    .font(.headline)
+
+                if currentTags.isEmpty {
+                    Text("No tags yet")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(currentTags).sorted(), id: \.self) { tag in
+                                HStack(spacing: 4) {
+                                    Text(tag)
+                                        .font(.caption)
+                                    Button(action: {
+                                        currentTags.remove(tag)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.accentColor.opacity(0.2))
+                                .cornerRadius(4)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 100)
+                }
+            }
+
+            Divider()
+
+            // Add New Tag
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Add Tag")
+                    .font(.headline)
+
+                HStack {
+                    TextField("Type tag name...", text: $newTag)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit {
+                            addNewTag()
+                        }
+
+                    Button("Add") {
+                        addNewTag()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            Divider()
+
+            // Suggested Tags
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Suggested Tags")
+                    .font(.headline)
+
+                Text("Click to add")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(suggestedTags, id: \.self) { tag in
+                            Button(action: {
+                                currentTags.insert(tag)
+                            }) {
+                                Text(tag)
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(currentTags.contains(tag))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 120)
+            }
+
+            Spacer()
+
+            HStack {
+                Button("Clear All") {
+                    currentTags.removeAll()
+                }
+                .buttonStyle(.bordered)
+
+                Spacer()
+
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Save") {
+                    saveTags()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 600, height: 550)
+        .onAppear {
+            currentTags = tagsManager.getTags(for: plugin.path)
+        }
+    }
+
+    private func addNewTag() {
+        let tag = newTag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !tag.isEmpty else { return }
+        currentTags.insert(tag)
+        newTag = ""
+    }
+
+    private func saveTags() {
+        tagsManager.setTags(currentTags, for: plugin.path)
+    }
+}
 
 #endif
 

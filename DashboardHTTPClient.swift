@@ -26,7 +26,7 @@ class DashboardHTTPClient: ObservableObject {
     static let shared = DashboardHTTPClient()
 
     private init() {
-        loadQueuedReports()
+        _ = loadQueuedReports()
         loadLastSyncDate()
     }
 

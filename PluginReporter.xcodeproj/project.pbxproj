@@ -98,12 +98,36 @@
 		404B81B92E89E4B4004AE604 /* SyncProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404B81B82E89E4B4004AE604 /* SyncProtocols.swift */; };
 		404B81BD2E89E8DB004AE604 /* MobilePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404B81BC2E89E8DB004AE604 /* MobilePreview.swift */; };
 		405254DB2E86D73300ED43A5 /* MacPluginTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405254DA2E86D73300ED43A5 /* MacPluginTable.swift */; };
+		405CCAD12EA244BB001268F0 /* CloudSyncStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAD02EA244BB001268F0 /* CloudSyncStorage.swift */; };
+		405CCAD22EA244BB001268F0 /* CloudSyncStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAD02EA244BB001268F0 /* CloudSyncStorage.swift */; };
+		405CCAD32EA244BB001268F0 /* CloudSyncStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAD02EA244BB001268F0 /* CloudSyncStorage.swift */; };
+		405CCAD52EA24CB5001268F0 /* BulkEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAD42EA24CB5001268F0 /* BulkEditPanel.swift */; };
 		405DCFA42E87316D0079542A /* ExportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA32E87316D0079542A /* ExportManager.swift */; };
 		405DCFA62E8731E00079542A /* ExportOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA52E8731E00079542A /* ExportOptions.swift */; };
 		405DCFA82E8731E70079542A /* PDFExportOptionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA72E8731E70079542A /* PDFExportOptionsSheet.swift */; };
 		405DCFAA2E873D6D0079542A /* PluginItem+Init.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DCFA92E873D6D0079542A /* PluginItem+Init.swift */; };
 		4065E3E52EA0114200A0FCAA /* FastFilterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3E42EA0114200A0FCAA /* FastFilterEngine.swift */; };
+		4065E3E82EA033CA00A0FCAA /* UninstallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3E72EA033CA00A0FCAA /* UninstallManager.swift */; };
+		4065E3EA2EA033CF00A0FCAA /* UninstallConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3E92EA033CF00A0FCAA /* UninstallConfirmationView.swift */; };
+		4065E3EC2EA0418A00A0FCAA /* NotesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EB2EA0418A00A0FCAA /* NotesManager.swift */; };
+		4065E3ED2EA0418A00A0FCAA /* NotesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EB2EA0418A00A0FCAA /* NotesManager.swift */; };
+		4065E3EE2EA0418A00A0FCAA /* NotesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EB2EA0418A00A0FCAA /* NotesManager.swift */; };
+		4065E3F02EA0493600A0FCAA /* RatingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EF2EA0493600A0FCAA /* RatingsManager.swift */; };
+		4065E3F12EA0493600A0FCAA /* RatingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EF2EA0493600A0FCAA /* RatingsManager.swift */; };
+		4065E3F22EA0493600A0FCAA /* RatingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EF2EA0493600A0FCAA /* RatingsManager.swift */; };
 		407475AA2E901CD200C33619 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869282E91F03000A3C7DA /* PluginReporterApp.swift */; };
+		40B9996B2EA177DB0092EAE2 /* TagsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B9996A2EA177DB0092EAE2 /* TagsManager.swift */; };
+		40B9996C2EA177DB0092EAE2 /* MetadataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999692EA177DB0092EAE2 /* MetadataManager.swift */; };
+		40B9996D2EA177DB0092EAE2 /* TagsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B9996A2EA177DB0092EAE2 /* TagsManager.swift */; };
+		40B9996E2EA177DB0092EAE2 /* MetadataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999692EA177DB0092EAE2 /* MetadataManager.swift */; };
+		40B9996F2EA177DB0092EAE2 /* TagsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B9996A2EA177DB0092EAE2 /* TagsManager.swift */; };
+		40B999702EA177DB0092EAE2 /* MetadataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999692EA177DB0092EAE2 /* MetadataManager.swift */; };
+		40B999722EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999712EA17BB60092EAE2 /* MergeSuggestionsSheet.swift */; };
+		40B999732EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999712EA17BB60092EAE2 /* MergeSuggestionsSheet.swift */; };
+		40B999742EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999712EA17BB60092EAE2 /* MergeSuggestionsSheet.swift */; };
+		40B9997A2EA189020092EAE2 /* PluginDetailPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999792EA189020092EAE2 /* PluginDetailPanel.swift */; };
+		40B9997B2EA189020092EAE2 /* PluginDetailPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999792EA189020092EAE2 /* PluginDetailPanel.swift */; };
+		40B9997C2EA189020092EAE2 /* PluginDetailPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999792EA189020092EAE2 /* PluginDetailPanel.swift */; };
 		40D74ED62E888B1E00E06663 /* FormatTagCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D74ED52E888B1E00E06663 /* FormatTagCloud.swift */; };
 		40D74ED82E888D7900E06663 /* FormatsCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D74ED72E888D7900E06663 /* FormatsCloud.swift */; };
 		40D74EDA2E88965900E06663 /* PublishersCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D74ED92E88965900E06663 /* PublishersCloud.swift */; };
@@ -187,12 +211,22 @@
 		404B81B82E89E4B4004AE604 /* SyncProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyncProtocols.swift; path = ../SyncProtocols.swift; sourceTree = "<group>"; };
 		404B81BC2E89E8DB004AE604 /* MobilePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MobilePreview.swift; path = ../MobilePreview.swift; sourceTree = "<group>"; };
 		405254DA2E86D73300ED43A5 /* MacPluginTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MacPluginTable.swift; path = ../MacPluginTable.swift; sourceTree = "<group>"; };
+		405CCAD02EA244BB001268F0 /* CloudSyncStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncStorage.swift; sourceTree = "<group>"; };
+		405CCAD42EA24CB5001268F0 /* BulkEditPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkEditPanel.swift; sourceTree = "<group>"; };
 		405DCFA32E87316D0079542A /* ExportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExportManager.swift; path = ../ExportManager.swift; sourceTree = "<group>"; };
 		405DCFA52E8731E00079542A /* ExportOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExportOptions.swift; path = ../ExportOptions.swift; sourceTree = "<group>"; };
 		405DCFA72E8731E70079542A /* PDFExportOptionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PDFExportOptionsSheet.swift; path = ../PDFExportOptionsSheet.swift; sourceTree = "<group>"; };
 		405DCFA92E873D6D0079542A /* PluginItem+Init.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PluginItem+Init.swift"; sourceTree = "<group>"; };
 		4065E3E42EA0114200A0FCAA /* FastFilterEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastFilterEngine.swift; sourceTree = SOURCE_ROOT; };
+		4065E3E72EA033CA00A0FCAA /* UninstallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallManager.swift; sourceTree = SOURCE_ROOT; };
+		4065E3E92EA033CF00A0FCAA /* UninstallConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallConfirmationView.swift; sourceTree = SOURCE_ROOT; };
+		4065E3EB2EA0418A00A0FCAA /* NotesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesManager.swift; sourceTree = "<group>"; };
+		4065E3EF2EA0493600A0FCAA /* RatingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingsManager.swift; sourceTree = "<group>"; };
 		407475CA2E901CD200C33618 /* PR iPHONE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PR iPHONE.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		40B999692EA177DB0092EAE2 /* MetadataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataManager.swift; sourceTree = "<group>"; };
+		40B9996A2EA177DB0092EAE2 /* TagsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsManager.swift; sourceTree = "<group>"; };
+		40B999712EA17BB60092EAE2 /* MergeSuggestionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeSuggestionsSheet.swift; sourceTree = "<group>"; };
+		40B999792EA189020092EAE2 /* PluginDetailPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDetailPanel.swift; sourceTree = "<group>"; };
 		40D74ED52E888B1E00E06663 /* FormatTagCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FormatTagCloud.swift; path = ../FormatTagCloud.swift; sourceTree = "<group>"; };
 		40D74ED72E888D7900E06663 /* FormatsCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FormatsCloud.swift; path = ../FormatsCloud.swift; sourceTree = "<group>"; };
 		40D74ED92E88965900E06663 /* PublishersCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PublishersCloud.swift; path = ../PublishersCloud.swift; sourceTree = "<group>"; };
@@ -302,6 +336,8 @@
 				0E09452E21374588BAAC319D /* AISuggestionsView.swift */,
 				D2B198AEB9BC462B9B05530C /* PrivacyDisclosureView.swift */,
 				85F92C3EFCC54877829F467C /* PrivacyInfo.xcprivacy */,
+				4065E3E72EA033CA00A0FCAA /* UninstallManager.swift */,
+				4065E3E92EA033CF00A0FCAA /* UninstallConfirmationView.swift */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -354,6 +390,14 @@
 		E6CCA2CB9D45428EBB0523DA = {
 			isa = PBXGroup;
 			children = (
+				405CCAD42EA24CB5001268F0 /* BulkEditPanel.swift */,
+				405CCAD02EA244BB001268F0 /* CloudSyncStorage.swift */,
+				40B999792EA189020092EAE2 /* PluginDetailPanel.swift */,
+				40B999712EA17BB60092EAE2 /* MergeSuggestionsSheet.swift */,
+				40B999692EA177DB0092EAE2 /* MetadataManager.swift */,
+				40B9996A2EA177DB0092EAE2 /* TagsManager.swift */,
+				4065E3EF2EA0493600A0FCAA /* RatingsManager.swift */,
+				4065E3EB2EA0418A00A0FCAA /* NotesManager.swift */,
 				400FF6C52E9F19F70008553F /* UserFeedbackClient.swift */,
 				400FF6BD2E9F199D0008553F /* BugReportView.swift */,
 				400FF6BE2E9F199D0008553F /* FeatureRequestView.swift */,
@@ -521,6 +565,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4065E3EA2EA033CF00A0FCAA /* UninstallConfirmationView.swift in Sources */,
 				400FF6C72E9F19F70008553F /* UserFeedbackClient.swift in Sources */,
 				400FF6B52E9F17D70008553F /* DashboardReportPreviewView.swift in Sources */,
 				400FF6B62E9F17D70008553F /* DashboardHTTPClient.swift in Sources */,
@@ -545,28 +590,37 @@
 				36176D56ED844E248E6799F9 /* CSVExporter.swift in Sources */,
 				40F28E4C2E81CE420027CFC0 /* Preferences.swift in Sources */,
 				405DCFA62E8731E00079542A /* ExportOptions.swift in Sources */,
+				40B9997B2EA189020092EAE2 /* PluginDetailPanel.swift in Sources */,
 				405DCFA42E87316D0079542A /* ExportManager.swift in Sources */,
+				405CCAD52EA24CB5001268F0 /* BulkEditPanel.swift in Sources */,
+				40B9996F2EA177DB0092EAE2 /* TagsManager.swift in Sources */,
+				40B999702EA177DB0092EAE2 /* MetadataManager.swift in Sources */,
 				40F28E502E8261900027CFC0 /* SwiftUI.swift in Sources */,
 				53036FB24444446F9BD84959 /* JSONExporter.swift in Sources */,
 				404B81B92E89E4B4004AE604 /* SyncProtocols.swift in Sources */,
 				3D090346E5114E2AAE5A9D29 /* HTMLExporter.swift in Sources */,
 				4028696C2E91FD5900A3C7DA /* ColorUtilities.swift in Sources */,
+				405CCAD12EA244BB001268F0 /* CloudSyncStorage.swift in Sources */,
 				400FF6942E9EF69D0008553F /* DashboardReportSystem.swift in Sources */,
 				40F28E442E8115F00027CFC0 /*  FastTableView.swift in Sources */,
 				40F28E4E2E8242340027CFC0 /* Diagnostics.swift in Sources */,
 				40F28E482E81C6E50027CFC0 /* PluginColumn.swift in Sources */,
 				40F28E4A2E81C7640027CFC0 /* Humanize.swift in Sources */,
+				4065E3F12EA0493600A0FCAA /* RatingsManager.swift in Sources */,
 				40D74EDA2E88965900E06663 /* PublishersCloud.swift in Sources */,
 				1EC9C926C96842159EF60912 /* PDFExporter.swift in Sources */,
 				405DCFAA2E873D6D0079542A /* PluginItem+Init.swift in Sources */,
+				4065E3E82EA033CA00A0FCAA /* UninstallManager.swift in Sources */,
 				40D74ED82E888D7900E06663 /* FormatsCloud.swift in Sources */,
 				405DCFA82E8731E70079542A /* PDFExportOptionsSheet.swift in Sources */,
 				40D74ED62E888B1E00E06663 /* FormatTagCloud.swift in Sources */,
+				4065E3EC2EA0418A00A0FCAA /* NotesManager.swift in Sources */,
 				A831F486846D46F4804D9AB5 /* SavePanelHelpers.swift in Sources */,
 				40F28E422E8102460027CFC0 /* AppState.swift in Sources */,
 				B17FCA0ACFFA4330B546A957 /* SettingsView.swift in Sources */,
 				FD4AFB95FD89493F83D13997 /* ContentView.swift in Sources */,
 				F354DAD25A5D41A086EA3129 /* AIPluginSuggestions.swift in Sources */,
+				40B999742EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */,
 				46A5B18F022846F9A3FF2535 /* AISuggestionsView.swift in Sources */,
 				4028696F2E91FE2800A3C7DA /* Constants.swift in Sources */,
 				682957B25AF748C994107A5A /* PrivacyDisclosureView.swift in Sources */,
@@ -580,6 +634,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				400FF6C32E9F199D0008553F /* BugReportView.swift in Sources */,
+				4065E3ED2EA0418A00A0FCAA /* NotesManager.swift in Sources */,
 				400FF6C42E9F199D0008553F /* FeatureRequestView.swift in Sources */,
 				4028695D2E91F48100A3C7DA /* PluginItem.swift in Sources */,
 				402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */,
@@ -599,6 +654,7 @@
 				402869642E91F48100A3C7DA /* CSVExporter.swift in Sources */,
 				53036FB34444446F9BD84960 /* JSONExporter.swift in Sources */,
 				402869662E91F48100A3C7DA /* HTMLExporter.swift in Sources */,
+				4065E3F22EA0493600A0FCAA /* RatingsManager.swift in Sources */,
 				4028696A2E91FD5900A3C7DA /* ColorUtilities.swift in Sources */,
 				402869542E91F3A600A3C7DA /* ContentView.swift in Sources */,
 				402869552E91F3A600A3C7DA /* PluginListView.swift in Sources */,
@@ -607,8 +663,13 @@
 				402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */,
 				402869512E91F3A600A3C7DA /* PluginReporterApp.swift in Sources */,
 				3D090349E5114E2AAE5A9D32 /* SharedStorage.swift in Sources */,
+				40B9996D2EA177DB0092EAE2 /* TagsManager.swift in Sources */,
+				40B9997C2EA189020092EAE2 /* PluginDetailPanel.swift in Sources */,
+				40B9996E2EA177DB0092EAE2 /* MetadataManager.swift in Sources */,
 				402869D92E92349D00A3C7DA /* ExportView.swift in Sources */,
+				405CCAD32EA244BB001268F0 /* CloudSyncStorage.swift in Sources */,
 				EF76232083894237BB3888FE /* AIPluginSuggestions.swift in Sources */,
+				40B999722EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */,
 				400FF6922E9EF69D0008553F /* DashboardReportSystem.swift in Sources */,
 				400FF6C62E9F19F70008553F /* UserFeedbackClient.swift in Sources */,
 				400FF6A42E9F173C0008553F /* TicketingSystem.swift in Sources */,
@@ -620,12 +681,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				407475AA2E901CD200C33619 /* PluginReporterApp.swift in Sources */,
+				405CCAD22EA244BB001268F0 /* CloudSyncStorage.swift in Sources */,
 				400FF6AD2E9F17D70008553F /* DashboardReportPreviewView.swift in Sources */,
+				4065E3F02EA0493600A0FCAA /* RatingsManager.swift in Sources */,
 				400FF6BB2E9F193F0008553F /* KeychainHelper.swift in Sources */,
 				400FF6AE2E9F17D70008553F /* DashboardHTTPClient.swift in Sources */,
+				40B9996B2EA177DB0092EAE2 /* TagsManager.swift in Sources */,
+				40B9996C2EA177DB0092EAE2 /* MetadataManager.swift in Sources */,
 				400FF6AF2E9F17D70008553F /* DashboardSettingsView.swift in Sources */,
 				400FF6B02E9F17D70008553F /* DashboardScheduler.swift in Sources */,
 				400FF6C12E9F199D0008553F /* BugReportView.swift in Sources */,
+				4065E3EE2EA0418A00A0FCAA /* NotesManager.swift in Sources */,
 				400FF6C22E9F199D0008553F /* FeatureRequestView.swift in Sources */,
 				00000000407475AB2E901CD2 /* ContentView.swift in Sources */,
 				400FF6A82E9F17500008553F /* AISuggestionsView.swift in Sources */,
@@ -634,6 +700,7 @@
 				00000000407475AB2E901CD5 /* PluginListView.swift in Sources */,
 				00000000407475AB2E901CD6 /* SettingsView.swift in Sources */,
 				400FF6932E9EF69D0008553F /* DashboardReportSystem.swift in Sources */,
+				40B999732EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */,
 				00000000407475AB2E901CD7 /* PluginDetailViews.swift in Sources */,
 				00000000407475AB2E901CD8 /* PluginRowViews.swift in Sources */,
 				400FF6A22E9F173C0008553F /* TicketingSystem.swift in Sources */,
@@ -642,6 +709,7 @@
 				4028695E2E91F48100A3C7DA /* PluginItem.swift in Sources */,
 				40F28E8B2E8398660027CFC0 /* PluginItem+Columns.swift in Sources */,
 				400FF6C82E9F19F70008553F /* UserFeedbackClient.swift in Sources */,
+				40B9997A2EA189020092EAE2 /* PluginDetailPanel.swift in Sources */,
 				4028695C2E91F48100A3C7DA /* Humanize.swift in Sources */,
 				402869752E91F48100A3C7DA /* Formatters.swift in Sources */,
 				402869762E91F48100A3C7DA /* Diagnostics.swift in Sources */,
@@ -676,7 +744,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 72J767FV46;
 				ENABLE_PREVIEWS = YES;
@@ -741,7 +809,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 72J767FV46;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -802,7 +870,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 72J767FV46;
 				ENABLE_BITCODE = NO;
@@ -873,7 +941,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 72J767FV46;
 				ENABLE_BITCODE = NO;
@@ -963,7 +1031,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Plugin Reporter.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1041,7 +1109,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Plugin Reporter.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;

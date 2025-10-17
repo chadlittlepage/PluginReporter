@@ -37,29 +37,52 @@ struct ContentView: View {
     // REACTIVE: Filtered plugins that updates automatically
     @State private var displayedPlugins: [AppPluginItem] = []
 
+    // MARK: Star rating filter state
+    @State private var selectedStarRatings: Set<Int> = [] // Filter by 1-5 star ratings
+
+    // MARK: Batch uninstall state
+    @State private var showBatchUninstall = false
+    @State private var batchUninstallPlugins: [AppPluginItem] = []
+
+    // MARK: Detail panel state
+    @State private var showDetailPanel = false
+
+    private func toggleDetailPanel() {
+        showDetailPanel.toggle()
+
+        // If opening panel and no selection, select first plugin
+        if showDetailPanel && appState.selected.isEmpty && !displayedPlugins.isEmpty {
+            appState.selected = [displayedPlugins[0]]
+        }
+    }
+
     private func updateDisplayedPlugins() {
         let allPlugins = scanner.plugins.map(AppPluginItem.init)
 
-        print("📱 updateDisplayedPlugins called")
-        print("   All plugins: \(allPlugins.count)")
-        print("   Search text: '\(searchText)'")
-        print("   Selected formats: \(prefs.selectedFormats)")
-
-        print("🔥🔥🔥 ABOUT TO CALL FastFilterEngine.filter")
-        displayedPlugins = FastFilterEngine.filter(
+        var filtered = FastFilterEngine.filter(
             plugins: allPlugins,
             formats: prefs.selectedFormats,
             publishers: prefs.selectedPublishers,
             styles: prefs.selectedStyles,
             searchText: searchText
         )
-        print("🔥🔥🔥 FINISHED CALLING FastFilterEngine.filter")
 
-        print("   Result: \(displayedPlugins.count) plugins")
+        // Apply star rating filter if any selected
+        if !selectedStarRatings.isEmpty {
+            let ratingsManager = RatingsManager.shared
+            filtered = filtered.filter { plugin in
+                let rating = ratingsManager.getRating(forName: plugin.name)
+                return selectedStarRatings.contains(rating)
+            }
+        }
+
+        displayedPlugins = filtered
+
+        // Restore selection from IDs after filtering
+        appState.restoreSelection(from: displayedPlugins)
     }
 
     private func handleSearchTextChange(_ newValue: String) {
-        print("⌨️ Search text changed to: '\(newValue)'")
         // Search is completely independent from filters
         updateDisplayedPlugins()
     }
@@ -99,55 +122,76 @@ struct ContentView: View {
         let total = Swift.max(1, counts.au + counts.vst + counts.vst3 + counts.aax + counts.clap + counts.lv2 + counts.obsolete)
 
         return VStack(alignment: .leading, spacing: 6) {
-            BarRow(
-                label: "AU", value: counts.au,
-                fraction: isEmpty ? 0.0 : Double(counts.au) / Double(total),
-                color: .blue,
-                onTap: { toggleFormat(.AU) },
-                isSelected: prefs.selectedFormats.contains(.AU)
-            )
-            BarRow(
-                label: "VST", value: counts.vst,
-                fraction: isEmpty ? 0.0 : Double(counts.vst) / Double(total),
-                color: .green,
-                onTap: { toggleFormat(.VST) },
-                isSelected: prefs.selectedFormats.contains(.VST)
-            )
-            BarRow(
-                label: "VST3", value: counts.vst3,
-                fraction: isEmpty ? 0.0 : Double(counts.vst3) / Double(total),
-                color: .teal,
-                onTap: { toggleFormat(.VST3) },
-                isSelected: prefs.selectedFormats.contains(.VST3)
-            )
-            BarRow(
-                label: "AAX", value: counts.aax,
-                fraction: isEmpty ? 0.0 : Double(counts.aax) / Double(total),
-                color: .purple,
-                onTap: { toggleFormat(.AAX) },
-                isSelected: prefs.selectedFormats.contains(.AAX)
-            )
-            BarRow(
-                label: "CLAP", value: counts.clap,
-                fraction: isEmpty ? 0.0 : Double(counts.clap) / Double(total),
-                color: .orange,
-                onTap: { toggleFormat(.CLAP) },
-                isSelected: prefs.selectedFormats.contains(.CLAP)
-            )
-            BarRow(
-                label: "LV2", value: counts.lv2,
-                fraction: isEmpty ? 0.0 : Double(counts.lv2) / Double(total),
-                color: .gray,
-                onTap: { toggleFormat(.LV2) },
-                isSelected: prefs.selectedFormats.contains(.LV2)
-            )
-            BarRow(
-                label: "OBSLT", value: counts.obsolete,
-                fraction: isEmpty ? 0.0 : Double(counts.obsolete) / Double(total),
-                color: .red,
-                onTap: { toggleFormat(.OBSLT) },
-                isSelected: prefs.selectedFormats.contains(.OBSLT)
-            )
+            if counts.au > 0 {
+                BarRow(
+                    label: "AU", value: counts.au,
+                    fraction: isEmpty ? 0.0 : Double(counts.au) / Double(total),
+                    color: .blue,
+                    onTap: { toggleFormat(.AU) },
+                    isSelected: prefs.selectedFormats.contains(.AU),
+                    onUninstall: { batchUninstallFormat("AU") }
+                )
+            }
+            if counts.vst > 0 {
+                BarRow(
+                    label: "VST", value: counts.vst,
+                    fraction: isEmpty ? 0.0 : Double(counts.vst) / Double(total),
+                    color: .green,
+                    onTap: { toggleFormat(.VST) },
+                    isSelected: prefs.selectedFormats.contains(.VST),
+                    onUninstall: { batchUninstallFormat("VST") }
+                )
+            }
+            if counts.vst3 > 0 {
+                BarRow(
+                    label: "VST3", value: counts.vst3,
+                    fraction: isEmpty ? 0.0 : Double(counts.vst3) / Double(total),
+                    color: .teal,
+                    onTap: { toggleFormat(.VST3) },
+                    isSelected: prefs.selectedFormats.contains(.VST3),
+                    onUninstall: { batchUninstallFormat("VST3") }
+                )
+            }
+            if counts.aax > 0 {
+                BarRow(
+                    label: "AAX", value: counts.aax,
+                    fraction: isEmpty ? 0.0 : Double(counts.aax) / Double(total),
+                    color: .purple,
+                    onTap: { toggleFormat(.AAX) },
+                    isSelected: prefs.selectedFormats.contains(.AAX),
+                    onUninstall: { batchUninstallFormat("AAX") }
+                )
+            }
+            if counts.clap > 0 {
+                BarRow(
+                    label: "CLAP", value: counts.clap,
+                    fraction: isEmpty ? 0.0 : Double(counts.clap) / Double(total),
+                    color: .orange,
+                    onTap: { toggleFormat(.CLAP) },
+                    isSelected: prefs.selectedFormats.contains(.CLAP),
+                    onUninstall: { batchUninstallFormat("CLAP") }
+                )
+            }
+            if counts.lv2 > 0 {
+                BarRow(
+                    label: "LV2", value: counts.lv2,
+                    fraction: isEmpty ? 0.0 : Double(counts.lv2) / Double(total),
+                    color: .gray,
+                    onTap: { toggleFormat(.LV2) },
+                    isSelected: prefs.selectedFormats.contains(.LV2),
+                    onUninstall: { batchUninstallFormat("LV2") }
+                )
+            }
+            if counts.obsolete > 0 {
+                BarRow(
+                    label: "OBSLT", value: counts.obsolete,
+                    fraction: isEmpty ? 0.0 : Double(counts.obsolete) / Double(total),
+                    color: .red,
+                    onTap: { toggleFormat(.OBSLT) },
+                    isSelected: prefs.selectedFormats.contains(.OBSLT),
+                    onUninstall: { batchUninstallFormat("OBSLT") }
+                )
+            }
 
             // Clear All button
             if !prefs.selectedFormats.isEmpty {
@@ -183,6 +227,25 @@ struct ContentView: View {
         updateDisplayedPlugins()
     }
 
+    // Batch uninstall all plugins of a specific format
+    private func batchUninstallFormat(_ formatLabel: String) {
+        let allPlugins = scanner.plugins.map(AppPluginItem.init)
+
+        // Filter plugins by format
+        let pluginsToUninstall = allPlugins.filter { plugin in
+            if formatLabel == "OBSLT" {
+                return plugin.obsolete
+            } else {
+                return plugin.type.uppercased() == formatLabel.uppercased()
+            }
+        }
+
+        guard !pluginsToUninstall.isEmpty else { return }
+
+        batchUninstallPlugins = pluginsToUninstall
+        showBatchUninstall = true
+    }
+
     var body: some View {
         // Single-pane layout (no NavigationSplitView) so the UI never shifts. The Formats panel is provided by an overlay.
         HStack(spacing: 0) {
@@ -192,8 +255,12 @@ struct ContentView: View {
                     // Compact header for iPhone
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            Button("Filters") { showOverlaySidebar.toggle() }
-                                .buttonStyle(.bordered)
+                            Button("Filters") {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    showOverlaySidebar.toggle()
+                                }
+                            }
+                            .buttonStyle(.bordered)
 
                             TextField("Search", text: $searchText)
                                 .textFieldStyle(.plain)
@@ -252,7 +319,9 @@ struct ContentView: View {
                     // Original wide header for Mac / regular width
                     HStack(spacing: 8) {
                         Button("Filters") {
-                            showOverlaySidebar.toggle()
+                            withAnimation(.snappy(duration: 0.2)) {
+                                showOverlaySidebar.toggle()
+                            }
                         }
                         .buttonStyle(.bordered)
 
@@ -307,6 +376,14 @@ struct ContentView: View {
                         }
                         .menuIndicator(.hidden)
                         .buttonStyle(.bordered)
+
+                        // Detail Panel Toggle
+                        Button(action: toggleDetailPanel) {
+                            Image(systemName: showDetailPanel ? "sidebar.right" : "sidebar.right")
+                                .foregroundColor(showDetailPanel ? .accentColor : .primary)
+                        }
+                        .buttonStyle(.bordered)
+                        .help(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
                         .padding(.trailing, 8)  // Match the bar graph padding to align with numbers
                     }
                     .padding(.top, 8)
@@ -320,13 +397,7 @@ struct ContentView: View {
                     .background(appBG)
                     
                 Divider()
-                ZStack {
-                    appBG
-                    PlatformTable(rows: displayedPlugins, selection: $appState.selected, sortStatus: $sortStatus)
-                        .id(displayedPlugins.map(\.id))
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                }
+                mainContentWithDetailPanel
                 Divider()
                 ZStack {
                     // Centered items count
@@ -355,7 +426,7 @@ struct ContentView: View {
                 ZStack(alignment: .leading) {
                     Color.black.opacity(0.001)
                         .contentShape(Rectangle())
-                        .onTapGesture { withAnimation(.easeInOut) { showOverlaySidebar = false } }
+                        .onTapGesture { withAnimation(.snappy(duration: 0.2)) { showOverlaySidebar = false } }
                     // Slide-over panel
                     VStack(alignment: .leading, spacing: 12) {
                         // Top padding to prevent cutoff
@@ -374,7 +445,7 @@ struct ContentView: View {
                                 HStack {
                                     Spacer()
                                     Button(action: {
-                                        withAnimation(.easeInOut) {
+                                        withAnimation(.snappy(duration: 0.2)) {
                                             showOverlaySidebar = false
                                         }
                                     }) {
@@ -393,6 +464,18 @@ struct ContentView: View {
                             FormatsCloud(selectedFormats: $prefs.selectedFormats)
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .padding(.bottom, 10)  // 10px padding under OBSLT
+                        }
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Rating")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 10)  // 10px padding above Rating
+                            StarsSelector(selectedStarRatings: $selectedStarRatings)
+                                .padding(.bottom, 10)  // 10px padding below Rating
                         }
 
                         Divider()
@@ -436,7 +519,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
             }
         }
-        .animation(suppressAnimations ? nil : .easeInOut, value: showOverlaySidebar)
+        .animation(suppressAnimations ? nil : .snappy(duration: 0.2), value: showOverlaySidebar)
         .transaction { tx in if suppressAnimations { tx.animation = nil } }
         .background(appBG)
         .clipped()
@@ -445,10 +528,21 @@ struct ContentView: View {
                 PluginDetailView(item: item)
             }
         }
+        .sheet(isPresented: $showBatchUninstall) {
+            UninstallConfirmationView(
+                plugins: batchUninstallPlugins,
+                onComplete: { result in
+                    // Rescan plugins after batch uninstall
+                    scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                }
+            )
+        }
         .onChange(of: appState.selected) { _ in
             if hSizeClass == .compact {
                 showDetailSheet = (appState.selected.first != nil)
             }
+            // Update the stored selection IDs when selection changes from user interaction
+            appState.updateSelectionIDs()
         }
         .onAppear {
             updateDisplayedPlugins()
@@ -460,6 +554,9 @@ struct ContentView: View {
             updateDisplayedPlugins()
         }
         .onChange(of: prefs.selectedStyles) { _ in
+            updateDisplayedPlugins()
+        }
+        .onChange(of: selectedStarRatings) { _ in
             updateDisplayedPlugins()
         }
         .onChange(of: searchText) { newValue in
@@ -502,81 +599,143 @@ struct ContentView: View {
         let hasData = currentCount > 0
 
         return VStack(alignment: .leading, spacing: 6) {
-            // ALWAYS show ALL bars (like iOS/iPadOS) - just highlight selected ones
-            BarRow(
-                label: "AU", value: counts.au,
-                fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0,
-                color: Color.blue,
-                onTap: { toggleFormat(.AU) },
-                isSelected: prefs.selectedFormats.contains(.AU)
-            )
-            BarRow(
-                label: "VST", value: counts.vst,
-                fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0,
-                color: Color.green,
-                onTap: { toggleFormat(.VST) },
-                isSelected: prefs.selectedFormats.contains(.VST)
-            )
-            BarRow(
-                label: "VST3", value: counts.vst3,
-                fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0,
-                color: Color.teal,
-                onTap: { toggleFormat(.VST3) },
-                isSelected: prefs.selectedFormats.contains(.VST3)
-            )
-            BarRow(
-                label: "AAX", value: counts.aax,
-                fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0,
-                color: Color.purple,
-                onTap: { toggleFormat(.AAX) },
-                isSelected: prefs.selectedFormats.contains(.AAX)
-            )
-            BarRow(
-                label: "CLAP", value: counts.clap,
-                fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0,
-                color: Color.orange,
-                onTap: { toggleFormat(.CLAP) },
-                isSelected: prefs.selectedFormats.contains(.CLAP)
-            )
-            BarRow(
-                label: "LV2", value: counts.lv2,
-                fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0,
-                color: Color.gray,
-                onTap: { toggleFormat(.LV2) },
-                isSelected: prefs.selectedFormats.contains(.LV2)
-            )
-            BarRow(
-                label: "OBSLT", value: counts.obsolete,
-                fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0,
-                color: Color.red,
-                onTap: { toggleFormat(.OBSLT) },
-                isSelected: prefs.selectedFormats.contains(.OBSLT)
-            )
-
-            // Clear All button
-            if !prefs.selectedFormats.isEmpty {
-                Button(action: {
-                    prefs.selectedFormats.removeAll()
-                    updateDisplayedPlugins()
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                        Text("Clear All")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundColor(.red)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 4)
+            // Only show bars for plugin types that exist (at least 1 plugin)
+            if counts.au > 0 {
+                BarRow(
+                    label: "AU", value: counts.au,
+                    fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0,
+                    color: Color.blue,
+                    onTap: { toggleFormat(.AU) },
+                    isSelected: prefs.selectedFormats.contains(.AU),
+                    onUninstall: { batchUninstallFormat("AU") }
+                )
             }
+            if counts.vst > 0 {
+                BarRow(
+                    label: "VST", value: counts.vst,
+                    fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0,
+                    color: Color.green,
+                    onTap: { toggleFormat(.VST) },
+                    isSelected: prefs.selectedFormats.contains(.VST),
+                    onUninstall: { batchUninstallFormat("VST") }
+                )
+            }
+            if counts.vst3 > 0 {
+                BarRow(
+                    label: "VST3", value: counts.vst3,
+                    fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0,
+                    color: Color.teal,
+                    onTap: { toggleFormat(.VST3) },
+                    isSelected: prefs.selectedFormats.contains(.VST3),
+                    onUninstall: { batchUninstallFormat("VST3") }
+                )
+            }
+            if counts.aax > 0 {
+                BarRow(
+                    label: "AAX", value: counts.aax,
+                    fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0,
+                    color: Color.purple,
+                    onTap: { toggleFormat(.AAX) },
+                    isSelected: prefs.selectedFormats.contains(.AAX),
+                    onUninstall: { batchUninstallFormat("AAX") }
+                )
+            }
+            if counts.clap > 0 {
+                BarRow(
+                    label: "CLAP", value: counts.clap,
+                    fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0,
+                    color: Color.orange,
+                    onTap: { toggleFormat(.CLAP) },
+                    isSelected: prefs.selectedFormats.contains(.CLAP),
+                    onUninstall: { batchUninstallFormat("CLAP") }
+                )
+            }
+            if counts.lv2 > 0 {
+                BarRow(
+                    label: "LV2", value: counts.lv2,
+                    fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0,
+                    color: Color.gray,
+                    onTap: { toggleFormat(.LV2) },
+                    isSelected: prefs.selectedFormats.contains(.LV2),
+                    onUninstall: { batchUninstallFormat("LV2") }
+                )
+            }
+            if counts.obsolete > 0 {
+                BarRow(
+                    label: "OBSLT", value: counts.obsolete,
+                    fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0,
+                    color: Color.red,
+                    onTap: { toggleFormat(.OBSLT) },
+                    isSelected: prefs.selectedFormats.contains(.OBSLT),
+                    onUninstall: { batchUninstallFormat("OBSLT") }
+                )
+            }
+
+            // Action buttons
+            barGraphActionButtons
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 12)
         .id(cachedBarCounts) // Only re-render when cached counts actually change
+    }
+
+    // Main content with optional detail panel (extracted to reduce type-checking complexity)
+    @ViewBuilder
+    private var mainContentWithDetailPanel: some View {
+        HStack(spacing: 0) {
+            ZStack {
+                appBG
+                PlatformTable(
+                    rows: displayedPlugins,
+                    selection: $appState.selected,
+                    sortStatus: $sortStatus,
+                    onPluginsDeleted: {
+                        scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                    }
+                )
+                .id(displayedPlugins.map(\.id))
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+            }
+
+            #if os(macOS)
+            // Detail Panel - Show bulk edit when multiple selected, otherwise single detail
+            if appState.selected.count > 1 {
+                BulkEditPanel(
+                    plugins: appState.selected,
+                    isVisible: $showDetailPanel
+                )
+            } else {
+                PluginDetailPanel(
+                    plugin: appState.selected.first,
+                    isVisible: $showDetailPanel
+                )
+            }
+            #endif
+        }
+    }
+
+    // Bar graph action buttons (extracted to reduce type-checking complexity)
+    @ViewBuilder
+    private var barGraphActionButtons: some View {
+        // Clear All button
+        if !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty {
+            Button {
+                prefs.selectedFormats.removeAll()
+                selectedStarRatings.removeAll()
+                updateDisplayedPlugins()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+                    Text("Clear All").font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(.red)
+                .padding(.vertical, 6).padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+        }
     }
 
     // Ultra-fast counting helper
@@ -775,6 +934,7 @@ private struct BarRow: View {
     let color: Color
     var onTap: (() -> Void)? = nil  // Optional click handler
     var isSelected: Bool = false     // Show if this format is filtered
+    var onUninstall: (() -> Void)? = nil  // Optional uninstall handler
 
     var body: some View {
         HStack(spacing: 8) {
@@ -825,6 +985,15 @@ private struct BarRow: View {
             }
             #endif
         }
+        #if os(macOS)
+        .contextMenu {
+            if value > 0, let onUninstall = onUninstall {
+                Button("Uninstall All \(label) Plugins (\(value))") {
+                    onUninstall()
+                }
+            }
+        }
+        #endif
     }
 }
 
@@ -1088,6 +1257,71 @@ private struct PluginDetailView: View {
                 #endif
             }
         }
+    }
+}
+
+// MARK: - Rating Selector Component (visual star icons)
+
+struct StarsSelector: View {
+    @Binding var selectedStarRatings: Set<Int>
+
+    private func toggle(rating: Int) {
+        if selectedStarRatings.contains(rating) {
+            selectedStarRatings.remove(rating)
+        } else {
+            selectedStarRatings.insert(rating)
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Display stars from 5 down to 1
+            ForEach([5, 4, 3, 2, 1], id: \.self) { rating in
+                starRow(rating: rating)
+            }
+
+            // Clear All button (only shown when stars are selected)
+            if !selectedStarRatings.isEmpty {
+                Button(action: {
+                    selectedStarRatings.removeAll()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                        Text("Clear All")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .foregroundColor(.red)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    @ViewBuilder private func starRow(rating: Int) -> some View {
+        let isSelected = selectedStarRatings.contains(rating)
+        Button(action: { toggle(rating: rating) }) {
+            HStack(spacing: 3) {
+                ForEach(1...rating, id: \.self) { _ in
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 11.2))
+                        .foregroundColor(.yellow)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isSelected ? Color.yellow : Color.clear, lineWidth: isSelected ? 2 : 0)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

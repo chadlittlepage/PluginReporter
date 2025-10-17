@@ -86,9 +86,17 @@ struct PlatformTable: View {
     /// 0.0...1.0 progress for the current scan. Use any value outside this range for indeterminate.
     @Binding var scanProgress: Double
 
+    /// Callback when plugins are deleted/uninstalled
+    var onPluginsDeleted: (() -> Void)? = nil
+
     #if os(macOS)
     private var macTable: some View {
-        MacPluginTable(rows: rows, selection: $selection, sortStatus: $sortStatus)
+        MacPluginTable(
+            rows: rows,
+            selection: $selection,
+            sortStatus: $sortStatus,
+            onPluginsDeleted: onPluginsDeleted
+        )
     }
     #endif
 
@@ -97,13 +105,15 @@ struct PlatformTable: View {
         selection: Binding<[PluginItem]>,
         sortStatus: Binding<String> = .constant(""),
         isScanning: Binding<Bool> = .constant(false),
-        scanProgress: Binding<Double> = .constant(0)
+        scanProgress: Binding<Double> = .constant(0),
+        onPluginsDeleted: (() -> Void)? = nil
     ) {
         self.rows = rows
         self._selection = selection
         self._sortStatus = sortStatus
         self._isScanning = isScanning
         self._scanProgress = scanProgress
+        self.onPluginsDeleted = onPluginsDeleted
     }
 
     var body: some View {
