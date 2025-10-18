@@ -34,12 +34,12 @@ struct PreviewContainer: View {
                 PreviewMainList()
                     .tag(0)
 
-                NavigationView {
+                NavigationStack {
                     PreviewPluginDetail()
                 }
                 .tag(1)
 
-                NavigationView {
+                NavigationStack {
                     PreviewStats()
                 }
                 .tag(2)
@@ -47,7 +47,7 @@ struct PreviewContainer: View {
                 PreviewFilters()
                     .tag(3)
 
-                NavigationView {
+                NavigationStack {
                     PreviewSettings()
                 }
                 .tag(4)
@@ -75,7 +75,7 @@ struct PreviewMainList: View {
     ]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Stats Card
                 statsCard
@@ -497,7 +497,7 @@ struct PreviewFilters: View {
     @State private var selectedFormats: Set<String> = ["AU", "VST3", "AAX"]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Formats") {
                     ForEach(["AU", "VST", "VST3", "AAX", "CLAP", "LV2"], id: \.self) { format in

@@ -147,6 +147,7 @@ struct iOS_SettingsView: View {
         case .system: return "System"
         case .light: return "Light"
         case .dark: return "Dark"
+        case .space: return "Space"
         }
     }
 
@@ -160,7 +161,7 @@ struct iOS_SettingsView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         iOS_SettingsView(prefs: Preferences(), cloudSync: CloudSyncManager())
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 /// A centered, wrapping cloud of format chips plus an "OBSLT" chip.
 struct FormatsCloud: View {
     @Binding var selectedFormats: Set<PluginFormat>
+    var useFullObsoleteLabel: Bool = false
 
     private enum ChipItem: Identifiable {
         case format(PluginFormat)
@@ -16,8 +17,9 @@ struct FormatsCloud: View {
     }
 
     var body: some View {
-        // Exclude OBSLT from format list since it has special handling below
-        let formatItems: [ChipItem] = PluginFormat.allCases.filter { $0 != .OBSLT }.map { .format($0) }
+        // Exclude OBSLT and unknown from format list
+        // OBSLT has special handling below, unknown is not user-selectable
+        let formatItems: [ChipItem] = PluginFormat.allCases.filter { $0 != .OBSLT && $0 != .unknown }.map { .format($0) }
         let left  = formatItems.enumerated().compactMap { $0.offset % 2 == 0 ? $0.element : nil }
         let right = formatItems.enumerated().compactMap { $0.offset % 2 == 1 ? $0.element : nil }
 
@@ -46,26 +48,6 @@ struct FormatsCloud: View {
                 chip(for: .obsolete)
             }
             .frame(maxWidth: .infinity, alignment: .center)
-
-            // Clear All button (only shown when formats are selected)
-            if !selectedFormats.isEmpty {
-                Button(action: {
-                    selectedFormats.removeAll()
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                        Text("Clear All")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundColor(.red)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 4)
-            }
         }
     }
 
@@ -78,7 +60,8 @@ struct FormatsCloud: View {
                 else { selectedFormats.insert(format) }
             }
         case .obsolete:
-            ChipView(title: "OBSLT", selected: selectedFormats.contains(.OBSLT), accent: .red, accessibilityTitle: "OBSOLETE") {
+            let label = useFullObsoleteLabel ? "OBSOLETE" : "OBSLT"
+            ChipView(title: label, selected: selectedFormats.contains(.OBSLT), accent: .red, accessibilityTitle: "OBSOLETE") {
                 if selectedFormats.contains(.OBSLT) {
                     selectedFormats.remove(.OBSLT)
                 } else {
@@ -98,6 +81,7 @@ struct FormatsCloud: View {
         case .CLAP: return .orange
         case .LV2:  return .gray
         case .OBSLT: return .red
+        case .unknown: return .gray
         }
     }
 }
@@ -115,7 +99,9 @@ private struct ChipView: View {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(accent)
-                .frame(width: 52, height: 20)  // Match table badge size
+                .padding(.horizontal, 6)
+                .frame(height: 20)
+                .frame(minWidth: 52)  // Min width 52, but can expand for longer text
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(accent.opacity(selected ? 0.3 : 0.2))
@@ -188,7 +174,7 @@ struct FlowLayout<Data: RandomAccessCollection, Content: View, ID: Hashable>: Vi
 
     private func viewHeightReader(_ binding: Binding<CGFloat>) -> some View {
         GeometryReader { geo -> Color in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 binding.wrappedValue = geo.size.height
             }
             return Color.clear

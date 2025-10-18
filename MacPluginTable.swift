@@ -7,6 +7,7 @@ import AppKit
     let rows: [PluginItem]
     @Binding var selection: [PluginItem]
     @Binding var sortStatus: String
+    @Binding var showDetailPanel: Bool
     var onPluginsDeleted: (() -> Void)? = nil
 
     @State private var macSelection = Set<UUID>()
@@ -17,7 +18,7 @@ import AppKit
 
     // MARK: Uninstall state
     @State private var showUninstallConfirmation = false
-    @State private var pluginsToUninstall: [AppPluginItem] = []
+    @State private var pluginsToUninstall: [PluginItem] = []
 
     // SPEED: Cache sorted rows to avoid re-sorting on every render
     @State private var cachedDisplayedRows: [PluginItem] = []
@@ -40,6 +41,7 @@ import AppKit
     @State private var wSize: CGFloat = 80         // Narrower for file sizes
     @State private var wRequirement: CGFloat = 110 // Good for "Universal" etc
     @State private var wObsolete: CGFloat = 90     // Narrow for Yes/No
+    @State private var wTrack: CGFloat = 120       // For DAW track names
     @State private var wNotes: CGFloat = 80        // For user notes
     @State private var wPath: CGFloat = 300        // Narrower so vertical scrollbar sits near regular columns
     private let dividerWidth: CGFloat = 1
@@ -47,9 +49,9 @@ import AppKit
 
     // MARK: Header background color to match search field
     private var headerBackgroundColor: Color {
-        // Space mode: match iOS/iPadOS dark gray
-        if prefs.appearance.usesTrueBlack {
-            return Color(red: 28/255, green: 28/255, blue: 30/255)
+        // Space mode: RGB(18, 18, 18)
+        if prefs.appearance == .space {
+            return Color(red: 18/255, green: 18/255, blue: 18/255)
         }
         // Regular dark mode: system background
         else if colorScheme == .dark {
@@ -66,7 +68,7 @@ import AppKit
     private let rowDividerHeight: CGFloat = 16
 
     // MARK: Manual sorting (reliable across macOS versions)
-    enum SortKey: String, CaseIterable, Identifiable { case rating, name, publisher, type, style, version, arch, date, size, requirement, obsolete, path; var id: String { rawValue } }
+    enum SortKey: String, CaseIterable, Identifiable { case rating, name, publisher, type, style, version, arch, date, size, requirement, obsolete, track, path; var id: String { rawValue } }
     @State private var manualSortKey: SortKey = .name
     @State private var manualAscending: Bool = true
 
@@ -337,6 +339,7 @@ import AppKit
         case .size: column = "Size"
         case .requirement: column = "Requirement"
         case .obsolete: column = "Obsolete"
+        case .track: column = "Track"
         case .path: column = "Path"
         }
         let dir = manualAscending ? "ascending" : "descending"
@@ -396,6 +399,8 @@ import AppKit
             sorted = rows.sorted { manualAscending ? ($0.runtimeRequirement < $1.runtimeRequirement) : ($0.runtimeRequirement > $1.runtimeRequirement) }
         case .obsolete:
             sorted = rows.sorted { manualAscending ? ($0.obsoleteText < $1.obsoleteText) : ($0.obsoleteText > $1.obsoleteText) }
+        case .track:
+            sorted = rows.sorted { manualAscending ? (($0.trackName ?? "") < ($1.trackName ?? "")) : (($0.trackName ?? "") > ($1.trackName ?? "")) }
         case .path:
             sorted = rows.sorted { manualAscending ? ($0.path < $1.path) : ($0.path > $1.path) }
         }
@@ -612,6 +617,12 @@ import AppKit
                     }
                     MacColumnDivider(leftWidth: $wObsolete, minWidth: minColWidth, height: rowDividerHeight)
 
+                    MacSortHeaderButton(title: "Track", active: manualSortKey == .track, ascending: manualSortKey == .track ? manualAscending : true, width: wTrack, height: headerHeight) {
+                        if manualSortKey == .track { manualAscending.toggle() } else { manualSortKey = .track; manualAscending = true }
+                        sortStatus = makeSortStatus()
+                    }
+                    MacColumnDivider(leftWidth: $wTrack, minWidth: minColWidth, height: rowDividerHeight)
+
                     // Notes column - static header (not sortable)
                     Text("Notes")
                         .font(.system(size: prefs.scaledSize(12), weight: .medium))
@@ -643,7 +654,7 @@ import AppKit
                                         wRating: wRating, wName: wName, wPublisher: wPublisher, wType: wType,
                                         wStyle: wStyle, wVersion: wVersion, wArch: wArch,
                                         wDate: wDate, wSize: wSize, wRequirement: wRequirement,
-                                        wObsolete: wObsolete, wNotes: wNotes, wPath: wPath
+                                        wObsolete: wObsolete, wTrack: wTrack, wNotes: wNotes, wPath: wPath
                                     ),
                                     isSelected: macSelection.contains(row.id),
                                     zebra: zebra,
@@ -656,7 +667,8 @@ import AppKit
                                         pluginsToUninstall = [row]
                                         showUninstallConfirmation = true
                                     },
-                                    selectedPlugins: selection  // Pass current selection
+                                    selectedPlugins: selection,  // Pass current selection
+                                    showDetailPanel: $showDetailPanel
                                 )
                             }
                         }
@@ -735,7 +747,7 @@ import AppKit
                 updatePathWidth()
             }
             .scrollContentBackground(.hidden)
-            .background(Color.clear)
+            .background(colorScheme == .light ? Color.white : Color.clear)
     }
 
     // MARK: Main content view with context menu and sheet
@@ -936,6 +948,7 @@ private struct ColumnWidths {
     let wSize: CGFloat
     let wRequirement: CGFloat
     let wObsolete: CGFloat
+    let wTrack: CGFloat
     let wNotes: CGFloat
     let wPath: CGFloat
 }
@@ -950,10 +963,10 @@ private struct OptimizedTableRow: View {
     let prefs: Preferences
     let onUninstall: () -> Void
     let selectedPlugins: [PluginItem]  // Add selection info
+    @Binding var showDetailPanel: Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var showAISuggestions = false
-    @State private var showMetadataEditor = false
     @State private var showTagsEditor = false
     @StateObject private var notesManager = NotesManager.shared
     @StateObject private var ratingsManager = RatingsManager.shared
@@ -961,7 +974,9 @@ private struct OptimizedTableRow: View {
     @StateObject private var tagsManager = TagsManager.shared
 
     private var zebraColor: Color {
-        if colorScheme == .dark {
+        if prefs.appearance == .space {
+            return Color.white.opacity(0.08)  // 8% grey for Space mode only
+        } else if colorScheme == .dark {
             return Color.white.opacity(0.03)  // Very subtle white for dark mode
         } else {
             return Color.black.opacity(0.05)  // Existing light mode color
@@ -1199,8 +1214,12 @@ private struct OptimizedTableRow: View {
             Rectangle()
                 .fill(
                     isSelected
-                    ? Color.accentColor.opacity(0.15)
-                    : (zebra ? zebraColor : Color.clear)
+                    ? (prefs.appearance == .space
+                        ? Color.accentColor.opacity(0.25)  // 10% brighter for Space mode
+                        : Color.accentColor.opacity(0.15))
+                    : (zebra
+                        ? zebraColor
+                        : (prefs.appearance == .space ? Color.black : Color.clear))
                 )
                 .frame(height: 32)
 
@@ -1235,6 +1254,8 @@ private struct OptimizedTableRow: View {
                 TableCell(text: row.runtimeRequirement, width: columnWidths.wRequirement)
                 TableDivider()
                 TableCell(text: row.obsoleteText, width: columnWidths.wObsolete)
+                TableDivider()
+                TableCell(text: row.trackName ?? "", width: columnWidths.wTrack)
                 TableDivider()
                 NotesCell(
                     pluginPath: row.path,
@@ -1326,8 +1347,8 @@ private struct OptimizedTableRow: View {
                     showAISuggestions = true
                 }
                 Divider()
-                Button("Edit Metadata...") {
-                    showMetadataEditor = true
+                Button("Edit Metadata") {
+                    showDetailPanel = true
                 }
                 Button("Manage Tags...") {
                     showTagsEditor = true
@@ -1349,9 +1370,6 @@ private struct OptimizedTableRow: View {
         }
         .sheet(isPresented: $showAISuggestions) {
             AISuggestionsView(plugin: row, ownedPlugins: ownedPlugins)
-        }
-        .sheet(isPresented: $showMetadataEditor) {
-            MetadataEditorSheet(plugin: row)
         }
         .sheet(isPresented: $showTagsEditor) {
             TagsEditorSheet(plugin: row)
@@ -1412,12 +1430,12 @@ private struct TableDivider: View {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder
     func applyIfAvailableMac14FocusDisabled() -> some View {
         #if os(macOS)
         if #available(macOS 14.0, *) {
-            self.focusEffectDisabled(true)
+            self.focusEffectDisabled()
         } else {
             self
         }
@@ -1445,7 +1463,8 @@ private struct FadingScrollbarConfigurator: NSViewRepresentable {
 
             // Find and configure the ScrollView with retries
             for delay in [0.0, 0.2, 0.5] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     self.findAndConfigure()
                 }
             }

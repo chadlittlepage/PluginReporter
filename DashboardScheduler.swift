@@ -29,10 +29,15 @@ class DashboardScheduler: ObservableObject {
 
     static let shared = DashboardScheduler()
 
-    private init(httpClient: DashboardHTTPClient = .shared) {
-        self.httpClient = httpClient
+    private init() {
+        self.httpClient = .shared
         loadScheduleSettings()
         startScheduler()
+    }
+
+    deinit {
+        timer?.invalidate()
+        timer = nil
     }
 
     // MARK: - Public API
@@ -189,8 +194,8 @@ class ScheduleConfigViewModel: ObservableObject {
 
     private let scheduler: DashboardScheduler
 
-    init(scheduler: DashboardScheduler = .shared) {
-        self.scheduler = scheduler
+    init() {
+        self.scheduler = DashboardScheduler.shared
         self.selectedHour = scheduler.reportHour
         self.selectedMinute = scheduler.reportMinute
     }

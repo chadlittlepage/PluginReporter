@@ -1,8 +1,9 @@
 // CloudSyncManager.swift - iCloud CloudKit Sync
 // Add this file to BOTH macOS and iOS targets
 import Foundation
-import CloudKit
 import SwiftUI
+import Combine
+import CloudKit
 
 @MainActor
 class CloudSyncManager: ObservableObject {
@@ -49,7 +50,7 @@ class CloudSyncManager: ObservableObject {
                 let batch = Array(plugins[i..<min(i + batchSize, plugins.count)])
                 let records = batch.map { createRecord(from: $0) }
 
-                try await database.modifyRecords(saving: records, deleting: [])
+                _ = try await database.modifyRecords(saving: records, deleting: [])
             }
 
             // Save device info
@@ -60,7 +61,7 @@ class CloudSyncManager: ObservableObject {
 
         } catch {
             errorMessage = "Upload failed: \(error.localizedDescription)"
-            AppLogger.sync.error("CloudKit upload failed: \(error.localizedDescription)")
+            AppLogger.error("CloudKit upload failed: \(error.localizedDescription)")
         }
 
         isSyncing = false
@@ -97,7 +98,7 @@ class CloudSyncManager: ObservableObject {
 
         } catch {
             errorMessage = "Sync failed: \(error.localizedDescription)"
-            AppLogger.sync.error("CloudKit sync failed: \(error.localizedDescription)")
+            AppLogger.error("CloudKit sync failed: \(error.localizedDescription)")
         }
 
         isSyncing = false
@@ -141,7 +142,7 @@ class CloudSyncManager: ObservableObject {
             style: style,
             architectures: architectures,
             date: record["date"] as? Date,
-            sizeBytes: sizeBytes,
+            sizeBytes: Int64(sizeBytes),
             path: path,
             runtimeRequirement: record["runtimeRequirement"] as? String ?? "",
             obsolete: record["obsolete"] as? Bool ?? false
@@ -162,37 +163,31 @@ class CloudSyncManager: ObservableObject {
         var fetchedPlugins: [PluginItem] = []
         var resultCursor: CKQueryOperation.Cursor?
 
-        operation.recordMatchedBlock = { recordID, result in
-            switch result {
-            case .success(let record):
-                if let plugin = self.createPlugin(from: record) {
-                    fetchedPlugins.append(plugin)
-                }
-            case .failure(let error):
-                AppLogger.sync.error("CloudKit record fetch failed: \(error.localizedDescription)")
-            }
-        }
-
-        operation.queryResultBlock = { result in
-            switch result {
-            case .success(let cursor):
-                resultCursor = cursor
-            case .failure(let error):
-                AppLogger.sync.error("CloudKit query failed: \(error.localizedDescription)")
-            }
-        }
-
-        database.add(operation)
-
         // Wait for operation to complete
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            operation.completionBlock = {
-                if let error = operation.operationError {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
+            operation.recordMatchedBlock = { recordID, result in
+                switch result {
+                case .success(let record):
+                    if let plugin = self.createPlugin(from: record) {
+                        fetchedPlugins.append(plugin)
+                    }
+                case .failure(let error):
+                    AppLogger.error("CloudKit record fetch failed: \(error.localizedDescription)")
                 }
             }
+
+            operation.queryResultBlock = { result in
+                switch result {
+                case .success(let cursor):
+                    resultCursor = cursor
+                    continuation.resume()
+                case .failure(let error):
+                    AppLogger.error("CloudKit query failed: \(error.localizedDescription)")
+                    continuation.resume(throwing: error)
+                }
+            }
+
+            database.add(operation)
         }
 
         return (fetchedPlugins, resultCursor)
@@ -206,7 +201,7 @@ class CloudSyncManager: ObservableObject {
         let recordIDs = results.matchResults.compactMap { try? $0.1.get().recordID }
 
         if !recordIDs.isEmpty {
-            try await database.modifyRecords(saving: [], deleting: recordIDs)
+            _ = try await database.modifyRecords(saving: [], deleting: recordIDs)
         }
     }
 

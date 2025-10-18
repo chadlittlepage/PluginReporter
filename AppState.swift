@@ -8,7 +8,10 @@
 
 // AppState.swift — FULL REPLACEMENT (shared selection + clipboard actions)
 import Foundation
+import Combine
+#if os(macOS)
 import AppKit
+#endif
 
 final class AppState: ObservableObject {
     @Published var selected: [PluginItem] = []   // currently selected rows in the table
@@ -32,6 +35,7 @@ final class AppState: ObservableObject {
 
     // MARK: Clipboard
 
+    #if os(macOS)
     func copyPaths() {
         guard !selected.isEmpty else { return }
         let text = selected.map { $0.path }.joined(separator: "\n")
@@ -62,4 +66,5 @@ final class AppState: ObservableObject {
     }
 
     var copyPathsTitle: String { selected.count > 1 ? "Copy Paths" : "Copy Path" }
+    #endif
 }

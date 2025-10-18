@@ -14,7 +14,7 @@ struct UninstallConfirmationView: View {
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var uninstallManager = UninstallManager.shared
 
-    let plugins: [AppPluginItem]
+    let plugins: [PluginItem]
     let onComplete: (UninstallResult) -> Void
 
     @State private var deletionType: UninstallManager.DeletionType = .moveToTrash
@@ -84,7 +84,7 @@ struct UninstallConfirmationView: View {
     #if os(iOS)
     @ViewBuilder
     private var iOSView: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView(.vertical, showsIndicators: true) {
                 contentView
             }
@@ -354,7 +354,7 @@ struct UninstallConfirmationView: View {
 // MARK: - Plugin Delete Row
 
 private struct PluginDeleteRow: View {
-    let plugin: AppPluginItem
+    let plugin: PluginItem
 
     private var sizeString: String {
         ByteCountFormatter.string(fromByteCount: plugin.sizeBytes, countStyle: .file)

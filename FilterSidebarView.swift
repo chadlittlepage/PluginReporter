@@ -17,7 +17,7 @@ struct FilterSidebarView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Format Filters
                 Section("Formats") {

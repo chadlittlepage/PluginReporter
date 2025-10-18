@@ -139,16 +139,13 @@ struct MergeSuggestionsSheet: View {
         isScanning = true
         selectedSuggestions.removeAll()
 
-        // Run on background thread
-        DispatchQueue.global(qos: .userInitiated).async {
+        // Run asynchronously
+        Task { @MainActor in
             let publishers = plugins.map { $0.publisher }
             let foundSuggestions = metadataManager.findMergeSuggestions(from: publishers)
 
-            // Update on main thread
-            DispatchQueue.main.async {
-                self.suggestions = foundSuggestions
-                self.isScanning = false
-            }
+            self.suggestions = foundSuggestions
+            self.isScanning = false
         }
     }
 

@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import Combine
 #if os(macOS)
 import AppKit
 #endif
@@ -27,8 +28,19 @@ class UninstallManager: ObservableObject {
     // Deletion log
     private var deletionLog: [DeletionLogEntry] = []
 
-    struct DeletionLogEntry: Codable, Identifiable {
+    struct DeletionLogEntry: Identifiable {
         let id = UUID()
+        let timestamp: Date
+        let pluginName: String
+        let pluginPath: String
+        let pluginSize: Int64
+        let deletionType: DeletionType
+        let success: Bool
+        let errorMessage: String?
+    }
+
+    // CodableLogEntry for UserDefaults storage (no computed id)
+    private struct CodableLogEntry: Codable {
         let timestamp: Date
         let pluginName: String
         let pluginPath: String
@@ -114,7 +126,7 @@ class UninstallManager: ObservableObject {
 
     /// Uninstall plugins with the specified deletion type
     func uninstallPlugins(
-        _ plugins: [AppPluginItem],
+        _ plugins: [PluginItem],
         deletionType: DeletionType,
         checkDAWs: Bool = true,
         onProgress: ((String, Double) -> Void)? = nil
@@ -130,7 +142,7 @@ class UninstallManager: ObservableObject {
 
         isUninstalling = true
         var successCount = 0
-        var failedPlugins: [(AppPluginItem, Error)] = []
+        var failedPlugins: [(PluginItem, Error)] = []
 
         for (index, plugin) in plugins.enumerated() {
             let progress = Double(index) / Double(plugins.count)
@@ -178,7 +190,7 @@ class UninstallManager: ObservableObject {
 
     /// Uninstall a single plugin
     private func uninstallSinglePlugin(
-        _ plugin: AppPluginItem,
+        _ plugin: PluginItem,
         deletionType: DeletionType
     ) async throws {
 
@@ -261,9 +273,9 @@ class UninstallManager: ObservableObject {
 
         var error: NSDictionary?
         if let scriptObject = NSAppleScript(source: script) {
-            let output = scriptObject.executeAndReturnError(&error)
+            _ = scriptObject.executeAndReturnError(&error)
 
-            if let error = error {
+            if error != nil {
                 throw UninstallError.permissionDenied(path)
             }
 
@@ -277,7 +289,7 @@ class UninstallManager: ObservableObject {
     // MARK: - Deletion Logging
 
     private func logDeletion(
-        plugin: AppPluginItem,
+        plugin: PluginItem,
         deletionType: DeletionType,
         success: Bool,
         error: String?
@@ -301,17 +313,38 @@ class UninstallManager: ObservableObject {
     }
 
     private func saveDeletionLog() {
-        guard let encoded = try? JSONEncoder().encode(deletionLog) else { return }
+        let codableEntries = deletionLog.map { entry in
+            CodableLogEntry(
+                timestamp: entry.timestamp,
+                pluginName: entry.pluginName,
+                pluginPath: entry.pluginPath,
+                pluginSize: entry.pluginSize,
+                deletionType: entry.deletionType,
+                success: entry.success,
+                errorMessage: entry.errorMessage
+            )
+        }
+        guard let encoded = try? JSONEncoder().encode(codableEntries) else { return }
         UserDefaults.standard.set(encoded, forKey: "deletion_log")
         print("📝 Saved deletion log: \(deletionLog.count) entries")
     }
 
     func loadDeletionLog() {
         guard let data = UserDefaults.standard.data(forKey: "deletion_log"),
-              let decoded = try? JSONDecoder().decode([DeletionLogEntry].self, from: data) else {
+              let codableEntries = try? JSONDecoder().decode([CodableLogEntry].self, from: data) else {
             return
         }
-        deletionLog = decoded
+        deletionLog = codableEntries.map { entry in
+            DeletionLogEntry(
+                timestamp: entry.timestamp,
+                pluginName: entry.pluginName,
+                pluginPath: entry.pluginPath,
+                pluginSize: entry.pluginSize,
+                deletionType: entry.deletionType,
+                success: entry.success,
+                errorMessage: entry.errorMessage
+            )
+        }
         print("📝 Loaded deletion log: \(deletionLog.count) entries")
     }
 
@@ -340,7 +373,7 @@ class UninstallManager: ObservableObject {
     // MARK: - Batch Operations
 
     /// Calculate total size of plugins to be deleted
-    func calculateTotalSize(_ plugins: [AppPluginItem]) -> String {
+    func calculateTotalSize(_ plugins: [PluginItem]) -> String {
         let totalBytes = plugins.reduce(0) { $0 + $1.sizeBytes }
         return ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
     }
@@ -351,7 +384,7 @@ class UninstallManager: ObservableObject {
 struct UninstallResult {
     let totalPlugins: Int
     let successCount: Int
-    let failedPlugins: [(AppPluginItem, Error)]
+    let failedPlugins: [(PluginItem, Error)]
 
     var failedCount: Int {
         failedPlugins.count

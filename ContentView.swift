@@ -46,6 +46,18 @@ struct ContentView: View {
 
     // MARK: Detail panel state
     @State private var showDetailPanel = false
+    @State private var detailPanelRefreshTrigger = false  // Toggle to force refresh
+
+    // MARK: DAW Playlist state
+    #if os(macOS)
+    @State private var showPlaylistSidebar: Bool = false
+    @State private var activePlaylistFilters: [DAWPlaylist] = []
+    @StateObject private var playlistManager = DAWPlaylistManager.shared
+    @State private var showDAWImport = false
+    @State private var showDuplicatePlaylistWarning = false
+    @State private var pendingImportURL: URL?
+    @State private var existingPlaylistToReplace: DAWPlaylist?
+    #endif
 
     private func toggleDetailPanel() {
         showDetailPanel.toggle()
@@ -76,6 +88,37 @@ struct ContentView: View {
             }
         }
 
+        // Apply playlist filter if active
+        #if os(macOS)
+        if !activePlaylistFilters.isEmpty {
+            // Create a dictionary mapping (name, format) to track names from ALL selected playlists
+            var playlistTrackMap: [String: [String]] = [:]
+            for activePlaylist in activePlaylistFilters {
+                for entry in activePlaylist.entries {
+                    let key = "\(entry.pluginName.lowercased())_\(entry.pluginFormat.rawValue)"
+                    if playlistTrackMap[key] == nil {
+                        playlistTrackMap[key] = []
+                    }
+                    if !playlistTrackMap[key]!.contains(entry.trackName) {
+                        playlistTrackMap[key]?.append(entry.trackName)
+                    }
+                }
+            }
+
+            // Filter and add track names
+            filtered = filtered.compactMap { plugin in
+                let key = "\(plugin.name.lowercased())_\(plugin.type)"
+                if let trackNames = playlistTrackMap[key] {
+                    // Create a new PluginItem with the track names joined
+                    var updatedPlugin = plugin
+                    updatedPlugin.trackName = trackNames.sorted().joined(separator: ", ")
+                    return updatedPlugin
+                }
+                return nil
+            }
+        }
+        #endif
+
         displayedPlugins = filtered
 
         // Restore selection from IDs after filtering
@@ -96,9 +139,9 @@ struct ContentView: View {
         else if colorScheme == .dark {
             return Color(red: 28/255, green: 28/255, blue: 30/255)
         }
-        // Light mode: medium gray
+        // Light mode: white to match listing background
         else {
-            return Color(red: 0.82, green: 0.82, blue: 0.84)
+            return Color.white
         }
     }
 
@@ -193,26 +236,6 @@ struct ContentView: View {
                 )
             }
 
-            // Clear All button
-            if !prefs.selectedFormats.isEmpty {
-                Button(action: {
-                    prefs.selectedFormats.removeAll()
-                    updateDisplayedPlugins()
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                        Text("Clear All")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundColor(.red)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 4)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -246,152 +269,190 @@ struct ContentView: View {
         showBatchUninstall = true
     }
 
-    var body: some View {
-        // Single-pane layout (no NavigationSplitView) so the UI never shifts. The Formats panel is provided by an overlay.
-        HStack(spacing: 0) {
-            Spacer().frame(width: 10) // structural left inset to prevent cut-off
-            VStack(spacing: 0) {
-                if hSizeClass == .compact {
-                    // Compact header for iPhone
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            Button("Filters") {
-                                withAnimation(.snappy(duration: 0.2)) {
-                                    showOverlaySidebar.toggle()
-                                }
-                            }
-                            .buttonStyle(.bordered)
+    // MARK: - Extracted Views for Type Checking
 
-                            TextField("Search", text: $searchText)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.18)))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(searchFocused ? Color.accentColor : Color.white.opacity(0.25), lineWidth: 1)
-                                )
-                                .focused($searchFocused)
-
-                            Button("Scan") { scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:))) }
-                                .disabled(scanner.isScanning)
-
-                            // AI Suggestions button (shown when plugin is selected)
-                            if let firstSelected = appState.selected.first {
-                                AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
-                            }
-                        }
-
-                        // Export actions in a compact menu
-                        HStack {
-                            // Ready indicator
-                            if !scanner.isScanning {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "checkmark.icloud.fill")
-                                        .foregroundColor(.green)
-                                        .font(.system(size: 14))
-                                    Text("Ready")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-
-                            Menu {
-                                Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
-                                Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
-                                Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
-                                #if os(macOS)
-                                Button("Export PDF") {
-                                    let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
-                                    ExportManager.exportPDF(rows: displayedPlugins, options: opts)
-                                }
-                                #endif
-                            } label: {
-                                Label("Export", systemImage: "square.and.arrow.up")
-                                    .labelStyle(.titleAndIcon)
-                            }
-                            .buttonStyle(.bordered)
-                            Spacer()
-                        }
+    @ViewBuilder
+    private var compactHeaderView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Button("Filters") {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        showOverlaySidebar.toggle()
                     }
-                    .padding(.top, 8)
-                } else {
-                    // Original wide header for Mac / regular width
-                    HStack(spacing: 8) {
-                        Button("Filters") {
-                            withAnimation(.snappy(duration: 0.2)) {
-                                showOverlaySidebar.toggle()
-                            }
-                        }
-                        .buttonStyle(.bordered)
-
-                        TextField("Search", text: $searchText)
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.18)))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(searchFocused ? Color.accentColor : Color.white.opacity(0.25), lineWidth: 1)
-                            )
-                            .focused($searchFocused)
-                            .frame(width: 300)
-
-                        Button("Scan") { scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:))) }
-                            .disabled(scanner.isScanning)
-
-                        Spacer()
-
-                        // AI Suggestions button (shown when plugin is selected) - centered
-                        if let firstSelected = appState.selected.first {
-                            AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
-                        }
-
-                        Spacer()
-
-                        // Ready indicator
-                        if !scanner.isScanning {
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.icloud.fill")
-                                    .foregroundColor(.green)
-                                    .font(.system(size: 14))
-                                Text("Ready")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-
-                        Menu {
-                            #if os(macOS)
-                            Button("Export PDF") {
-                                let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
-                                ExportManager.exportPDF(rows: displayedPlugins, options: opts)
-                            }
-                            #endif
-                            Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
-                            Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
-                            Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
-                        } label: {
-                            Text("Export")
-                        }
-                        .menuIndicator(.hidden)
-                        .buttonStyle(.bordered)
-
-                        // Detail Panel Toggle
-                        Button(action: toggleDetailPanel) {
-                            Image(systemName: showDetailPanel ? "sidebar.right" : "sidebar.right")
-                                .foregroundColor(showDetailPanel ? .accentColor : .primary)
-                        }
-                        .buttonStyle(.bordered)
-                        .help(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
-                        .padding(.trailing, 8)  // Match the bar graph padding to align with numbers
-                    }
-                    .padding(.top, 8)
                 }
-                
-                // BAR GRAPH - INSTANT DISPLAY with batched updates!
-                // Uses cached counts - only updates every 100 plugins for instant feel
-                instantBarsWithBatchedCounts(rows: displayedPlugins)
+                #if os(macOS)
+                .buttonStyle(SpaceModeButtonStyle())
+                #else
+                .buttonStyle(.bordered)
+                #endif
+
+                TextField("Search", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.18)))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(searchFocused ? Color.accentColor : (colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.25)), lineWidth: 1)
+                    )
+                    .focused($searchFocused)
+
+                Button("Scan") {
+                    Task { @MainActor in
+                        scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                    }
+                }
+                    .disabled(scanner.isScanning)
+                    #if os(macOS)
+                    .buttonStyle(SpaceModeButtonStyle())
+                    #else
+                    .buttonStyle(.bordered)
+                    #endif
+
+                if let firstSelected = appState.selected.first {
+                    AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
+                }
+            }
+
+            HStack {
+                if !scanner.isScanning {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.icloud.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 14))
+                        Text("Ready")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Menu {
+                    Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
+                    Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
+                    Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
+                    #if os(macOS)
+                    Button("Export PDF") {
+                        let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
+                        ExportManager.exportPDF(rows: displayedPlugins, options: opts)
+                    }
+                    #endif
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(SpaceModeButtonStyle())
+                Spacer()
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private var wideHeaderView: some View {
+        HStack(spacing: 8) {
+            #if os(macOS)
+            Button(action: {
+                withAnimation(.snappy(duration: 0.2)) {
+                    showPlaylistSidebar.toggle()
+                }
+            }) {
+                Image(systemName: showPlaylistSidebar ? "sidebar.left" : "sidebar.left")
+                    .foregroundColor(showPlaylistSidebar ? .accentColor : .primary)
+            }
+            .buttonStyle(.bordered)
+            .help(showPlaylistSidebar ? "Hide DAW Playlists" : "Show DAW Playlists")
+            #endif
+
+            Button("Filters") {
+                withAnimation(.snappy(duration: 0.2)) {
+                    showOverlaySidebar.toggle()
+                }
+            }
+            .buttonStyle(SpaceModeButtonStyle())
+
+            TextField("Search", text: $searchText)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8).fill(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.18)))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(searchFocused ? Color.accentColor : (colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.25)), lineWidth: 1)
+                )
+                .focused($searchFocused)
+                .frame(width: 300)
+
+            Button("Scan") {
+                Task { @MainActor in
+                    scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                }
+            }
+                .disabled(scanner.isScanning)
+                .buttonStyle(SpaceModeButtonStyle())
+
+            #if os(macOS)
+            Button("DAW Import") {
+                importDAWProject()
+            }
+            .buttonStyle(SpaceModeButtonStyle())
+            #endif
+
+            Spacer()
+
+            if let firstSelected = appState.selected.first {
+                AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
+            }
+
+            Spacer()
+
+            if !scanner.isScanning {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.icloud.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 14))
+                    Text("Ready")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Menu {
+                #if os(macOS)
+                Button("Export PDF") {
+                    let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
+                    ExportManager.exportPDF(rows: displayedPlugins, options: opts)
+                }
+                #endif
+                Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
+                Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
+                Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
+            } label: {
+                Text("Export")
+            }
+            .menuIndicator(.hidden)
+            .buttonStyle(SpaceModeButtonStyle())
+
+            Button(action: toggleDetailPanel) {
+                Image(systemName: showDetailPanel ? "sidebar.right" : "sidebar.right")
+                    .foregroundColor(showDetailPanel ? .accentColor : .primary)
+            }
+            .buttonStyle(.bordered)
+            .help(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
+            .padding(.trailing, 8)
+        }
+        .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private var mainContentView: some View {
+        VStack(spacing: 0) {
+            if hSizeClass == .compact {
+                compactHeaderView
+            } else {
+                wideHeaderView
+            }
+
+            instantBarsWithBatchedCounts(rows: displayedPlugins)
                     .padding(.top, 12)
                     .padding(.bottom, 6)
                     .background(appBG)
@@ -417,52 +478,220 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 6)
-            }
+        }
+    }
+
+    @ViewBuilder
+    private var bodyWithoutModifiers: some View {
+        HStack(spacing: 0) {
+            Spacer().frame(width: 10)
+            mainContentView
             Spacer().frame(width: 10)
         }
-        .overlay(alignment: .leading) {
-            if showOverlaySidebar {
-                // Full-screen container to allow outside taps to dismiss
-                ZStack(alignment: .leading) {
-                    Color.black.opacity(0.001)
-                        .contentShape(Rectangle())
-                        .onTapGesture { withAnimation(.snappy(duration: 0.2)) { showOverlaySidebar = false } }
-                    // Slide-over panel
+    }
+
+    var body: some View {
+        bodyWithSidebars
+            .background(appBG)
+            .clipped()
+            .sheet(isPresented: $showDetailSheet) { detailSheet }
+            .sheet(isPresented: $showBatchUninstall) { batchUninstallSheet }
+            #if os(macOS)
+            .alert("Replace Existing Playlist?", isPresented: $showDuplicatePlaylistWarning) {
+                Button("Cancel", role: .cancel) {
+                    pendingImportURL = nil
+                    existingPlaylistToReplace = nil
+                }
+                Button("Replace", role: .destructive) {
+                    if let url = pendingImportURL {
+                        performImport(url: url, replacingPlaylist: existingPlaylistToReplace)
+                    }
+                    pendingImportURL = nil
+                    existingPlaylistToReplace = nil
+                }
+            } message: {
+                if let existingPlaylist = existingPlaylistToReplace {
+                    Text("A playlist named \"\(existingPlaylist.name)\" already exists. Do you want to replace it with the new version?")
+                }
+            }
+            #endif
+            .onAppear {
+                updateDisplayedPlugins()
+                setupNotificationListeners()
+            }
+            .onChange(of: appState.selected) { _ in handleSelectionChange() }
+            .onChange(of: prefs.selectedFormats) { _ in updateDisplayedPlugins() }
+            .onChange(of: prefs.selectedPublishers) { _ in updateDisplayedPlugins() }
+            .onChange(of: prefs.selectedStyles) { _ in updateDisplayedPlugins() }
+            .onChange(of: selectedStarRatings) { _ in updateDisplayedPlugins() }
+            .onChange(of: searchText) { newValue in handleSearchTextChange(newValue) }
+            .onChange(of: scanner.plugins.count) { _ in updateDisplayedPlugins() }
+    }
+
+    @ViewBuilder
+    private var bodyWithSidebars: some View {
+        bodyWithoutModifiers
+            .overlay(alignment: .leading) { filterSidebarOverlay }
+            .animation(suppressAnimations ? nil : .snappy(duration: 0.2), value: showOverlaySidebar)
+            .animation(suppressAnimations ? nil : .snappy(duration: 0.2), value: showPlaylistSidebar)
+            .transaction { tx in if suppressAnimations { tx.animation = nil } }
+    }
+
+    @ViewBuilder
+    private var detailSheet: some View {
+        if let item = appState.selected.first {
+            PluginDetailView(item: item)
+        }
+    }
+
+    @ViewBuilder
+    private var batchUninstallSheet: some View {
+        UninstallConfirmationView(
+            plugins: batchUninstallPlugins,
+            onComplete: { result in
+                Task { @MainActor in
+                    scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                }
+            }
+        )
+    }
+
+    private func handleSelectionChange() {
+        if hSizeClass == .compact {
+            showDetailSheet = (appState.selected.first != nil)
+        }
+        appState.updateSelectionIDs()
+    }
+
+    private func handleAppearanceChange(_ newValue: AppPreferences.Appearance) {
+        if newValue == AppPreferences.Appearance.system {
+            suppressAnimations = true
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                suppressAnimations = false
+            }
+        }
+    }
+
+    #if os(macOS)
+    private func importDAWProject() {
+        let panel = NSOpenPanel()
+        panel.title = "Select DAW Project"
+        panel.message = "Choose a DAW project file (.als for Ableton, .txt for Pro Tools, .bwproject for Bitwig)"
+        panel.allowedContentTypes = [
+            .init(filenameExtension: "als"),
+            .init(filenameExtension: "txt"),
+            .init(filenameExtension: "bwproject")
+        ].compactMap { $0 }
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            // Check for duplicate playlist name on main thread
+            Task { @MainActor in
+                let projectName = url.deletingPathExtension().lastPathComponent
+                AppLogger.debug("Checking for duplicate playlist: '\(projectName)'")
+                AppLogger.debug("Existing playlists: \(self.playlistManager.playlists.map { $0.name }.joined(separator: ", "))")
+
+                if let existingPlaylist = self.playlistManager.playlists.first(where: { $0.name == projectName }) {
+                    // Found duplicate - show warning dialog
+                    AppLogger.info("Found duplicate playlist '\(projectName)', showing warning")
+                    self.pendingImportURL = url
+                    self.existingPlaylistToReplace = existingPlaylist
+                    self.showDuplicatePlaylistWarning = true
+                } else {
+                    // No duplicate - proceed with import
+                    AppLogger.debug("No duplicate found, proceeding with import")
+                    self.performImport(url: url, replacingPlaylist: nil)
+                }
+            }
+        }
+    }
+
+    private func performImport(url: URL, replacingPlaylist: DAWPlaylist?) {
+        Task {
+            // If replacing, delete the old one BEFORE importing the new one
+            if let oldPlaylist = replacingPlaylist {
+                await MainActor.run {
+                    AppLogger.info("Removing existing playlist '\(oldPlaylist.name)' before importing new version")
+                    self.playlistManager.deletePlaylist(oldPlaylist)
+                    if let index = self.activePlaylistFilters.firstIndex(where: { $0.id == oldPlaylist.id }) {
+                        self.activePlaylistFilters.remove(at: index)
+                    }
+                }
+            }
+
+            do {
+                let installedPlugins = self.scanner.plugins.map(AppPluginItem.init)
+                let playlist = try await self.playlistManager.importProject(url: url, installedPlugins: installedPlugins)
+
+                await MainActor.run {
+                    // Open the playlist sidebar and select the newly imported playlist
+                    self.showPlaylistSidebar = true
+                    self.activePlaylistFilters = [playlist]
+                    // Apply the playlist filter to show only plugins used in this project
+                    self.updateDisplayedPlugins()
+                    AppLogger.info("Successfully imported playlist: \(playlist.name)")
+                }
+            } catch {
+                await MainActor.run {
+                    AppLogger.error("Failed to import DAW project: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    #endif
+
+    @ViewBuilder
+    private var filterSidebarOverlay: some View {
+        if showOverlaySidebar {
+            ZStack(alignment: .leading) {
+                // Slide-over panel
                     VStack(alignment: .leading, spacing: 12) {
                         // Top padding to prevent cutoff
                         Spacer().frame(height: 30)
                         
-                        VStack(alignment: .leading, spacing: 8) {
-                            // Header with title and close button
-                            ZStack {
-                                // Centered title
-                                Text("Formats")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-
-                                // Close button aligned to trailing edge (top right corner)
-                                HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation(.snappy(duration: 0.2)) {
-                                            showOverlaySidebar = false
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                            .padding(6)
-                                            .background(Circle().fill(Color.white.opacity(0.1)))
-                                    }
-                                    .buttonStyle(.plain)
-                                    .offset(x: 8, y: -8)  // Push into top right corner
-                                }
-                            }
-                            .padding(.horizontal, 4)
-                            
-                            FormatsCloud(selectedFormats: $prefs.selectedFormats)
+                        // Header with title and close button
+                        ZStack {
+                            // Centered title
+                            Text("Filters")
+                                .font(.headline)
+                                .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity, alignment: .center)
+
+                            // Close button aligned to trailing edge (top right corner)
+                            HStack {
+                                Spacer()
+                                Button(action: {
+                                    withAnimation(.snappy(duration: 0.2)) {
+                                        showOverlaySidebar = false
+                                    }
+                                }) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                        .padding(6)
+                                        .background(Circle().fill(Color.white.opacity(0.1)))
+                                }
+                                .buttonStyle(.plain)
+                                .offset(x: 8, y: -8)  // Push into top right corner
+                            }
+                        }
+                        .padding(.horizontal, 4)
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Type")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 10)  // 10px padding above Type
+                            FormatsCloud(selectedFormats: $prefs.selectedFormats, useFullObsoleteLabel: true)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 8)  // Additional padding between Type and cloud
                                 .padding(.bottom, 10)  // 10px padding under OBSLT
                         }
 
@@ -506,7 +735,34 @@ struct ContentView: View {
                                 selectedPublishers: $prefs.selectedPublishers
                             )
                         }
-                        
+
+                        Divider()
+                            .padding(.top, 10)
+
+                        // Clear Filters button
+                        if !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty || !prefs.selectedStyles.isEmpty || !prefs.selectedPublishers.isEmpty {
+                            Button {
+                                prefs.selectedFormats.removeAll()
+                                selectedStarRatings.removeAll()
+                                prefs.selectedStyles.removeAll()
+                                prefs.selectedPublishers.removeAll()
+                                updateDisplayedPlugins()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 14))
+                                    Text("Clear Filters")
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundColor(.red)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 10)
+                        }
+
                         Spacer()
                     }
                     .padding(12)
@@ -515,64 +771,103 @@ struct ContentView: View {
                     .background(appBG)
                     .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 0)
                     .transition(.move(edge: .leading).combined(with: .opacity))
-                }
-                .ignoresSafeArea()
             }
+            .allowsHitTesting(true)  // Panel captures its own taps
+            .ignoresSafeArea()
         }
-        .animation(suppressAnimations ? nil : .snappy(duration: 0.2), value: showOverlaySidebar)
-        .transaction { tx in if suppressAnimations { tx.animation = nil } }
-        .background(appBG)
-        .clipped()
-        .sheet(isPresented: $showDetailSheet) {
-            if let item = appState.selected.first {
-                PluginDetailView(item: item)
-            }
-        }
-        .sheet(isPresented: $showBatchUninstall) {
-            UninstallConfirmationView(
-                plugins: batchUninstallPlugins,
-                onComplete: { result in
-                    // Rescan plugins after batch uninstall
-                    scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
-                }
+    }
+
+    @ViewBuilder
+    private var playlistSidebarPanel: some View {
+        #if os(macOS)
+        if showPlaylistSidebar {
+            PlaylistSidebarView(
+                playlists: playlistManager.playlists.sorted(by: { $0.dateImported > $1.dateImported }),
+                activePlaylists: $activePlaylistFilters,
+                showDetailPanel: $showDetailPanel,
+                onSelect: { playlists, modifiers in
+                    // Handle selection based on modifier keys
+                    // This receives an array of playlists to select
+
+                    if modifiers.isEmpty {
+                        // Check if clicking on an already-selected playlist
+                        let clickingAlreadySelected = (activePlaylistFilters.count == 1 &&
+                                                      playlists.count == 1 &&
+                                                      activePlaylistFilters.first?.id == playlists.first?.id)
+
+                        // No modifiers: replace selection
+                        activePlaylistFilters = playlists
+
+                        if clickingAlreadySelected {
+                            // Clicking on already-selected playlist
+                            print("🎵 Clicking already-selected playlist, sidecar open: \(showDetailPanel)")
+                            // Only show playlist metadata if sidecar is already open
+                            if showDetailPanel {
+                                print("   → Clearing plugin selection (had \(appState.selected.count) selected)")
+                                // Clear plugin selection FIRST
+                                appState.selected = []
+                                // Force refresh on next run loop to ensure selection is cleared
+                                Task { @MainActor in
+                                    detailPanelRefreshTrigger.toggle()
+                                    print("   → Toggled refresh trigger to \(detailPanelRefreshTrigger)")
+                                }
+                            }
+                            // If sidecar is closed, do nothing (don't open it)
+                            // DON'T call updateDisplayedPlugins() - it would restore the plugin selection!
+                        } else {
+                            print("🎵 Clicking different playlist")
+                            // Clicking on a different playlist
+                            // Clear plugin selection, open sidecar, and show playlist metadata
+                            appState.selected = []
+                            detailPanelRefreshTrigger.toggle()
+                            showDetailPanel = true
+                            // Update displayed plugins for the new playlist
+                            updateDisplayedPlugins()
+                        }
+                    } else if modifiers.contains(.shift) {
+                        // Shift: set range selection (already computed by view)
+                        activePlaylistFilters = playlists
+                        // Clear plugin selection, toggle refresh, and show detail panel
+                        appState.selected = []
+                        detailPanelRefreshTrigger.toggle()
+                        showDetailPanel = true
+                        updateDisplayedPlugins()
+                    } else if modifiers.contains(.command) {
+                        // CMD: toggle individual playlist
+                        if let playlist = playlists.first {
+                            if let index = activePlaylistFilters.firstIndex(where: { $0.id == playlist.id }) {
+                                activePlaylistFilters.remove(at: index)
+                            } else {
+                                activePlaylistFilters.append(playlist)
+                            }
+                        }
+                        // Show detail panel if we have exactly one playlist selected
+                        if activePlaylistFilters.count == 1 {
+                            // Clear plugin selection and toggle refresh trigger
+                            appState.selected = []
+                            detailPanelRefreshTrigger.toggle()
+                            showDetailPanel = true
+                        }
+                        updateDisplayedPlugins()
+                    }
+                },
+                onDelete: { playlist in
+                    playlistManager.deletePlaylist(playlist)
+                    if let index = activePlaylistFilters.firstIndex(where: { $0.id == playlist.id }) {
+                        activePlaylistFilters.remove(at: index)
+                    }
+                    updateDisplayedPlugins()
+                },
+                onEditMetadata: {
+                    // Clear plugin selection when Edit Metadata is clicked on a playlist
+                    appState.selected = []
+                    // Force detail panel refresh to show playlist metadata
+                    detailPanelRefreshTrigger.toggle()
+                },
+                playlistManager: playlistManager
             )
         }
-        .onChange(of: appState.selected) { _ in
-            if hSizeClass == .compact {
-                showDetailSheet = (appState.selected.first != nil)
-            }
-            // Update the stored selection IDs when selection changes from user interaction
-            appState.updateSelectionIDs()
-        }
-        .onAppear {
-            updateDisplayedPlugins()
-        }
-        .onChange(of: prefs.selectedFormats) { _ in
-            updateDisplayedPlugins()
-        }
-        .onChange(of: prefs.selectedPublishers) { _ in
-            updateDisplayedPlugins()
-        }
-        .onChange(of: prefs.selectedStyles) { _ in
-            updateDisplayedPlugins()
-        }
-        .onChange(of: selectedStarRatings) { _ in
-            updateDisplayedPlugins()
-        }
-        .onChange(of: searchText) { newValue in
-            handleSearchTextChange(newValue)
-        }
-        .onChange(of: scanner.plugins.count) { _ in
-            updateDisplayedPlugins()
-        }
-        .onChange(of: prefs.appearance) { newValue in
-            if newValue == AppPreferences.Appearance.system {
-                suppressAnimations = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                    suppressAnimations = false
-                }
-            }
-        }
+        #endif
     }
 
     // MARK: - Bar Graph Helpers
@@ -586,7 +881,7 @@ struct ContentView: View {
 
         if shouldUpdate {
             // Update cache
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.lastBarUpdateCount = currentCount
                 self.cachedBarCounts = self.quickCount(rows: rows)
             }
@@ -683,14 +978,22 @@ struct ContentView: View {
     @ViewBuilder
     private var mainContentWithDetailPanel: some View {
         HStack(spacing: 0) {
+            #if os(macOS)
+            // DAW Playlists Panel - Left side
+            playlistSidebarPanel
+            #endif
+
             ZStack {
                 appBG
                 PlatformTable(
                     rows: displayedPlugins,
                     selection: $appState.selected,
                     sortStatus: $sortStatus,
+                    showDetailPanel: $showDetailPanel,
                     onPluginsDeleted: {
-                        scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                        Task { @MainActor in
+                            scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+                        }
                     }
                 )
                 .id(displayedPlugins.map(\.id))
@@ -699,18 +1002,39 @@ struct ContentView: View {
             }
 
             #if os(macOS)
-            // Detail Panel - Show bulk edit when multiple selected, otherwise single detail
-            if appState.selected.count > 1 {
-                BulkEditPanel(
-                    plugins: appState.selected,
-                    isVisible: $showDetailPanel
-                )
-            } else {
-                PluginDetailPanel(
-                    plugin: appState.selected.first,
-                    isVisible: $showDetailPanel
-                )
+            // Detail Panel - Priority:
+            // 1. Bulk edit when multiple plugins selected
+            // 2. Plugin detail when single plugin selected
+            // 3. Playlist metadata when playlist sidebar is open, a playlist is selected, and NO plugins selected
+            // 4. Plugin detail panel (empty) as default
+            Group {
+                if appState.selected.count > 1 {
+                    BulkEditPanel(
+                        plugins: appState.selected,
+                        isVisible: $showDetailPanel
+                    )
+                    .onAppear { print("📊 Detail Panel: Showing BulkEditPanel") }
+                } else if appState.selected.count == 1 {
+                    PluginDetailPanel(
+                        plugin: appState.selected.first,
+                        isVisible: $showDetailPanel
+                    )
+                    .onAppear { print("📊 Detail Panel: Showing PluginDetailPanel for \(appState.selected.first?.name ?? "unknown")") }
+                } else if showPlaylistSidebar && activePlaylistFilters.count == 1 {
+                    PlaylistMetadataPanel(
+                        playlist: activePlaylistFilters.first,
+                        isVisible: $showDetailPanel
+                    )
+                    .onAppear { print("📊 Detail Panel: Showing PlaylistMetadataPanel for \(activePlaylistFilters.first?.name ?? "unknown")") }
+                } else {
+                    PluginDetailPanel(
+                        plugin: nil,
+                        isVisible: $showDetailPanel
+                    )
+                    .onAppear { print("📊 Detail Panel: Showing empty PluginDetailPanel") }
+                }
             }
+            .id(detailPanelRefreshTrigger)  // Force rebuild when trigger toggles
             #endif
         }
     }
@@ -718,7 +1042,51 @@ struct ContentView: View {
     // Bar graph action buttons (extracted to reduce type-checking complexity)
     @ViewBuilder
     private var barGraphActionButtons: some View {
-        // Clear All button
+        #if os(macOS)
+        // Action buttons arranged horizontally
+        let hasPlaylist = !activePlaylistFilters.isEmpty
+        let hasFilters = !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty
+
+        if hasPlaylist || hasFilters {
+            HStack(spacing: 8) {
+                // Close Playlist button (when playlist is active)
+                if hasPlaylist {
+                    Button {
+                        activePlaylistFilters.removeAll()
+                        updateDisplayedPlugins()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+                            Text("Close Playlists").font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(.red)
+                        .padding(.vertical, 6).padding(.horizontal, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Clear Filters button (when format or rating filters are selected)
+                if hasFilters {
+                    Button {
+                        prefs.selectedFormats.removeAll()
+                        selectedStarRatings.removeAll()
+                        updateDisplayedPlugins()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+                            Text("Clear Filters").font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(.red)
+                        .padding(.vertical, 6).padding(.horizontal, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Spacer()
+            }
+            .padding(.top, 4)
+        }
+        #else
         if !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty {
             Button {
                 prefs.selectedFormats.removeAll()
@@ -727,7 +1095,7 @@ struct ContentView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 14))
-                    Text("Clear All").font(.system(size: 13, weight: .medium))
+                    Text("Clear Filter").font(.system(size: 13, weight: .medium))
                 }
                 .foregroundColor(.red)
                 .padding(.vertical, 6).padding(.horizontal, 10)
@@ -736,6 +1104,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .padding(.top, 4)
         }
+        #endif
     }
 
     // Ultra-fast counting helper
@@ -763,6 +1132,94 @@ struct ContentView: View {
             if row.obsolete { c.obsolete += 1 }
         }
         return c
+    }
+
+    // MARK: - Menu Bar Notification Handlers
+
+    private func setupNotificationListeners() {
+        #if os(macOS)
+        // File menu
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ImportDAWProject"), object: nil, queue: .main) { [self] _ in
+            self.importDAWProject()
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportCSV"), object: nil, queue: .main) { [self] _ in
+            ExportManager.exportCSV(rows: self.displayedPlugins)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportJSON"), object: nil, queue: .main) { [self] _ in
+            ExportManager.exportJSON(rows: self.displayedPlugins)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportHTML"), object: nil, queue: .main) { [self] _ in
+            ExportManager.exportHTML(rows: self.displayedPlugins)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportPDF"), object: nil, queue: .main) { [self] _ in
+            let opts = PDFExportOptions(page: self.prefs.pdfPage, landscape: self.prefs.pdfLandscape, margin: self.prefs.pdfMargin, fontSize: self.prefs.pdfFontSize)
+            ExportManager.exportPDF(rows: self.displayedPlugins, options: opts)
+        }
+
+        // View menu
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ToggleFilters"), object: nil, queue: .main) { [self] _ in
+            withAnimation(.snappy(duration: 0.2)) {
+                self.showOverlaySidebar.toggle()
+            }
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("TogglePlaylists"), object: nil, queue: .main) { [self] _ in
+            withAnimation(.snappy(duration: 0.2)) {
+                self.showPlaylistSidebar.toggle()
+            }
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ToggleMetadata"), object: nil, queue: .main) { [self] _ in
+            self.toggleDetailPanel()
+        }
+
+        // Plugins menu
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ScanPlugins"), object: nil, queue: .main) { [self] _ in
+            Task { @MainActor in
+                self.scanner.scan(extraPaths: self.prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
+            }
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ShowInFinder"), object: nil, queue: .main) { [self] _ in
+            guard !self.appState.selected.isEmpty else { return }
+            let urls = self.appState.selected.map { URL(fileURLWithPath: $0.path) }
+            NSWorkspace.shared.activateFileViewerSelecting(urls)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("CheckUpdate"), object: nil, queue: .main) { [self] _ in
+            guard let plugin = self.appState.selected.first else { return }
+            if let url = URL(string: "https://\(self.generateWebsiteURL(for: plugin.publisher))") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("EditMetadata"), object: nil, queue: .main) { [self] _ in
+            guard !self.appState.selected.isEmpty else { return }
+            self.showDetailPanel = true
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("UninstallSelected"), object: nil, queue: .main) { [self] _ in
+            guard !self.appState.selected.isEmpty else { return }
+            self.batchUninstallPlugins = self.appState.selected
+            self.showBatchUninstall = true
+        }
+        #endif
+    }
+
+    private func generateWebsiteURL(for publisher: String) -> String {
+        let clean = publisher.lowercased()
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: ",", with: "")
+            .replacingOccurrences(of: "inc", with: "")
+            .replacingOccurrences(of: "llc", with: "")
+            .replacingOccurrences(of: "gmbh", with: "")
+
+        return "\(clean).com"
     }
 }
 
@@ -936,12 +1393,25 @@ private struct BarRow: View {
     var isSelected: Bool = false     // Show if this format is filtered
     var onUninstall: (() -> Void)? = nil  // Optional uninstall handler
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let textColor: Color = {
+            if isSelected {
+                return color
+            } else if colorScheme == .light {
+                // Light mode: 55% darker text (was 30%, now adding 25% more)
+                return Color.black.opacity(0.8)
+            } else {
+                return .secondary
+            }
+        }()
+
         HStack(spacing: 8) {
             Text(label)
                 .frame(width: 50, alignment: .leading)
                 .font(.caption)
-                .foregroundStyle(isSelected ? color : .secondary)
+                .foregroundStyle(textColor)
                 .fontWeight(isSelected ? .bold : .regular)
 
             ZStack(alignment: .leading) {
@@ -963,7 +1433,7 @@ private struct BarRow: View {
             Text("\(value)")
                 .font(.caption2)
                 .fontWeight(isSelected ? .bold : .semibold)
-                .foregroundStyle(isSelected ? color : .secondary)  // Match iOS: show color when selected
+                .foregroundStyle(textColor)
                 .frame(width: 40, alignment: .trailing)
                 .monospacedDigit()
         }
@@ -1225,7 +1695,7 @@ private struct PluginDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("Info")) {
                     LabeledContent("Name", value: item.name)
@@ -1278,26 +1748,6 @@ struct StarsSelector: View {
             // Display stars from 5 down to 1
             ForEach([5, 4, 3, 2, 1], id: \.self) { rating in
                 starRow(rating: rating)
-            }
-
-            // Clear All button (only shown when stars are selected)
-            if !selectedStarRatings.isEmpty {
-                Button(action: {
-                    selectedStarRatings.removeAll()
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                        Text("Clear All")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundColor(.red)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 4)
             }
         }
     }
@@ -1353,6 +1803,472 @@ extension View {
         modifier(ScaledFont(size: size, weight: weight))
     }
 }
+
+// MARK: - Playlist Sidebar View with Keyboard Navigation
+
+#if os(macOS)
+private struct PlaylistSidebarView: View {
+    let playlists: [DAWPlaylist]
+    @Binding var activePlaylists: [DAWPlaylist]
+    @Binding var showDetailPanel: Bool
+    let onSelect: ([DAWPlaylist], EventModifiers) -> Void
+    let onDelete: (DAWPlaylist) -> Void
+    let onEditMetadata: () -> Void  // Callback when Edit Metadata is clicked
+    @ObservedObject var playlistManager: DAWPlaylistManager
+    @EnvironmentObject private var prefs: AppPreferences
+    @Environment(\.colorScheme) private var colorScheme
+
+    @State private var selectedIndex: Int = 0
+    @State private var lastClickedIndex: Int = 0
+    @FocusState private var isFocused: Bool
+    @State private var playlistsToDelete: [DAWPlaylist] = []
+    @State private var showDeleteConfirmation = false
+
+    private var backgroundColor: Color {
+        prefs.appearance == .space ? Color.black : Color(nsColor: .windowBackgroundColor)
+    }
+
+    private var secondaryTextColor: Color {
+        colorScheme == .light ? Color.black.opacity(0.55) : .secondary
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            headerView
+            if prefs.appearance == .space {
+                Rectangle()
+                    .fill(Color.white.opacity(0.15))
+                    .frame(height: 1)
+            } else if colorScheme == .light {
+                Rectangle()
+                    .fill(Color.black.opacity(0.5))
+                    .frame(height: 1)
+            } else {
+                Divider()
+            }
+            contentView
+        }
+        .frame(width: 350)
+        .background(backgroundColor)
+        .overlay(
+            Rectangle()
+                .fill(Color.gray.opacity(0.2))
+                .frame(width: 1),
+            alignment: .trailing
+        )
+        .overlay(
+            Rectangle()
+                .fill(prefs.appearance == .space ? Color.white.opacity(0.15) : (colorScheme == .light ? Color.black.opacity(0.5) : Color.clear))
+                .frame(height: 1),
+            alignment: .top
+        )
+        .onAppear {
+            isFocused = true
+        }
+        .alert(playlistsToDelete.count > 1 ? "Remove Playlists?" : "Remove Playlist?",
+               isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {
+                playlistsToDelete = []
+            }
+            Button("Remove", role: .destructive) {
+                // Use batch delete for undo support
+                if playlistsToDelete.count > 1 {
+                    playlistManager.deletePlaylists(playlistsToDelete)
+                    // Remove from active filters
+                    let idsToDelete = Set(playlistsToDelete.map { $0.id })
+                    activePlaylists.removeAll { idsToDelete.contains($0.id) }
+                } else if let playlist = playlistsToDelete.first {
+                    onDelete(playlist)
+                }
+                playlistsToDelete = []
+            }
+        } message: {
+            if playlistsToDelete.count == 1, let playlist = playlistsToDelete.first {
+                Text("Are you sure you want to remove the playlist \"\(playlist.name)\"?")
+            } else if playlistsToDelete.count > 1 {
+                let playlistNames = playlistsToDelete.map { "• \($0.name)" }.joined(separator: "\n")
+                Text("Are you sure you want to remove the following playlists?\n\n\(playlistNames)")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var headerView: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "music.note.list")
+                .font(.title2)
+                .foregroundColor(.accentColor)
+
+            Text("DAW Playlists")
+                .font(.headline)
+
+            Spacer()
+
+            if playlists.count > 0 {
+                Text("(\(playlists.count))")
+                    .font(.caption)
+                    .foregroundColor(secondaryTextColor)
+            }
+        }
+        .padding(16)
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+        if playlists.isEmpty {
+            emptyStateView
+        } else {
+            playlistListView
+        }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Spacer()
+
+            Image(systemName: "music.note.list")
+                .font(.system(size: 48))
+                .foregroundColor(secondaryTextColor)
+
+            Text("No Playlists")
+                .font(.headline)
+                .foregroundColor(secondaryTextColor)
+
+            Text("Import an Ableton Live project to get started")
+                .font(.caption)
+                .foregroundColor(secondaryTextColor)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var playlistListView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(Array(playlists.enumerated()), id: \.element.id) { index, playlist in
+                        playlistButton(index: index, playlist: playlist)
+                    }
+                }
+                .padding(.leading, 7)
+                .padding(.trailing, 16)
+                .padding(.vertical, 16)
+            }
+            .focusable()
+            .focused($isFocused)
+            .applyIfAvailableMac14FocusDisabled()
+            .onMoveCommand { direction in
+                handleKeyboardNavigation(direction: direction, proxy: proxy)
+            }
+            .onAppear {
+                // Select the first active playlist if any
+                if let firstActive = activePlaylists.first,
+                   let index = playlists.firstIndex(where: { $0.id == firstActive.id }) {
+                    selectedIndex = index
+                }
+                isFocused = true
+            }
+        }
+    }
+
+    private func playlistButton(index: Int, playlist: DAWPlaylist) -> some View {
+        Button(action: {
+            #if os(macOS)
+            let modifiers = NSEvent.modifierFlags
+
+            // Control-click is handled by contextMenu, so skip it here
+            if !modifiers.contains(.control) {
+                var eventMods: EventModifiers = []
+
+                if modifiers.contains(.shift) {
+                    eventMods.insert(.shift)
+                    // Shift-click: select range from lastClickedIndex to current index
+                    let start = min(lastClickedIndex, index)
+                    let end = max(lastClickedIndex, index)
+                    let rangeSelection = Array(playlists[start...end])
+                    onSelect(rangeSelection, eventMods)
+                    selectedIndex = index
+                } else if modifiers.contains(.command) {
+                    eventMods.insert(.command)
+                    // CMD-click: toggle single item
+                    onSelect([playlist], eventMods)
+                    lastClickedIndex = index
+                    selectedIndex = index
+                } else {
+                    // Normal click: single selection
+                    onSelect([playlist], eventMods)
+                    lastClickedIndex = index
+                    selectedIndex = index
+                }
+            }
+            #else
+            onSelect([playlist], [])
+            selectedIndex = index
+            lastClickedIndex = index
+            #endif
+        }) {
+            PlaylistRowView(
+                playlist: playlist,
+                isActive: activePlaylists.contains(where: { $0.id == playlist.id }),
+                onDelete: {
+                    // If this playlist is part of a multi-selection, delete all selected
+                    // Otherwise, just delete this one
+                    if activePlaylists.contains(where: { $0.id == playlist.id }) && activePlaylists.count > 1 {
+                        playlistsToDelete = activePlaylists
+                    } else {
+                        playlistsToDelete = [playlist]
+                    }
+                    showDeleteConfirmation = true
+                }
+            )
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            // Context menu for Control-click / Right-click
+            let selectedCount = activePlaylists.count
+            let isPartOfSelection = activePlaylists.contains(where: { $0.id == playlist.id })
+
+            // Edit Metadata - only for single playlist
+            if selectedCount == 1 && isPartOfSelection {
+                Button {
+                    // Clear plugin selection and show playlist metadata
+                    onEditMetadata()
+                    showDetailPanel = true
+                } label: {
+                    Label("Edit Metadata", systemImage: "pencil")
+                }
+
+                Divider()
+            }
+
+            Button(role: .destructive) {
+                // Delete all selected playlists if this is part of selection
+                if isPartOfSelection && selectedCount > 1 {
+                    playlistsToDelete = activePlaylists
+                } else {
+                    playlistsToDelete = [playlist]
+                }
+                showDeleteConfirmation = true
+            } label: {
+                if isPartOfSelection && selectedCount > 1 {
+                    Label("Remove \(selectedCount) Playlists", systemImage: "trash")
+                } else {
+                    Label("Remove Playlist", systemImage: "trash")
+                }
+            }
+        }
+        .id(index)
+    }
+
+    private func handleKeyboardNavigation(direction: MoveCommandDirection, proxy: ScrollViewProxy) {
+        #if os(macOS)
+        let modifiers = NSEvent.modifierFlags
+        let isShift = modifiers.contains(.shift)
+        #else
+        let isShift = false
+        #endif
+
+        switch direction {
+        case .down:
+            // Arrow Down
+            moveSelection(delta: 1, proxy: proxy, extendSelection: isShift)
+        case .up:
+            // Arrow Up
+            moveSelection(delta: -1, proxy: proxy, extendSelection: isShift)
+        default:
+            break
+        }
+    }
+
+    private func moveSelection(delta: Int, proxy: ScrollViewProxy, extendSelection: Bool) {
+        guard !playlists.isEmpty else { return }
+
+        let newIndex = min(max(selectedIndex + delta, 0), playlists.count - 1)
+
+        if newIndex != selectedIndex {
+            selectedIndex = newIndex
+
+            if extendSelection {
+                // Shift+Arrow: extend selection from lastClickedIndex to new position
+                let start = min(lastClickedIndex, newIndex)
+                let end = max(lastClickedIndex, newIndex)
+                let rangeSelection = Array(playlists[start...end])
+                onSelect(rangeSelection, .shift)
+            } else {
+                // Normal arrow: single selection
+                onSelect([playlists[newIndex]], [])
+                lastClickedIndex = newIndex
+            }
+
+            // Scroll to keep selection visible (no animation to reduce flicker)
+            proxy.scrollTo(newIndex, anchor: .center)
+        }
+    }
+}
+#endif
+
+// MARK: - Playlist Row View
+
+#if os(macOS)
+private struct PlaylistRowView: View {
+    let playlist: DAWPlaylist
+    let isActive: Bool
+    @State private var isHovered = false
+    var onDelete: (() -> Void)? = nil
+    @EnvironmentObject private var prefs: AppPreferences
+
+    private var rowBackground: Color {
+        if prefs.appearance == .space {
+            // Space mode: dark grey background
+            if isActive {
+                return Color.green.opacity(0.2)
+            } else if isHovered {
+                return Color.white.opacity(0.15)
+            } else {
+                return Color.white.opacity(0.1)
+            }
+        } else {
+            // Other modes: existing behavior
+            if isActive {
+                return Color.green.opacity(0.2)
+            } else if isHovered {
+                return Color.secondary.opacity(0.2)
+            } else {
+                return Color.secondary.opacity(0.1)
+            }
+        }
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: isActive ? "checkmark.circle.fill" : "music.note.list")
+                        .foregroundColor(isActive ? .green : .accentColor)
+                        .font(.title3)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(playlist.name)
+                            .font(.headline)
+                            .lineLimit(1)
+
+                        Text(playlist.dawType.rawValue)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.trailing, 24)  // Make room for delete button
+
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.grid.3x3")
+                            .font(.caption2)
+                        Text("\(playlist.entries.count)")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.blue)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.caption2)
+                        Text("\(playlist.installedCount)")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.green)
+
+                    Spacer()
+                }
+
+                HStack {
+                    Text("\(playlist.dateImported.formatted(date: .abbreviated, time: .standard))")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    // Blue chevron aligned with timestamp
+                    if !isActive {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            .padding(12)
+            .background(rowBackground)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isActive ? Color.green : Color.clear, lineWidth: 2)
+            )
+            .onHover { hovering in
+                isHovered = hovering
+            }
+
+            // Delete button in top-right corner (show on hover OR when active/selected)
+            if isHovered || isActive {
+                Button(action: {
+                    onDelete?()
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(6)
+                        .background(Circle().fill(Color.white.opacity(0.1)))
+                }
+                .buttonStyle(.plain)
+                .padding(8)
+                .offset(x: 4, y: -4)
+            }
+        }
+    }
+}
+#endif
+
+// MARK: - Custom Button Style for Space Mode
+#if os(macOS)
+struct SpaceModeButtonStyle: ButtonStyle {
+    @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let backgroundColor: Color = {
+            if prefs.appearance == .space {
+                return Color(red: 25/255, green: 25/255, blue: 25/255)
+            } else if colorScheme == .dark {
+                return Color(red: 0.2, green: 0.2, blue: 0.2)
+            } else {
+                // Light mode: match header grey
+                return Color(red: 0.82, green: 0.82, blue: 0.84)
+            }
+        }()
+
+        let textColor: Color = {
+            if colorScheme == .light {
+                // Light mode: 10% darker text
+                return Color.black.opacity(0.9)
+            } else {
+                return Color.primary
+            }
+        }()
+
+        return configuration.label
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(backgroundColor)
+            )
+            .foregroundColor(textColor)
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
+    }
+}
+#endif
 
 // MARK: - Fast Filter Engine (NEW - SIMPLE & CORRECT)
 

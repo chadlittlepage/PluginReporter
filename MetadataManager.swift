@@ -372,8 +372,8 @@ class MetadataManager: ObservableObject {
             return (name, score)
         }
 
-        // Return the highest scoring name
-        return scored.max(by: { $0.score < $1.score })?.name ?? variants.first!
+        // Return the highest scoring name, or first variant if available
+        return scored.max(by: { $0.score < $1.score })?.name ?? variants.first ?? ""
     }
 
     /// Apply a merge suggestion (create normalizations for all variants)

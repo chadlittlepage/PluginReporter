@@ -104,7 +104,7 @@ struct FeatureRequestView: View {
     // iOS-specific view with navigation
     @ViewBuilder
     private var iOSView: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView(.vertical, showsIndicators: true) {
                 contentView
             }

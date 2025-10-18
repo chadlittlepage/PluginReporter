@@ -41,7 +41,7 @@ class AIPluginSuggestions: ObservableObject {
         // Try OpenAI first if API key is available (uses GPT's extensive plugin knowledge)
         if let apiKey = openAIKey, !apiKey.isEmpty {
             do {
-                var newSuggestions = try await fetchFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
+                let newSuggestions = try await fetchFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
 
                 // If OpenAI returns good suggestions, use them
                 if newSuggestions.count >= 3 {
@@ -68,7 +68,7 @@ class AIPluginSuggestions: ObservableObject {
         }
 
         // Fallback to local AI (comprehensive database)
-        var newSuggestions = await fetchFromLocal(plugin: plugin, ownedPlugins: excludedPlugins)
+        let newSuggestions = await fetchFromLocal(plugin: plugin, ownedPlugins: excludedPlugins)
 
         // Limit to 5 suggestions per request (so "More" has more to show)
         let limitedSuggestions = Array(newSuggestions.prefix(5))
@@ -108,7 +108,7 @@ class AIPluginSuggestions: ObservableObject {
             // Try OpenAI for free plugin suggestions if API key is available
             if let apiKey = openAIKey, !apiKey.isEmpty {
                 do {
-                    var newSuggestions = try await fetchFreePluginsFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
+                    let newSuggestions = try await fetchFreePluginsFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
 
                     if newSuggestions.count >= 3 {
                         for suggestion in newSuggestions {
@@ -131,8 +131,8 @@ class AIPluginSuggestions: ObservableObject {
             }
 
             // Fallback to local free plugins
-            var newSuggestions = CategoryPluginKnowledge.getFreeSuggestions(pluginStyle: plugin.style)
-            newSuggestions = filterOwnedPlugins(newSuggestions, ownedPlugins: excludedPlugins)
+            let rawSuggestions = CategoryPluginKnowledge.getFreeSuggestions(pluginStyle: plugin.style)
+            let newSuggestions = filterOwnedPlugins(rawSuggestions, ownedPlugins: excludedPlugins)
 
             let limitedSuggestions = Array(newSuggestions.prefix(5))
 
@@ -151,8 +151,8 @@ class AIPluginSuggestions: ObservableObject {
         }
 
         // Use local knowledge base for category suggestions, filtered by plugin style
-        var newSuggestions = CategoryPluginKnowledge.getSuggestions(for: category, pluginStyle: plugin.style)
-        newSuggestions = filterOwnedPlugins(newSuggestions, ownedPlugins: excludedPlugins)
+        let rawSuggestions = CategoryPluginKnowledge.getSuggestions(for: category, pluginStyle: plugin.style)
+        let newSuggestions = filterOwnedPlugins(rawSuggestions, ownedPlugins: excludedPlugins)
 
         // Limit to 5 suggestions per request (so "More" has more to show)
         let limitedSuggestions = Array(newSuggestions.prefix(5))
@@ -418,7 +418,6 @@ private struct OpenAIResponse: Codable {
 struct LocalPluginKnowledge {
     static func getSuggestions(for plugin: PluginItem) -> [PluginSuggestion] {
         let name = plugin.name.lowercased()
-        let type = plugin.type.uppercased()
         let publisher = plugin.publisher.lowercased()
         let style = plugin.style.lowercased()
 

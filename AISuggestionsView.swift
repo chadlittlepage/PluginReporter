@@ -400,10 +400,9 @@ struct AISuggestionsButton: View {
         .buttonStyle(.borderless)
         #if os(iOS)
         .popover(isPresented: $showingSuggestions) {
-            NavigationView {
+            NavigationStack {
                 AISuggestionsView(plugin: plugin, ownedPlugins: ownedPlugins)
             }
-            .navigationViewStyle(.stack)
             .frame(
                 width: min(400, UIScreen.main.bounds.width * 0.92),
                 height: min(600, UIScreen.main.bounds.height * 0.75)
@@ -418,93 +417,7 @@ struct AISuggestionsButton: View {
     }
 }
 
-// MARK: - Settings Panel for OpenAI API Key
 
-// Helper class to manage API key state
-class APIKeyManager: ObservableObject {
-    @Published var apiKey: String = ""
-
-    init() {
-        self.apiKey = loadAPIKey()
-        migrateAPIKeyToKeychain()
-    }
-
-    private func loadAPIKey() -> String {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "openai_api_key",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let value = String(data: data, encoding: .utf8) else {
-            return ""
-        }
-
-        return value
-    }
-
-    func saveAPIKey(_ value: String) {
-        if value.isEmpty {
-            // Delete from Keychain
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: "openai_api_key"
-            ]
-            SecItemDelete(query as CFDictionary)
-        } else {
-            // Save to Keychain
-            saveToKeychain(key: "openai_api_key", value: value)
-        }
-    }
-
-    private func migrateAPIKeyToKeychain() {
-        // Check if we need to migrate from old UserDefaults storage
-        if let oldKey = UserDefaults.standard.string(forKey: "openai_api_key"), !oldKey.isEmpty {
-            // Only migrate if Keychain doesn't already have a key
-            if !keychainItemExists(key: "openai_api_key") {
-                saveToKeychain(key: "openai_api_key", value: oldKey)
-            }
-            // Remove from UserDefaults for security
-            UserDefaults.standard.removeObject(forKey: "openai_api_key")
-        }
-    }
-
-    private func keychainItemExists(key: String) -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: false
-        ]
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
-        return status == errSecSuccess
-    }
-
-    private func saveToKeychain(key: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
-
-        // Delete any existing item first
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
-        ]
-
-        SecItemAdd(query as CFDictionary, nil)
-    }
-}
 
 struct AISettingsView: View {
     @StateObject private var manager = APIKeyManager()

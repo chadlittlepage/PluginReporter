@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ExportView: View {
     let plugins: [PluginItem]
@@ -22,7 +23,7 @@ struct ExportView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {
@@ -48,19 +49,7 @@ struct ExportView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Divider()
-
-                    Button(action: {
-                        viewModel.updatePlugins(plugins)
-                        viewModel.exportPDF()
-                    }) {
-                        Label("Export as PDF", systemImage: "doc.richtext")
-                    }
-                    .accessibilityHint("Export plugin list as PDF file")
-
-                    Text("Export plugin list as formatted PDF document.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    // PDF export removed - macOS only feature
                 } header: {
                     Text("Export Options")
                 }
@@ -89,6 +78,55 @@ struct ExportView: View {
                 }
             }
         }
-        .navigationViewStyle(.stack)
+    }
+}
+
+// MARK: - Embedded ExportViewModel (to avoid path issues)
+
+@MainActor
+class ExportViewModel: ObservableObject {
+    @Published var showShareSheet = false
+    @Published var exportURL: URL?
+    @Published var isExporting = false
+    @Published var lastError: Error?
+    
+    private(set) var plugins: [PluginItem] = []
+    
+    func updatePlugins(_ newPlugins: [PluginItem]) {
+        self.plugins = newPlugins
+    }
+    
+    func exportCSV() {
+        isExporting = true
+        lastError = nil
+        guard let url = generateCSV() else {
+            isExporting = false
+            return
+        }
+        exportURL = url
+        showShareSheet = true
+        isExporting = false
+    }
+    
+    private func generateCSV() -> URL? {
+        // Simple CSV generation
+        var csv = "Name,Publisher,Format,Path\n"
+        for plugin in plugins {
+            let name = plugin.name.replacingOccurrences(of: "\"", with: "\"\"")
+            let pub = plugin.publisher.replacingOccurrences(of: "\"", with: "\"\"")
+            let format = plugin.type.replacingOccurrences(of: "\"", with: "\"\"")
+            let path = plugin.path.replacingOccurrences(of: "\"", with: "\"\"")
+            csv += "\"\(name)\",\"\(pub)\",\"\(format)\",\"\(path)\"\n"
+        }
+
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("plugins_export.csv")
+        do {
+            try csv.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        } catch {
+            lastError = error
+            return nil
+        }
     }
 }

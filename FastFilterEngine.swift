@@ -20,12 +20,12 @@ struct FastFilterEngine {
     ///   - searchText: Search query (empty = no search)
     /// - Returns: Filtered array
     static func filter(
-        plugins: [AppPluginItem],
+        plugins: [PluginItem],
         formats: Set<PluginFormat>,
         publishers: Set<String>,
         styles: Set<String>,
         searchText: String
-    ) -> [AppPluginItem] {
+    ) -> [PluginItem] {
 
         print("🚀 FastFilterEngine.filter() CALLED with searchText: '\(searchText)'")
 
@@ -113,7 +113,7 @@ struct FastFilterEngine {
     }
 
     /// Sort plugins by given column
-    static func sort(plugins: [AppPluginItem], by column: SortColumn, ascending: Bool) -> [AppPluginItem] {
+    static func sort(plugins: [PluginItem], by column: SortColumn, ascending: Bool) -> [PluginItem] {
         let sorted = plugins.sorted { a, b in
             let comparison: ComparisonResult
 

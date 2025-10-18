@@ -80,6 +80,7 @@ struct PlatformTable: View {
     let rows: [PluginItem]
     @Binding var selection: [PluginItem]
     @Binding var sortStatus: String
+    @Binding var showDetailPanel: Bool
 
     /// True while a scan is in progress. When false, the progress bar is hidden.
     @Binding var isScanning: Bool
@@ -95,6 +96,7 @@ struct PlatformTable: View {
             rows: rows,
             selection: $selection,
             sortStatus: $sortStatus,
+            showDetailPanel: $showDetailPanel,
             onPluginsDeleted: onPluginsDeleted
         )
     }
@@ -104,6 +106,7 @@ struct PlatformTable: View {
         rows: [PluginItem],
         selection: Binding<[PluginItem]>,
         sortStatus: Binding<String> = .constant(""),
+        showDetailPanel: Binding<Bool> = .constant(false),
         isScanning: Binding<Bool> = .constant(false),
         scanProgress: Binding<Double> = .constant(0),
         onPluginsDeleted: (() -> Void)? = nil
@@ -111,6 +114,7 @@ struct PlatformTable: View {
         self.rows = rows
         self._selection = selection
         self._sortStatus = sortStatus
+        self._showDetailPanel = showDetailPanel
         self._isScanning = isScanning
         self._scanProgress = scanProgress
         self.onPluginsDeleted = onPluginsDeleted

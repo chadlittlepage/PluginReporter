@@ -15,41 +15,89 @@ struct PluginDetailPanel: View {
     @StateObject private var tagsManager = TagsManager.shared
     @StateObject private var ratingsManager = RatingsManager.shared
     @StateObject private var notesManager = NotesManager.shared
+    @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
 
-    @State private var showMetadataEditor = false
     @State private var newTagText = ""
 
     private let panelWidth: CGFloat = 350
 
+    private var backgroundColor: Color {
+        #if os(macOS)
+        return prefs.appearance == .space ? Color.black : Color(NSColor.windowBackgroundColor)
+        #else
+        return Color(.systemBackground)
+        #endif
+    }
+
+    private var secondaryTextColor: Color {
+        colorScheme == .light ? Color.black.opacity(0.55) : .secondary
+    }
+
+    @ViewBuilder
+    private var divider: some View {
+        #if os(macOS)
+        if prefs.appearance == .space {
+            Rectangle()
+                .fill(Color.white.opacity(0.15))
+                .frame(height: 1)
+        } else if colorScheme == .light {
+            Rectangle()
+                .fill(Color.black.opacity(0.5))
+                .frame(height: 1)
+        } else {
+            Divider()
+        }
+        #else
+        Divider()
+        #endif
+    }
+
     var body: some View {
         if isVisible, let plugin = plugin {
             VStack(alignment: .leading, spacing: 0) {
+                // Title (matching DAW Playlists sidebar style)
+                HStack(spacing: 12) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+
+                    Text("Metadata")
+                        .font(.headline)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 17)
+
+                divider
+
                 // Header with plugin name
                 headerSection(plugin: plugin)
 
-                Divider()
+                divider
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         // Info Section
                         infoSection(plugin: plugin)
 
-                        Divider()
+                        divider
 
                         // Tags Section
                         tagsSection(plugin: plugin)
 
-                        Divider()
+                        divider
 
                         // Suggested Tags Section
                         suggestedTagsSection(plugin: plugin)
 
-                        Divider()
+                        divider
 
                         // Rating Section
                         ratingSection(plugin: plugin)
 
-                        Divider()
+                        divider
 
                         // Notes Section
                         notesSection(plugin: plugin)
@@ -58,17 +106,21 @@ struct PluginDetailPanel: View {
                 }
             }
             .frame(width: panelWidth)
-            #if os(macOS)
-            .background(Color(nsColor: .windowBackgroundColor))
-            #else
-            .background(Color(.systemBackground))
-            #endif
+            .background(backgroundColor)
             .overlay(
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 1),
                 alignment: .leading
             )
+            #if os(macOS)
+            .overlay(
+                Rectangle()
+                    .fill(prefs.appearance == .space ? Color.white.opacity(0.15) : (colorScheme == .light ? Color.black.opacity(0.5) : Color.clear))
+                    .frame(height: 1),
+                alignment: .top
+            )
+            #endif
         }
     }
 
@@ -99,7 +151,7 @@ struct PluginDetailPanel: View {
 
                 Text(metadataManager.getDisplayPublisher(for: plugin))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryTextColor)
             }
 
             Spacer()
@@ -123,7 +175,7 @@ struct PluginDetailPanel: View {
             HStack(alignment: .top, spacing: 8) {
                 Text("TYPES:")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryTextColor)
                     .frame(width: 100, alignment: .leading)
 
                 Text(plugin.type)
@@ -140,7 +192,7 @@ struct PluginDetailPanel: View {
                 HStack(alignment: .top, spacing: 8) {
                     Text("WEBSITE:")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(secondaryTextColor)
                         .frame(width: 100, alignment: .leading)
 
                     Button(action: {
@@ -156,19 +208,6 @@ struct PluginDetailPanel: View {
                     Spacer()
                 }
             }
-
-            // Edit button
-            Button(action: {
-                showMetadataEditor = true
-            }) {
-                Text("Edit Metadata")
-                    .font(.subheadline)
-                    .foregroundColor(.accentColor)
-            }
-            .buttonStyle(.plain)
-            .sheet(isPresented: $showMetadataEditor) {
-                MetadataEditorSheet(plugin: plugin)
-            }
         }
     }
 
@@ -177,7 +216,7 @@ struct PluginDetailPanel: View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(secondaryTextColor)
                 .frame(width: 100, alignment: .leading)
 
             Text(value.isEmpty ? "—" : value)
@@ -202,7 +241,7 @@ struct PluginDetailPanel: View {
             if currentTags.isEmpty {
                 Text("No tags yet")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryTextColor)
             } else {
                 // Tag chips with remove buttons - auto-expanding
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 80, maximum: 150))], alignment: .leading, spacing: 8) {
@@ -223,7 +262,11 @@ struct PluginDetailPanel: View {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
+                        #if os(macOS)
+                        .background(prefs.appearance == .space ? Color(red: 25/255, green: 25/255, blue: 25/255) : Color.primary.opacity(0.1))
+                        #else
                         .background(Color.primary.opacity(0.1))
+                        #endif
                         .cornerRadius(4)
                     }
                 }
@@ -233,7 +276,18 @@ struct PluginDetailPanel: View {
             // Add tag field
             HStack(spacing: 8) {
                 TextField("Add tag...", text: $newTagText)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    #if os(macOS)
+                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor))
+                    #else
+                    .background(Color(.systemBackground))
+                    #endif
+                    .cornerRadius(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
                     .onSubmit {
                         addTag(to: plugin)
                     }
@@ -262,14 +316,14 @@ struct PluginDetailPanel: View {
 
             Text("Click on one or more suggested tags to use them.")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(secondaryTextColor)
 
             let suggestedTags = tagsManager.getSuggestedTags(for: plugin)
 
             if suggestedTags.isEmpty {
                 Text("No suggestions available")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryTextColor)
             } else {
                 SimpleFlowLayout(items: suggestedTags.prefix(10).map { $0 }) { tag in
                     Button(action: {
@@ -280,7 +334,11 @@ struct PluginDetailPanel: View {
                             .fontWeight(.medium)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
+                            #if os(macOS)
+                            .background(prefs.appearance == .space ? Color(red: 25/255, green: 25/255, blue: 25/255) : Color.primary.opacity(0.05))
+                            #else
                             .background(Color.primary.opacity(0.05))
+                            #endif
                             .cornerRadius(4)
                     }
                     .buttonStyle(.plain)
@@ -300,32 +358,35 @@ struct PluginDetailPanel: View {
                 set: { notesManager.setNote(for: plugin.path, note: $0) }
             )
 
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: noteText)
-                    .frame(minHeight: 80, maxHeight: 120)
-                    .font(.system(size: 12))
-                    .padding(8)
-                    #if os(macOS)
-                    .background(Color(nsColor: .textBackgroundColor))
-                    #else
-                    .background(Color(.systemBackground))
-                    #endif
-                    .cornerRadius(4)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                    )
-
-                // Placeholder text
-                if noteText.wrappedValue.isEmpty {
-                    Text("NOTES")
+            VStack(spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: noteText)
+                        .frame(minHeight: 80, maxHeight: 120)
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary.opacity(0.5))
-                        .padding(.horizontal, 13)
-                        .padding(.top, 16)
-                        .allowsHitTesting(false)
+                        .scrollContentBackground(.hidden)
+                        #if os(macOS)
+                        .background(prefs.appearance == .space ? Color.black : Color(NSColor.textBackgroundColor))
+                        #else
+                        .background(Color(.systemBackground))
+                        #endif
+
+                    // Placeholder text
+                    if noteText.wrappedValue.isEmpty {
+                        Text("NOTES")
+                            .font(.system(size: 12))
+                            .foregroundColor(colorScheme == .light ? Color.black.opacity(0.5) : .secondary.opacity(0.5))
+                            .padding(.horizontal, 13)
+                            .padding(.top, 16)
+                            .allowsHitTesting(false)
+                    }
                 }
             }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.15), lineWidth: 1)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.clear))
+            )
         }
     }
 
@@ -345,7 +406,7 @@ struct PluginDetailPanel: View {
                 if currentRating > 0 {
                     Text("\(currentRating) star\(currentRating == 1 ? "" : "s")")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(secondaryTextColor)
                 }
             }
 
@@ -446,107 +507,3 @@ private struct SimpleFlowLayout<T: Hashable>: View {
     }
 }
 
-// MARK: - Metadata Editor Sheet (from MacPluginTable.swift)
-
-private struct MetadataEditorSheet: View {
-    let plugin: PluginItem
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var metadataManager = MetadataManager.shared
-
-    @State private var publisher: String = ""
-    @State private var version: String = ""
-    @State private var style: String = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Edit Metadata")
-                .font(.title)
-                .fontWeight(.bold)
-
-            Text(plugin.name)
-                .font(.headline)
-                .foregroundColor(.secondary)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Override metadata for this plugin. Leave fields empty to use original values.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Publisher")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    TextField("Original: \(plugin.publisher)", text: $publisher)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Version")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    TextField("Original: \(plugin.version)", text: $version)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Style")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    TextField("Original: \(plugin.style)", text: $style)
-                        .textFieldStyle(.roundedBorder)
-                }
-            }
-
-            Spacer()
-
-            HStack {
-                Button("Reset to Original") {
-                    metadataManager.removeOverride(for: plugin.path)
-                    publisher = ""
-                    version = ""
-                    style = ""
-                }
-                .buttonStyle(.bordered)
-
-                Spacer()
-
-                Button("Cancel") {
-                    dismiss()
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Button("Save") {
-                    saveMetadata()
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(24)
-        .frame(width: 500, height: 400)
-        .onAppear {
-            if let override = metadataManager.getOverride(for: plugin.path) {
-                publisher = override.publisher ?? ""
-                version = override.version ?? ""
-                style = override.style ?? ""
-            }
-        }
-    }
-
-    private func saveMetadata() {
-        let override = PluginMetadataOverride(
-            publisher: publisher.isEmpty ? nil : publisher,
-            version: version.isEmpty ? nil : version,
-            style: style.isEmpty ? nil : style
-        )
-
-        if override.hasAnyOverride {
-            metadataManager.setOverride(for: plugin.path, override: override)
-        } else {
-            metadataManager.removeOverride(for: plugin.path)
-        }
-    }
-}

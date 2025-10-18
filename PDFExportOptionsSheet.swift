@@ -1,5 +1,6 @@
 // PDFExportOptionsSheet.swift — SwiftUI UI for PDF export options
 import SwiftUI
+import Combine
 
 struct PDFExportOptionsSheet: View {
     @Binding var options: PDFExportOptions

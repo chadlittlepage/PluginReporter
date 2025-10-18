@@ -7,8 +7,12 @@ struct SettingsView: View {
     @State private var showFeatureRequest = false
     @Environment(\.colorScheme) var colorScheme
 
+    // Local state for appearance to prevent publishing during view updates
+    @State private var selectedAppearance: Preferences.Appearance = .dark
+
     init(prefs: Preferences = Preferences()) {
         self._prefs = ObservedObject(initialValue: prefs)
+        self._selectedAppearance = State(initialValue: prefs.appearance)
     }
 
     // Match iOS card background colors
@@ -32,7 +36,7 @@ struct SettingsView: View {
                         .padding(.horizontal, 20)
 
                     VStack(spacing: 16) {
-                        Picker("Appearance", selection: $prefs.appearance) {
+                        Picker("Appearance", selection: $selectedAppearance) {
                             ForEach(Preferences.Appearance.allCases) { mode in
                                 Text(title(for: mode)).tag(mode)
                             }
@@ -40,6 +44,22 @@ struct SettingsView: View {
                         .pickerStyle(.segmented)
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
+                        .onChange(of: selectedAppearance) { newValue in
+                            // Update prefs asynchronously to avoid publishing during view update
+                            Task { @MainActor in
+                                prefs.appearance = newValue
+                            }
+                        }
+                        .onAppear {
+                            // Sync local state with prefs on appear
+                            selectedAppearance = prefs.appearance
+                        }
+                        .onChange(of: prefs.appearance) { newValue in
+                            // Keep selectedAppearance in sync if prefs changes externally
+                            if selectedAppearance != newValue {
+                                selectedAppearance = newValue
+                            }
+                        }
 
                         Divider()
                             .padding(.horizontal, 16)
@@ -403,6 +423,12 @@ struct SettingsView: View {
         }
         .background(appBackground)
         .frame(minWidth: 700, idealWidth: 900, maxWidth: .infinity, minHeight: 800, idealHeight: 1000, maxHeight: .infinity)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ReportBug"))) { _ in
+            openBugReportWindow()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RequestFeature"))) { _ in
+            openFeatureRequestWindow()
+        }
     }
 
     // MARK: Helpers

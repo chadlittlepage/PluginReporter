@@ -3,6 +3,7 @@
 //  Renders a simple monospaced table and writes it directly to a PDF file.
 //
 import Foundation
+#if os(macOS)
 import AppKit
 
 /// Writes the current plugin list to a PDF file.
@@ -153,3 +154,4 @@ enum PDFExporter {
         """
     }
 }
+#endif

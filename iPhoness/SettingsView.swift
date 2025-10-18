@@ -27,7 +27,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     Picker("Appearance", selection: $appearance) {
@@ -166,7 +166,7 @@ struct SettingsView: View {
                 Text(errorMessage)
             }
             .sheet(isPresented: $showBugReport) {
-                NavigationView {
+                NavigationStack {
                     BugReportView()
                         .navigationTitle("Report a Bug")
                         .navigationBarTitleDisplayMode(.inline)
@@ -176,7 +176,7 @@ struct SettingsView: View {
                 .presentationDetents([.large])
             }
             .sheet(isPresented: $showFeatureRequest) {
-                NavigationView {
+                NavigationStack {
                     FeatureRequestView()
                         .navigationTitle("Request a Feature")
                         .navigationBarTitleDisplayMode(.inline)

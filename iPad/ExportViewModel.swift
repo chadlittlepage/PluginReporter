@@ -1,8 +1,9 @@
 //
 //  ExportViewModel.swift
-//  PluginReporter (iOS)
+//  PluginReporter (Shared - iPhone & iPad)
 //
 //  ViewModel for export operations - handles CSV and PDF generation
+//  SHARED between iPhone and iPad to eliminate code duplication
 //
 
 import SwiftUI

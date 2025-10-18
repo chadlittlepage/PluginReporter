@@ -23,7 +23,7 @@ extension ExportManager {
                 // Close the options sheet first to avoid nested sheets
                 onClose()
                 // Defer presenting NSSavePanel until after the sheet is dismissed
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     ExportManager.exportPDF(rows: rows, options: opts)
                 }
             } onCancel: {

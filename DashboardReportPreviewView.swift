@@ -9,7 +9,7 @@ struct DashboardReportPreviewView: View {
     @State private var showingJSON: Bool = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let report = report {

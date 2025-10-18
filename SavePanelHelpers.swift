@@ -1,4 +1,5 @@
 // SavePanelHelpers.swift
+#if os(macOS)
 import AppKit
 
 enum SavePanelHelpers {
@@ -13,3 +14,4 @@ enum SavePanelHelpers {
         return p.runModal() == .OK ? p.url : nil
     }
 }
+#endif

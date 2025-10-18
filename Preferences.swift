@@ -1,6 +1,7 @@
 // Preferences.swift — FULL FILE
 import Foundation
 import SwiftUI
+import Combine
 
 /// App preferences (simple observable model).
 /// - Stores: extra scan folders, visible formats, appearance.
