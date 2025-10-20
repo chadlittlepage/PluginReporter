@@ -2,6 +2,7 @@
 import Foundation
 
 enum CSVExporter {
+    @MainActor
     static func write(rows: [PluginItem], to url: URL) {
         // Formatters (cheap to set up once per export)
         let dateFormatter = DateFormatter()
@@ -11,6 +12,9 @@ enum CSVExporter {
         let sizeFormatter = ByteCountFormatter()
         sizeFormatter.allowedUnits = [.useBytes, .useKB, .useMB, .useGB]
         sizeFormatter.countStyle = .file
+
+        // Use MetadataManager for edited metadata values
+        let metadataManager = MetadataManager.shared
 
         // CSV header
         let header = "Name,Publisher,Version,Type,Style,Architectures,Date,Size,Path,Requirement,Obsolete\n"
@@ -23,10 +27,10 @@ enum CSVExporter {
 
             let fields = [
                 r.name,
-                r.publisher,
-                r.version,
+                metadataManager.getDisplayPublisher(for: r),
+                metadataManager.getDisplayVersion(for: r),
                 r.type,
-                r.style,
+                metadataManager.getDisplayStyle(for: r),
                 r.architectures,
                 dateStr,
                 sizeStr,

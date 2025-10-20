@@ -14,8 +14,9 @@ enum PDFExporter {
     ///   - rows: Plugins to export.
     ///   - url: Destination URL (e.g. chosen from NSSavePanel).
     ///   - landscape: When true, rotates the page to landscape for wider tables.
+    @MainActor
     static func write(rows: [PluginItem], to url: URL, landscape: Bool = true) {
-        // 1) Build the monospaced text table
+        // 1) Build the monospaced text table using MetadataManager for display values
         let text = buildTableText(from: rows)
 
         // 2) Lay text into an NSTextView so we can capture a PDF of its contents
@@ -76,6 +77,7 @@ enum PDFExporter {
     // MARK: - Table builder
 
     /// Produces a simple monospaced table string (header + rows).
+    @MainActor
     private static func buildTableText(from rows: [PluginItem]) -> String {
         // Column titles (no Path column)
         let header = [
@@ -107,15 +109,16 @@ enum PDFExporter {
             return String(s.prefix(max(0, n - 1))) + "…"
         }
 
-        // Convert one row to column strings (using convenience columns on PluginItem)
+        // Convert one row to column strings (using MetadataManager for edited values)
         // Note: Path column removed per user request
+        let metadataManager = MetadataManager.shared
         func columns(for i: PluginItem) -> [String] {
             [
                 i.name,
-                i.publisher,
-                i.version,
+                metadataManager.getDisplayPublisher(for: i),
+                metadataManager.getDisplayVersion(for: i),
                 i.type,
-                i.style,
+                metadataManager.getDisplayStyle(for: i),
                 i.architectures,
                 i.dateString,
                 i.sizeString,

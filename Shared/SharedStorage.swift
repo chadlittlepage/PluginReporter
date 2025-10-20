@@ -102,6 +102,7 @@ public enum SharedStorage {
     }
 
     /// Save plugins to shared storage
+    @MainActor
     public static func savePlugins(_ plugins: [PluginItem]) throws {
         guard let url = pluginsURL else {
             throw StorageError.notFound

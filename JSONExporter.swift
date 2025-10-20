@@ -4,15 +4,19 @@ import Foundation
 public enum JSONExporter {
 
     /// Primary API used by ContentView
+    @MainActor
     public static func export(rows: [PluginItem], to url: URL) {
+        // Use MetadataManager for edited metadata values
+        let metadataManager = MetadataManager.shared
+
         let payload: [[String: Any]] = rows.map { i in
             let dateKey: Double = i.date?.timeIntervalSince1970 ?? 0
             return [
                 "Name": i.name,
-                "Publisher": i.publisher,
-                "Version": i.version,
+                "Publisher": metadataManager.getDisplayPublisher(for: i),
+                "Version": metadataManager.getDisplayVersion(for: i),
                 "Type": i.type,
-                "Style": i.style,
+                "Style": metadataManager.getDisplayStyle(for: i),
                 "Architectures": i.architectures,
                 "Date": dateKey,                 // Double (seconds since 1970)
                 "SizeBytes": i.sizeBytes,
