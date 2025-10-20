@@ -678,6 +678,7 @@ struct PluginDetailPanel: View {
     // MARK: - Helper Functions
 
     private func initializeFields(for plugin: PluginItem) {
+        print("🔄 Initializing fields for: \(plugin.name)")
         isInitializing = true
         editedName = plugin.name
         editedPublisher = metadataManager.getDisplayPublisher(for: plugin)
@@ -686,9 +687,13 @@ struct PluginDetailPanel: View {
         editedType = plugin.type
         editedArchitecture = plugin.architectures
         editedTrack = plugin.trackName ?? ""
+        print("   Publisher: '\(editedPublisher)'")
+        print("   Version: '\(editedVersion)'")
+        print("   Style: '\(editedStyle)'")
         // Delay resetting the flag to ensure all onChange handlers have fired
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             isInitializing = false
+            print("✅ Initialization complete for: \(plugin.name)")
         }
     }
 
@@ -698,27 +703,42 @@ struct PluginDetailPanel: View {
         let trimmed = editedPublisher.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        // Only save if different from current value
+        let currentValue = metadataManager.getDisplayPublisher(for: plugin)
+        guard trimmed != currentValue else { return }
+
         var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
         override.publisher = trimmed
         metadataManager.setOverride(for: plugin.path, override: override)
+        print("✅ Saved publisher: '\(trimmed)' for \(plugin.name)")
     }
 
     private func saveVersion(for plugin: PluginItem) {
         let trimmed = editedVersion.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        // Only save if different from current value
+        let currentValue = metadataManager.getDisplayVersion(for: plugin)
+        guard trimmed != currentValue else { return }
+
         var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
         override.version = trimmed
         metadataManager.setOverride(for: plugin.path, override: override)
+        print("✅ Saved version: '\(trimmed)' for \(plugin.name)")
     }
 
     private func saveStyle(for plugin: PluginItem) {
         let trimmed = editedStyle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        // Only save if different from current value
+        let currentValue = metadataManager.getDisplayStyle(for: plugin)
+        guard trimmed != currentValue else { return }
+
         var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
         override.style = trimmed
         metadataManager.setOverride(for: plugin.path, override: override)
+        print("✅ Saved style: '\(trimmed)' for \(plugin.name)")
     }
 }
 
