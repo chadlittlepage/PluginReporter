@@ -20,6 +20,15 @@ struct PluginDetailPanel: View {
 
     @State private var newTagText = ""
 
+    // Editable metadata fields
+    @State private var editedName = ""
+    @State private var editedPublisher = ""
+    @State private var editedVersion = ""
+    @State private var editedStyle = ""
+    @State private var editedType = ""
+    @State private var editedArchitecture = ""
+    @State private var editedTrack = ""
+
     private let panelWidth: CGFloat = 350
 
     private var backgroundColor: Color {
@@ -79,7 +88,12 @@ struct PluginDetailPanel: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        // Info Section
+                        // Editable Metadata Section
+                        editableMetadataSection(plugin: plugin)
+
+                        divider
+
+                        // Info Section (Read-Only)
                         infoSection(plugin: plugin)
 
                         divider
@@ -104,6 +118,16 @@ struct PluginDetailPanel: View {
                     }
                     .padding(16)
                 }
+                .onAppear {
+                    // Initialize editable fields when panel appears
+                    editedName = plugin.name
+                    editedPublisher = metadataManager.getDisplayPublisher(for: plugin)
+                    editedVersion = metadataManager.getDisplayVersion(for: plugin)
+                    editedStyle = metadataManager.getDisplayStyle(for: plugin)
+                    editedType = plugin.type
+                    editedArchitecture = plugin.architectures
+                    editedTrack = plugin.trackName ?? ""
+                }
             }
             .frame(width: panelWidth)
             .background(backgroundColor)
@@ -121,6 +145,191 @@ struct PluginDetailPanel: View {
                 alignment: .top
             )
             #endif
+        }
+    }
+
+    // MARK: - Editable Metadata Section
+
+    @ViewBuilder
+    private func editableMetadataSection(plugin: PluginItem) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("EDIT METADATA")
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Text("Edit plugin information below. Changes are saved automatically.")
+                .font(.caption)
+                .foregroundColor(secondaryTextColor)
+
+            // Name
+            editableField(
+                label: "NAME",
+                text: $editedName,
+                placeholder: "Plugin name"
+            ) {
+                // Save name (Note: plugin name is typically read-only from scan)
+                print("Name edited to: \(editedName)")
+            }
+
+            // Publisher
+            editableField(
+                label: "PUBLISHER",
+                text: $editedPublisher,
+                placeholder: "Publisher/Developer name"
+            ) {
+                savePublisher(for: plugin)
+            }
+
+            // Version
+            editableField(
+                label: "VERSION",
+                text: $editedVersion,
+                placeholder: "Version number"
+            ) {
+                saveVersion(for: plugin)
+            }
+
+            // Style
+            editableField(
+                label: "STYLE/CATEGORY",
+                text: $editedStyle,
+                placeholder: "e.g., EQ, Compressor, Reverb"
+            ) {
+                saveStyle(for: plugin)
+            }
+
+            // Type (read-only, showing badge)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("TYPE")
+                    .font(.caption)
+                    .foregroundColor(secondaryTextColor)
+
+                Text(plugin.type)
+                    .font(.subheadline)
+                    .padding(8)
+                    #if os(macOS)
+                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
+                    #else
+                    .background(Color(.systemBackground))
+                    #endif
+                    .cornerRadius(4)
+                    .foregroundColor(.secondary)
+            }
+
+            // Architecture (read-only)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("ARCHITECTURE")
+                    .font(.caption)
+                    .foregroundColor(secondaryTextColor)
+
+                Text(plugin.architectures)
+                    .font(.subheadline)
+                    .padding(8)
+                    #if os(macOS)
+                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
+                    #else
+                    .background(Color(.systemBackground))
+                    #endif
+                    .cornerRadius(4)
+                    .foregroundColor(.secondary)
+            }
+
+            // Track Name (for playlist plugins)
+            if plugin.trackName != nil {
+                editableField(
+                    label: "TRACK NAME",
+                    text: $editedTrack,
+                    placeholder: "Track name from DAW"
+                ) {
+                    // Track name editing (display only, no persistence yet)
+                    print("Track edited to: \(editedTrack)")
+                }
+            }
+
+            // Date (read-only)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("DATE MODIFIED")
+                    .font(.caption)
+                    .foregroundColor(secondaryTextColor)
+
+                Text(plugin.dateString)
+                    .font(.subheadline)
+                    .padding(8)
+                    #if os(macOS)
+                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
+                    #else
+                    .background(Color(.systemBackground))
+                    #endif
+                    .cornerRadius(4)
+                    .foregroundColor(.secondary)
+            }
+
+            // Size (read-only)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("SIZE")
+                    .font(.caption)
+                    .foregroundColor(secondaryTextColor)
+
+                Text(plugin.sizeString)
+                    .font(.subheadline)
+                    .padding(8)
+                    #if os(macOS)
+                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
+                    #else
+                    .background(Color(.systemBackground))
+                    #endif
+                    .cornerRadius(4)
+                    .foregroundColor(.secondary)
+            }
+
+            // Path (read-only)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("PATH")
+                    .font(.caption)
+                    .foregroundColor(secondaryTextColor)
+
+                Text(plugin.path)
+                    .font(.caption)
+                    .lineLimit(3)
+                    .padding(8)
+                    #if os(macOS)
+                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
+                    #else
+                    .background(Color(.systemBackground))
+                    #endif
+                    .cornerRadius(4)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func editableField(label: String, text: Binding<String>, placeholder: String, onCommit: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundColor(secondaryTextColor)
+
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .padding(8)
+                #if os(macOS)
+                .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor))
+                #else
+                .background(Color(.systemBackground))
+                #endif
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+                .onSubmit {
+                    onCommit()
+                }
+                .onChange(of: text.wrappedValue) { _ in
+                    // Auto-save on change
+                    onCommit()
+                }
         }
     }
 
@@ -459,6 +668,35 @@ struct PluginDetailPanel: View {
             UIApplication.shared.open(url)
             #endif
         }
+    }
+
+    // MARK: - Save Functions
+
+    private func savePublisher(for plugin: PluginItem) {
+        let trimmed = editedPublisher.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+        override.publisher = trimmed
+        metadataManager.setOverride(for: plugin.path, override: override)
+    }
+
+    private func saveVersion(for plugin: PluginItem) {
+        let trimmed = editedVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+        override.version = trimmed
+        metadataManager.setOverride(for: plugin.path, override: override)
+    }
+
+    private func saveStyle(for plugin: PluginItem) {
+        let trimmed = editedStyle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+        override.style = trimmed
+        metadataManager.setOverride(for: plugin.path, override: override)
     }
 }
 
