@@ -372,7 +372,7 @@ struct PluginDetailPanel: View {
                     .font(.headline)
                     .lineLimit(2)
 
-                Text(metadataManager.getDisplayPublisher(for: plugin))
+                Text(editedPublisher.isEmpty ? metadataManager.getDisplayPublisher(for: plugin) : editedPublisher)
                     .font(.subheadline)
                     .foregroundColor(secondaryTextColor)
             }
@@ -391,8 +391,8 @@ struct PluginDetailPanel: View {
                 .font(.headline)
                 .foregroundColor(.primary)
 
-            infoRow(label: "DEVELOPER:", value: metadataManager.getDisplayPublisher(for: plugin))
-            infoRow(label: "VERSION:", value: metadataManager.getDisplayVersion(for: plugin))
+            infoRow(label: "DEVELOPER:", value: editedPublisher.isEmpty ? metadataManager.getDisplayPublisher(for: plugin) : editedPublisher)
+            infoRow(label: "VERSION:", value: editedVersion.isEmpty ? metadataManager.getDisplayVersion(for: plugin) : editedVersion)
 
             // Types
             HStack(alignment: .top, spacing: 8) {
