@@ -6,12 +6,12 @@
 //
 
 import SwiftUI
+import UIKit
 import Combine
 
 struct ExportView: View {
     let plugins: [PluginItem]
-    @State private var showShareSheet = false
-    @State private var exportURL: URL?
+    @StateObject private var viewModel = ExportViewModel()
     @AppStorage("appearance") private var appearance: String = "space"
 
     // Pre-computed colors
@@ -39,10 +39,8 @@ struct ExportView: View {
 
                 Section {
                     Button(action: {
-                        if let url = generateCSV() {
-                            exportURL = url
-                            showShareSheet = true
-                        }
+                        viewModel.updatePlugins(plugins)
+                        viewModel.exportCSV()
                     }) {
                         Label("Export as CSV", systemImage: "doc.text")
                     }
@@ -55,10 +53,8 @@ struct ExportView: View {
                     Divider()
 
                     Button(action: {
-                        if let url = generatePDF() {
-                            exportURL = url
-                            showShareSheet = true
-                        }
+                        viewModel.updatePlugins(plugins)
+                        viewModel.exportPDF()
                     }) {
                         Label("Export as PDF", systemImage: "doc.richtext")
                     }
@@ -89,57 +85,77 @@ struct ExportView: View {
             .background(customBackgroundColor)
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showShareSheet) {
-                if let url = exportURL {
+            .sheet(isPresented: $viewModel.showShareSheet) {
+                if let url = viewModel.exportURL {
                     ShareSheet(items: [url])
                 }
             }
         }
     }
+}
 
-    private func escapeCSV(_ text: String) -> String {
-        if text.contains(",") || text.contains("\"") || text.contains("\n") {
-            return "\"\(text.replacingOccurrences(of: "\"", with: "\"\""))\""
-        }
-        return text
+// MARK: - Embedded ExportViewModel (to avoid path issues)
+
+@MainActor
+class ExportViewModel: ObservableObject {
+    @Published var showShareSheet = false
+    @Published var exportURL: URL?
+    @Published var isExporting = false
+    @Published var lastError: Error?
+
+    private(set) var plugins: [PluginItem] = []
+
+    func updatePlugins(_ newPlugins: [PluginItem]) {
+        self.plugins = newPlugins
     }
 
-    func generateCSV() -> URL? {
-        // Optimize string building for large datasets
-        var lines = [String]()
-        lines.reserveCapacity(plugins.count + 1)
+    func exportCSV() {
+        isExporting = true
+        lastError = nil
+        guard let url = generateCSV() else {
+            isExporting = false
+            return
+        }
+        exportURL = url
+        showShareSheet = true
+        isExporting = false
+    }
 
-        // Header
-        lines.append("Name,Publisher,Type,Style,Version,Architecture,Size,Obsolete")
+    func exportPDF() {
+        isExporting = true
+        lastError = nil
+        guard let url = generatePDF() else {
+            isExporting = false
+            return
+        }
+        exportURL = url
+        showShareSheet = true
+        isExporting = false
+    }
 
-        // Data rows
+    private func generateCSV() -> URL? {
+        // Simple CSV generation
+        var csv = "Name,Publisher,Format,Path\n"
         for plugin in plugins {
-            let name = escapeCSV(plugin.name)
-            let publisher = escapeCSV(plugin.publisher)
-            let type = plugin.type
-            let style = escapeCSV(plugin.style)
-            let version = escapeCSV(plugin.version)
-            let arch = escapeCSV(plugin.architectures)
-            let size = plugin.displaySize
-            let obsolete = plugin.obsolete ? "Yes" : "No"
-
-            lines.append("\(name),\(publisher),\(type),\(style),\(version),\(arch),\(size),\(obsolete)")
+            let name = plugin.name.replacingOccurrences(of: "\"", with: "\"\"")
+            let pub = plugin.publisher.replacingOccurrences(of: "\"", with: "\"\"")
+            let format = plugin.type.replacingOccurrences(of: "\"", with: "\"\"")
+            let path = plugin.path.replacingOccurrences(of: "\"", with: "\"\"")
+            csv += "\"\(name)\",\"\(pub)\",\"\(format)\",\"\(path)\"\n"
         }
 
-        let csv = lines.joined(separator: "\n")
-
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(Constants.FilePaths.csvExportFileName)
-
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("plugins_export.csv")
         do {
-            try csv.write(to: tempURL, atomically: true, encoding: .utf8)
-            return tempURL
+            try csv.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
         } catch {
-            AppLogger.error("Failed to write CSV: \(error.localizedDescription)")
+            lastError = error
             return nil
         }
     }
 
-    func generatePDF() -> URL? {
+    private func generatePDF() -> URL? {
         let pdfMetaData = [
             kCGPDFContextTitle: "Plugin List",
             kCGPDFContextAuthor: "Plugin Reporter"
@@ -183,10 +199,22 @@ struct ExportView: View {
                     yPosition = Constants.PDF.pageMargin
                 }
 
-                plugin.name.draw(at: CGPoint(x: Constants.PDF.pageMargin, y: yPosition), withAttributes: bodyAttributes)
-                plugin.publisher.draw(at: CGPoint(x: Constants.PDF.pageMargin + 200, y: yPosition), withAttributes: bodyAttributes)
-                plugin.type.draw(at: CGPoint(x: Constants.PDF.pageMargin + 350, y: yPosition), withAttributes: bodyAttributes)
-                plugin.style.draw(at: CGPoint(x: Constants.PDF.pageMargin + 400, y: yPosition), withAttributes: bodyAttributes)
+                // Truncate long text to prevent overflow
+                let name = String(plugin.name.prefix(30))
+                let publisher = String(plugin.publisher.prefix(20))
+                let type = String(plugin.type.prefix(10))
+                let style = String(plugin.style.prefix(15))
+
+                // Draw with bounds checking
+                let nameRect = CGRect(x: Constants.PDF.pageMargin, y: yPosition, width: 180, height: 20)
+                let pubRect = CGRect(x: Constants.PDF.pageMargin + 200, y: yPosition, width: 140, height: 20)
+                let typeRect = CGRect(x: Constants.PDF.pageMargin + 350, y: yPosition, width: 40, height: 20)
+                let styleRect = CGRect(x: Constants.PDF.pageMargin + 400, y: yPosition, width: 150, height: 20)
+
+                name.draw(in: nameRect, withAttributes: bodyAttributes)
+                publisher.draw(in: pubRect, withAttributes: bodyAttributes)
+                type.draw(in: typeRect, withAttributes: bodyAttributes)
+                style.draw(in: styleRect, withAttributes: bodyAttributes)
 
                 yPosition += Constants.PDF.lineSpacing
             }
@@ -199,55 +227,6 @@ struct ExportView: View {
             return tempURL
         } catch {
             AppLogger.error("Failed to write PDF: \(error.localizedDescription)")
-            return nil
-        }
-    }
-}
-
-// MARK: - Embedded ExportViewModel (to avoid path issues)
-
-@MainActor
-class ExportViewModel: ObservableObject {
-    @Published var showShareSheet = false
-    @Published var exportURL: URL?
-    @Published var isExporting = false
-    @Published var lastError: Error?
-    
-    private(set) var plugins: [PluginItem] = []
-    
-    func updatePlugins(_ newPlugins: [PluginItem]) {
-        self.plugins = newPlugins
-    }
-    
-    func exportCSV() {
-        isExporting = true
-        lastError = nil
-        guard let url = generateCSV() else {
-            isExporting = false
-            return
-        }
-        exportURL = url
-        showShareSheet = true
-        isExporting = false
-    }
-    
-    private func generateCSV() -> URL? {
-        // Simple CSV generation
-        var csv = "Name,Publisher,Format,Path\n"
-        for plugin in plugins {
-            let name = plugin.name.replacingOccurrences(of: "\"", with: "\"\"")
-            let pub = plugin.publisher.replacingOccurrences(of: "\"", with: "\"\"")
-            let format = plugin.type.replacingOccurrences(of: "\"", with: "\"\"")
-            let path = plugin.path.replacingOccurrences(of: "\"", with: "\"\"")
-            csv += "\"\(name)\",\"\(pub)\",\"\(format)\",\"\(path)\"\n"
-        }
-
-        let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("plugins_export.csv")
-        do {
-            try csv.write(to: fileURL, atomically: true, encoding: .utf8)
-            return fileURL
-        } catch {
             lastError = error
             return nil
         }

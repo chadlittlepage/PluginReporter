@@ -58,10 +58,11 @@ extension ExportManager {
 
 struct ExportManager {
     // MARK: Public API
-    static func exportCSV(rows: [PluginItem]) {
+    @MainActor
+    static func exportCSV(rows: [PluginItem], ratingsManager: RatingsManager = .shared, notesManager: NotesManager = .shared) {
         let defaultName = defaultFileName(prefix: "Plugins", ext: "csv")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["csv"]) else { return }
-        let csv = makeCSV(rows: rows)
+        let csv = makeCSV(rows: rows, ratingsManager: ratingsManager, notesManager: notesManager)
         do {
             try csv.data(using: .utf8)?.write(to: url)
             dashboardTrackExport()
@@ -71,13 +72,15 @@ struct ExportManager {
         }
     }
 
-    static func exportJSON(rows: [PluginItem]) {
+    @MainActor
+    static func exportJSON(rows: [PluginItem], ratingsManager: RatingsManager = .shared, notesManager: NotesManager = .shared) {
         let defaultName = defaultFileName(prefix: "Plugins", ext: "json")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["json"]) else { return }
         do {
             let enc = JSONEncoder()
             enc.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try enc.encode(rows.map(JSONRow.init))
+            let jsonRows = rows.map { JSONRow($0, ratingsManager: ratingsManager, notesManager: notesManager) }
+            let data = try enc.encode(jsonRows)
             try data.write(to: url)
             dashboardTrackExport()
         } catch {
@@ -86,10 +89,11 @@ struct ExportManager {
         }
     }
 
-    static func exportHTML(rows: [PluginItem]) {
+    @MainActor
+    static func exportHTML(rows: [PluginItem], ratingsManager: RatingsManager = .shared, notesManager: NotesManager = .shared) {
         let defaultName = defaultFileName(prefix: "Plugins", ext: "html")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["html", "htm"]) else { return }
-        let html = makeHTML(rows: rows)
+        let html = makeHTML(rows: rows, ratingsManager: ratingsManager, notesManager: notesManager)
         do {
             try html.data(using: .utf8)?.write(to: url)
             dashboardTrackExport()
@@ -103,22 +107,29 @@ struct ExportManager {
         let defaultName = defaultFileName(prefix: "Plugins", ext: "pdf")
         runSavePanelAsync(suggestedName: defaultName, allowedFileTypes: ["pdf"]) { url in
             guard let url else { return }
-            do {
-                var size = options.page.sizePoints
-                if options.landscape { size = CGSize(width: size.height, height: size.width) }
-                var mediaBox = CGRect(origin: .zero, size: size)
-                guard let ctx = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else { throw NSError(domain: "Export", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create PDF context"]) }
-                
-                let nsctx = NSGraphicsContext(cgContext: ctx, flipped: false)
-                NSGraphicsContext.saveGraphicsState()
-                NSGraphicsContext.current = nsctx
+            Task { @MainActor in
+                do {
+                    var size = options.page.sizePoints
+                    if options.landscape { size = CGSize(width: size.height, height: size.width) }
+                    var mediaBox = CGRect(origin: .zero, size: size)
+                    guard let ctx = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else { throw NSError(domain: "Export", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create PDF context"]) }
 
-                let contentRect = mediaBox.insetBy(dx: options.margin, dy: options.margin)
+                    let nsctx = NSGraphicsContext(cgContext: ctx, flipped: false)
+                    NSGraphicsContext.saveGraphicsState()
+                    NSGraphicsContext.current = nsctx
 
-                let header = "Plugin Report (\(rows.count) items)\n\n"
-                let charWidth = max(options.fontSize * 0.6, 1)
-                let capacity = Int((contentRect.width / charWidth).rounded(.down))
-                let body = makeTabularText(rows: rows, capacity: capacity)
+                    // Use individual margins to create content rectangle
+                    let contentRect = CGRect(
+                        x: mediaBox.origin.x + options.leftMargin,
+                        y: mediaBox.origin.y + options.bottomMargin,
+                        width: mediaBox.width - (options.leftMargin + options.rightMargin),
+                        height: mediaBox.height - (options.topMargin + options.bottomMargin)
+                    )
+
+                    let header = "Plugin Report (\(rows.count) items)\n\n"
+                    let charWidth = max(options.fontSize * 0.6, 1)
+                    let capacity = Int((contentRect.width / charWidth).rounded(.down))
+                    let body = makeTabularText(rows: rows, capacity: capacity)
                 let full = header + body
 
                 // Build attributed text
@@ -156,8 +167,13 @@ struct ExportManager {
                     NSGraphicsContext.saveGraphicsState()
                     NSGraphicsContext.current = nsctx
 
-                    // Draw text
-                    let origin = CGPoint(x: contentRect.origin.x, y: contentRect.origin.y)
+                    // Draw text - calculate Y position so text starts at top of content area
+                    // In non-flipped coordinates, Y increases upward, so we need to position at the top
+                    let glyphRect = layout.usedRect(for: layout.textContainers[pageIndex])
+                    let origin = CGPoint(
+                        x: contentRect.origin.x,
+                        y: contentRect.maxY - glyphRect.height
+                    )
                     layout.drawBackground(forGlyphRange: glyphRange, at: origin)
                     layout.drawGlyphs(forGlyphRange: glyphRange, at: origin)
 
@@ -171,7 +187,7 @@ struct ExportManager {
                     let footerSize = footerStr.size()
                     let footerPoint = CGPoint(
                         x: contentRect.midX - footerSize.width / 2,
-                        y: options.margin / 2 - footerSize.height / 2
+                        y: options.bottomMargin / 2 - footerSize.height / 2
                     )
                     footerStr.draw(at: footerPoint)
 
@@ -179,16 +195,18 @@ struct ExportManager {
                     ctx.endPDFPage()
                 }
 
-                ctx.closePDF()
-                dashboardTrackExport()
-            } catch {
-                NSAlert(error: error).runModal()
-                dashboardLogError(message: "PDF export failed: \(error.localizedDescription)", severity: "error")
+                    ctx.closePDF()
+                    dashboardTrackExport()
+                } catch {
+                    NSAlert(error: error).runModal()
+                    dashboardLogError(message: "PDF export failed: \(error.localizedDescription)", severity: "error")
+                }
             }
         }
     }
     
     // Overloads to accept ScannerPluginItem arrays
+    @MainActor
     static func exportCSV(rows: [ScannerPluginItem]) { exportCSV(rows: rows.map { PluginItem(
         id: $0.id,
         name: $0.name,
@@ -204,6 +222,7 @@ struct ExportManager {
         obsolete: $0.obsolete
     ) }) }
 
+    @MainActor
     static func exportJSON(rows: [ScannerPluginItem]) { exportJSON(rows: rows.map { PluginItem(
         id: $0.id,
         name: $0.name,
@@ -219,6 +238,7 @@ struct ExportManager {
         obsolete: $0.obsolete
     ) }) }
 
+    @MainActor
     static func exportHTML(rows: [ScannerPluginItem]) { exportHTML(rows: rows.map { PluginItem(
         id: $0.id,
         name: $0.name,
@@ -288,23 +308,33 @@ struct ExportManager {
     }
 
     // MARK: CSV
-    private static func makeCSV(rows: [PluginItem]) -> String {
+    @MainActor
+    private static func makeCSV(rows: [PluginItem], ratingsManager: RatingsManager, notesManager: NotesManager) -> String {
+        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
         let headers = [
-            "Name","Publisher","Version","Type","Style","Arch","Date","Size","Path","Requirement","Obsolete"
+            "Rating","Name","Publisher","Type","Style","Version","Arch","Date","Size","Requirement","Obsolete","Missing","Track","Notes","Path"
         ]
         let lines: [String] = [csvLine(headers)] + rows.map { r in
-            csvLine([
+            let rating = ratingsManager.getRating(for: r.path)
+            let ratingStr = rating > 0 ? String(repeating: "★", count: rating) : ""
+            let note = notesManager.getNote(for: r.path)
+
+            return csvLine([
+                ratingStr,
                 r.name,
                 r.publisher,
-                r.version,
                 r.type,
                 r.style,
+                r.version,
                 r.architectures,
                 r.dateString,
                 r.sizeString,
-                r.path,
                 r.runtimeRequirement,
-                r.obsolete ? "Yes" : "No"
+                r.obsolete ? "Yes" : "No",
+                r.missing ? "Yes" : "No",
+                r.trackName ?? "",
+                note,
+                r.path
             ])
         }
         return lines.joined(separator: "\n") + "\n"
@@ -325,35 +355,47 @@ struct ExportManager {
     // MARK: JSON encoding row
     private struct JSONRow: Codable {
         let id: UUID
+        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
+        let rating: Int
         let name: String
         let publisher: String
-        let version: String
         let type: String
         let style: String
+        let version: String
         let architectures: String
         let date: String
         let size: String
-        let path: String
         let requirement: String
         let obsolete: Bool
-        init(_ r: PluginItem) {
+        let missing: Bool
+        let track: String?
+        let notes: String
+        let path: String
+
+        @MainActor
+        init(_ r: PluginItem, ratingsManager: RatingsManager, notesManager: NotesManager) {
             id = r.id
+            rating = ratingsManager.getRating(for: r.path)
             name = r.name
             publisher = r.publisher
-            version = r.version
             type = r.type
             style = r.style
+            version = r.version
             architectures = r.architectures
             date = r.dateString
             size = r.sizeString
-            path = r.path
             requirement = r.runtimeRequirement
             obsolete = r.obsolete
+            missing = r.missing
+            track = r.trackName
+            notes = notesManager.getNote(for: r.path)
+            path = r.path
         }
     }
 
     // MARK: HTML
-    private static func makeHTML(rows: [PluginItem]) -> String {
+    @MainActor
+    private static func makeHTML(rows: [PluginItem], ratingsManager: RatingsManager, notesManager: NotesManager) -> String {
         let head = """
         <!doctype html>
         <html>
@@ -364,11 +406,14 @@ struct ExportManager {
           <style>
             body { font: 13px -apple-system, system-ui, Helvetica, Arial; color: #eee; background: #111; }
             table { border-collapse: collapse; width: 100%; }
-            th, td { border-bottom: 1px solid #333; text-align: left; padding: 6px 8px; }
+            th, td { border-bottom: 1px solid #333; text-align: left; padding: 6px 8px; white-space: nowrap; }
             th { position: sticky; top: 0; background: #1b1b1b; }
             tr:nth-child(even) { background: #151515; }
             .obsolete { color: #ff6b6b; font-weight: 600; }
+            .missing { color: #ffa500; font-weight: 600; }
             .path { color: #9aa0a6; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+            .notes { max-width: 300px; white-space: normal; }
+            .rating { color: #ffd700; }
           </style>
         </head>
         <body>
@@ -376,25 +421,33 @@ struct ExportManager {
         <table>
           <thead>
             <tr>
-              <th>Name</th><th>Publisher</th><th>Version</th><th>Type</th><th>Style</th><th>Arch</th><th>Date</th><th>Size</th><th>Path</th><th>Requirement</th><th>Obsolete</th>
+              <th>Rating</th><th>Name</th><th>Publisher</th><th>Type</th><th>Style</th><th>Version</th><th>Arch</th><th>Date</th><th>Size</th><th>Requirement</th><th>Obsolete</th><th>Missing</th><th>Track</th><th>Notes</th><th>Path</th>
             </tr>
           </thead>
           <tbody>
         """
         let rowsHTML = rows.map { r in
-            """
+            let rating = ratingsManager.getRating(for: r.path)
+            let ratingStr = rating > 0 ? String(repeating: "★", count: rating) : ""
+            let note = notesManager.getNote(for: r.path)
+
+            return """
             <tr>
+              <td class=\"rating\">\(escapeHTML(ratingStr))</td>
               <td>\(escapeHTML(r.name))</td>
               <td>\(escapeHTML(r.publisher))</td>
-              <td>\(escapeHTML(r.version))</td>
               <td>\(escapeHTML(r.type))</td>
               <td>\(escapeHTML(r.style))</td>
+              <td>\(escapeHTML(r.version))</td>
               <td>\(escapeHTML(r.architectures))</td>
               <td>\(escapeHTML(r.dateString))</td>
               <td>\(escapeHTML(r.sizeString))</td>
-              <td class=\"path\">\(escapeHTML(r.path))</td>
               <td>\(escapeHTML(r.runtimeRequirement))</td>
               <td class=\"\(r.obsolete ? "obsolete" : "")\">\(r.obsolete ? "Yes" : "No")</td>
+              <td class=\"\(r.missing ? "missing" : "")\">\(r.missing ? "Yes" : "No")</td>
+              <td>\(escapeHTML(r.trackName ?? ""))</td>
+              <td class=\"notes\">\(escapeHTML(note))</td>
+              <td class=\"path\">\(escapeHTML(r.path))</td>
             </tr>
             """
         }.joined(separator: "\n")
@@ -417,59 +470,99 @@ struct ExportManager {
     }
 
     // MARK: PDF (simple text rendering)
+    @MainActor
     private static func makeTabularText(rows: [PluginItem], capacity: Int) -> String {
-        // Columns (Path omitted to save width)
-        let headers = ["Name", "Publisher", "Version", "Type", "Style", "Arch", "Date", "Size", "Requirement", "Obs"]
+        // All columns in correct order matching table display
+        let headers = ["Rating", "Name", "Publisher", "Type", "Style", "Version", "Arch", "Date", "Size", "Requirement", "Obsolete", "Missing", "Track", "Notes", "Path"]
         let columnCount = headers.count
         let sep = "  " // two spaces between columns
         let sepWidth = (columnCount - 1) * sep.count
 
+        // Get managers for rating and notes
+        let ratingsManager = RatingsManager.shared
+        let notesManager = NotesManager.shared
+
         // Gather content strings per column
         func cols(for i: PluginItem) -> [String] {
-            [
+            let rating = ratingsManager.getRating(for: i.path)
+            let ratingStr = rating > 0 ? String(repeating: "★", count: rating) : ""
+            let note = notesManager.getNote(for: i.path)
+
+            return [
+                ratingStr,
                 i.name,
                 i.publisher,
-                i.version,
                 i.type,
                 i.style,
+                i.version,
                 i.architectures,
                 i.dateString,
                 i.sizeString,
                 i.runtimeRequirement,
-                i.obsolete ? "Y" : "N"
+                i.obsolete ? "Y" : "N",
+                i.missing ? "Y" : "N",
+                i.trackName ?? "",
+                note,
+                i.path
             ]
         }
 
-        // Desired/base widths and minimums per column (in characters)
-        var widths: [Int] = [32, 20, 12, 6, 12, 14, 12, 10, 14, 3]
-        let minimums: [Int] = [10, 8, 7, 3, 8, 6, 8, 5, 8, 1]
+        // Maximum desired widths (what we'd use if we had infinite space)
+        var maxDesired: [Int] = [6, 35, 20, 5, 15, 12, 16, 12, 10, 16, 3, 3, 18, 20, 60]
+        let minimums: [Int] = [4, 8, 6, 3, 6, 5, 8, 8, 4, 8, 1, 1, 5, 5, 10]
 
-        // Clamp desired widths to actual content maxima
+        // First, measure actual content
         var maxLens = Array(repeating: 0, count: columnCount)
         for r in rows.prefix(1000) { // sample up to 1000 rows for performance
             let c = cols(for: r)
             for i in 0..<columnCount { maxLens[i] = max(maxLens[i], c[i].count) }
         }
-        for i in 0..<columnCount { widths[i] = min(widths[i], maxLens[i]) }
 
-        // Ensure we have at least the header width
-        for i in 0..<columnCount { widths[i] = max(widths[i], headers[i].count, minimums[i]) }
+        // Start with content-based widths, capped at max desired
+        var widths: [Int] = maxLens.enumerated().map { idx, len in
+            max(min(len, maxDesired[idx]), headers[idx].count, minimums[idx])
+        }
 
-        // Reduce widths until total fits into capacity
         func totalWidth(_ w: [Int]) -> Int { w.reduce(0, +) + sepWidth }
+
         if capacity > 0 {
-            let order = [0, 1, 8, 4, 5, 6, 2, 7] // columns to shrink first (Name, Publisher, Requirement, Style, Arch, Date, Version, Size)
+            // First, shrink to fit if needed
+            if totalWidth(widths) > capacity {
+                // Shrink columns in this priority order (less important first):
+                // Notes(13), Track(12), Publisher(2), Name(1), Requirement(9), Style(4), Arch(6), Date(7), Size(8), Path(14)
+                let shrinkOrder = [13, 12, 2, 1, 9, 4, 6, 7, 8, 14]
+                var guardCount = 10_000
+                while totalWidth(widths) > capacity && guardCount > 0 {
+                    var didReduce = false
+                    for idx in shrinkOrder {
+                        if widths[idx] > minimums[idx] {
+                            widths[idx] -= 1
+                            didReduce = true
+                            if totalWidth(widths) <= capacity { break }
+                        }
+                    }
+                    if !didReduce { break }
+                    guardCount -= 1
+                }
+            }
+
+            // Then, expand to use available space (prioritize important columns)
+            // Expand order: Path(14), Name(1), Publisher(2), Notes(13), Requirement(9), Style(4), Track(12), Arch(6)
+            let expandOrder = [14, 1, 2, 13, 9, 4, 12, 6]
             var guardCount = 10_000
-            while totalWidth(widths) > capacity && guardCount > 0 {
-                var didReduce = false
-                for idx in order {
-                    if widths[idx] > minimums[idx] {
-                        widths[idx] -= 1
-                        didReduce = true
-                        if totalWidth(widths) <= capacity { break }
+            while totalWidth(widths) < capacity && guardCount > 0 {
+                var didExpand = false
+                for idx in expandOrder {
+                    if widths[idx] < maxDesired[idx] && widths[idx] < maxLens[idx] {
+                        let available = capacity - totalWidth(widths)
+                        if available > 0 {
+                            widths[idx] += 1
+                            didExpand = true
+                            if totalWidth(widths) >= capacity { break }
+                        }
                     }
                 }
-                if !didReduce { break }
+                if !didExpand { break }
                 guardCount -= 1
             }
         }

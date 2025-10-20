@@ -35,7 +35,7 @@ struct DAWImportView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("Import plugins from Ableton (.als), Pro Tools (.txt), or Bitwig (.bwproject)")
+                Text("Import plugins from any of 18 supported DAWs")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -116,11 +116,29 @@ struct DAWImportView: View {
     private func selectProjectFile() {
         let panel = NSOpenPanel()
         panel.title = "Select DAW Project"
-        panel.message = "Choose a DAW project file (.als for Ableton, .txt for Pro Tools, .bwproject for Bitwig)"
+        panel.message = "Choose a project file from any of 18 supported DAWs"
+
+        // All 18 supported DAW file extensions
         panel.allowedContentTypes = [
-            .init(filenameExtension: "als"),
-            .init(filenameExtension: "txt"),
-            .init(filenameExtension: "bwproject")
+            .init(filenameExtension: "als"),        // Ableton Live
+            .init(filenameExtension: "logicx"),     // Logic Pro
+            .init(filenameExtension: "band"),       // GarageBand
+            .init(filenameExtension: "concert"),    // MainStage
+            .init(filenameExtension: "cpr"),        // Cubase
+            .init(filenameExtension: "npr"),        // Nuendo
+            .init(filenameExtension: "song"),       // Studio One
+            .init(filenameExtension: "ptx"),        // Pro Tools (binary)
+            .init(filenameExtension: "txt"),        // Pro Tools (text export)
+            .init(filenameExtension: "bwproject"),  // Bitwig
+            .init(filenameExtension: "reason"),     // Reason
+            .init(filenameExtension: "rpp"),        // Reaper
+            .init(filenameExtension: "motu"),       // Digital Performer
+            .init(filenameExtension: "flp"),        // FL Studio
+            .init(filenameExtension: "tracktionedit"), // Tracktion
+            .init(filenameExtension: "ardour"),     // Ardour
+            .init(filenameExtension: "mixbus"),     // Mixbus
+            .init(filenameExtension: "xrns"),       // Renoise
+            .init(filenameExtension: "drp")         // Fairlight
         ].compactMap { $0 }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false

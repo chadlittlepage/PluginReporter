@@ -91,11 +91,26 @@ class DAWParserRegistry {
     private init() {
         // Register built-in parsers
         registerParser(AbletonLiveParserV2.self)
-        registerParser(ProToolsTextParser.self)
+        registerParser(ProToolsParser.self)  // Supports both .ptx and .txt files
         registerParser(BitwigParser.self)
-        // Future parsers would be registered here:
-        // registerParser(LogicProParser.self)
-        // registerParser(CubaseParser.self)
+        registerParser(LogicProParser.self)
+        registerParser(GarageBandParser.self)
+        registerParser(ReasonParser.self)
+        registerParser(ReaperParser.self)
+        registerParser(CubaseParser.self)
+        registerParser(NuendoParser.self)
+        registerParser(DigitalPerformerParser.self)
+        registerParser(StudioOneParser.self)
+        registerParser(FLStudioParser.self)
+        registerParser(TracktionParser.self)
+        registerParser(ArdourParser.self)
+        registerParser(FairlightParser.self)
+        #if os(macOS)
+        registerParser(RenoiseParser.self)  // macOS only (uses Process for ZIP extraction)
+        #endif
+        registerParser(MainStageParser.self)
+        registerParser(MixbusParser.self)
+        // 17-18 DAW parsers (Renoise requires macOS)
     }
 
     /// Register a DAW parser
@@ -151,6 +166,8 @@ enum ParserError: LocalizedError {
     case decompressionFailed
     case xmlParsingFailed
     case invalidProjectData(String)
+    case emptyFile
+    case corruptedFile
 
     var errorDescription: String? {
         switch self {
@@ -166,6 +183,10 @@ enum ParserError: LocalizedError {
             return "Failed to parse project XML/data"
         case .invalidProjectData(let reason):
             return "Invalid project data: \(reason)"
+        case .emptyFile:
+            return "The file is empty (0 bytes). This may be a backup file or corrupted project."
+        case .corruptedFile:
+            return "The file appears to be corrupted or incomplete. Please try opening the original project file."
         }
     }
 }

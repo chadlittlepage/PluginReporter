@@ -14,30 +14,57 @@ import AppKit
 
 // MARK: - Data Models
 
-/// A playlist created from a DAW project file (Ableton Live, Logic Pro, etc.)
+/// Type of playlist
+enum PlaylistType: String, Codable {
+    case dawImport   // Imported from a DAW project file
+    case custom      // User-created custom playlist
+}
+
+/// A playlist created from a DAW project file (Ableton Live, Logic Pro, etc.) or custom user collection
 struct DAWPlaylist: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     let name: String
-    let sourceFile: URL
-    let dawType: DAWType
+    let sourceFile: URL?  // nil for custom playlists
+    let dawType: DAWType?  // nil for custom playlists
+    let playlistType: PlaylistType
     let dateImported: Date
-    let entries: [DAWPlaylistEntry]
+    var entries: [DAWPlaylistEntry]  // var to allow adding/removing plugins
     let tempo: Double?
     let sampleRate: Int?
     let version: String?
     let key: String?
+    var rating: Int?  // 0-5 star rating for playlist
 
-    init(id: UUID = UUID(), name: String, sourceFile: URL, dawType: DAWType, dateImported: Date = Date(), entries: [DAWPlaylistEntry], tempo: Double? = nil, sampleRate: Int? = nil, version: String? = nil, key: String? = nil) {
+    // Initializer for DAW-imported playlists
+    init(id: UUID = UUID(), name: String, sourceFile: URL, dawType: DAWType, dateImported: Date = Date(), entries: [DAWPlaylistEntry], tempo: Double? = nil, sampleRate: Int? = nil, version: String? = nil, key: String? = nil, rating: Int? = nil) {
         self.id = id
         self.name = name
         self.sourceFile = sourceFile
         self.dawType = dawType
+        self.playlistType = .dawImport
         self.dateImported = dateImported
         self.entries = entries
         self.tempo = tempo
         self.sampleRate = sampleRate
         self.version = version
         self.key = key
+        self.rating = rating
+    }
+
+    // Initializer for custom playlists
+    init(id: UUID = UUID(), name: String, dateImported: Date = Date(), entries: [DAWPlaylistEntry] = [], tempo: Double? = nil, sampleRate: Int? = nil, version: String? = nil, key: String? = nil, rating: Int? = nil) {
+        self.id = id
+        self.name = name
+        self.sourceFile = nil
+        self.dawType = nil
+        self.playlistType = .custom
+        self.dateImported = dateImported
+        self.entries = entries
+        self.tempo = tempo
+        self.sampleRate = sampleRate
+        self.version = version
+        self.key = key
+        self.rating = rating
     }
 
     // Hashable conformance - hash based on unique ID only
@@ -120,22 +147,46 @@ struct DAWPlaylistEntry: Identifiable, Codable, Equatable, Hashable {
 }
 
 /// Supported DAW types
-enum DAWType: String, Codable, Hashable {
+enum DAWType: String, Codable, Hashable, CaseIterable {
     case abletonLive = "Ableton Live"
     case logicPro = "Logic Pro"
+    case garageBand = "GarageBand"
+    case mainStage = "MainStage"
     case cubase = "Cubase"
+    case nuendo = "Nuendo"
     case studioOne = "Studio One"
     case proTools = "Pro Tools"
     case bitwig = "Bitwig"
+    case reason = "Reason Studios"
+    case reaper = "Reaper"
+    case digitalPerformer = "Digital Performer"
+    case flStudio = "FL Studio"
+    case tracktion = "Tracktion Waveform"
+    case ardour = "Ardour"
+    case mixbus = "Mixbus"
+    case renoise = "Renoise"
+    case fairlight = "Fairlight (DaVinci Resolve)"
 
     var fileExtension: String {
         switch self {
         case .abletonLive: return "als"
         case .logicPro: return "logic"
+        case .garageBand: return "band"
+        case .mainStage: return "concert"
         case .cubase: return "cpr"
+        case .nuendo: return "npr"
         case .studioOne: return "song"
         case .proTools: return "ptx"
         case .bitwig: return "bwproject"
+        case .reason: return "reason"
+        case .reaper: return "rpp"
+        case .digitalPerformer: return "motu"
+        case .flStudio: return "flp"
+        case .tracktion: return "tracktionedit"
+        case .ardour: return "ardour"
+        case .mixbus: return "mixbus"
+        case .renoise: return "xrns"
+        case .fairlight: return "drp"
         }
     }
 }
@@ -154,6 +205,17 @@ class DAWPlaylistManager: ObservableObject {
     @Published private(set) var lastError: Error?
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+
+    // Playlist UI state
+    @Published var playlistSortOption: PlaylistSortOption = .dateImported
+    @Published var showOnlyMissingPlaylists: Bool = false
+    @Published var selectedPlaylistStarRatings: Set<Int> = []
+    @Published var selectedDAWTypes: Set<DAWType> = []
+
+    enum PlaylistSortOption: String {
+        case dateImported
+        case name
+    }
 
     private let storageKey = "DAWPlaylists"
     private var cancellables = Set<AnyCancellable>()
@@ -224,6 +286,110 @@ class DAWPlaylistManager: ObservableObject {
         await updateProgress(1.0)
 
         return playlist
+    }
+
+    // MARK: - Custom Playlists
+
+    /// Create a new custom playlist
+    func createCustomPlaylist(name: String) -> DAWPlaylist {
+        let playlist = DAWPlaylist(name: name, entries: [])
+
+        #if os(macOS)
+        // Register undo
+        undoManager.registerUndo(withTarget: self) { manager in
+            manager.deletePlaylist(playlist)
+        }
+        undoManager.setActionName("Create Playlist")
+        updateUndoState()
+        #endif
+
+        playlists.append(playlist)
+        savePlaylists()
+
+        return playlist
+    }
+
+    /// Add a custom playlist with pre-populated entries (for JSON import)
+    func addCustomPlaylist(_ playlist: DAWPlaylist) {
+        guard playlist.playlistType == .custom else {
+            print("⚠️ Can only add custom playlists with this method")
+            return
+        }
+
+        #if os(macOS)
+        // Register undo
+        undoManager.registerUndo(withTarget: self) { manager in
+            manager.deletePlaylist(playlist)
+        }
+        undoManager.setActionName("Import Playlist")
+        updateUndoState()
+        #endif
+
+        playlists.append(playlist)
+        savePlaylists()
+    }
+
+    /// Add a plugin to a custom playlist
+    func addPlugin(_ plugin: PluginItem, to playlist: DAWPlaylist) {
+        guard playlist.playlistType == .custom else {
+            print("⚠️ Can only add plugins to custom playlists")
+            return
+        }
+
+        guard var updatedPlaylist = playlists.first(where: { $0.id == playlist.id }) else {
+            print("⚠️ Playlist not found")
+            return
+        }
+
+        // Convert plugin type string to PluginFormat enum
+        let pluginFormat = PluginFormat(rawValue: plugin.type) ?? .unknown
+
+        // Create a playlist entry from the plugin
+        let entry = DAWPlaylistEntry(
+            pluginName: plugin.name,
+            pluginManufacturer: plugin.publisher,
+            trackName: "Custom",  // Custom playlists don't have tracks
+            trackIndex: 0,
+            deviceIndex: updatedPlaylist.entries.count,
+            pluginFormat: pluginFormat,
+            isInstalled: true,
+            matchedPluginPath: plugin.path
+        )
+
+        // Check if plugin already exists in playlist
+        guard !updatedPlaylist.entries.contains(where: { $0.pluginName == plugin.name && $0.pluginFormat == pluginFormat }) else {
+            print("ℹ️ Plugin already in playlist")
+            return
+        }
+
+        updatedPlaylist.entries.append(entry)
+
+        // Update the playlist in the array
+        if let index = playlists.firstIndex(where: { $0.id == playlist.id }) {
+            playlists[index] = updatedPlaylist
+            savePlaylists()
+        }
+    }
+
+    /// Remove a plugin from a custom playlist
+    func removePlugin(_ entry: DAWPlaylistEntry, from playlist: DAWPlaylist) {
+        guard playlist.playlistType == .custom else {
+            print("⚠️ Can only remove plugins from custom playlists")
+            return
+        }
+
+        guard var updatedPlaylist = playlists.first(where: { $0.id == playlist.id }) else {
+            print("⚠️ Playlist not found")
+            return
+        }
+
+        updatedPlaylist.entries.removeAll { $0.id == entry.id }
+
+        // Update the playlist in the array
+        if let index = playlists.firstIndex(where: { $0.id == playlist.id }) {
+            playlists[index] = updatedPlaylist
+            savePlaylists()
+        }
     }
 
     // MARK: - Management
@@ -317,18 +483,29 @@ class DAWPlaylistManager: ObservableObject {
     func renamePlaylist(_ playlist: DAWPlaylist, to newName: String) {
         guard let index = playlists.firstIndex(where: { $0.id == playlist.id }) else { return }
 
-        let updated = DAWPlaylist(
-            id: playlist.id,
-            name: newName,
-            sourceFile: playlist.sourceFile,
-            dawType: playlist.dawType,
-            dateImported: playlist.dateImported,
-            entries: playlist.entries,
-            tempo: playlist.tempo,
-            sampleRate: playlist.sampleRate,
-            version: playlist.version,
-            key: playlist.key
-        )
+        // Create updated playlist based on type
+        let updated: DAWPlaylist
+        if playlist.playlistType == .custom {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: newName,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries
+            )
+        } else {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: newName,
+                sourceFile: playlist.sourceFile!,
+                dawType: playlist.dawType!,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: playlist.tempo,
+                sampleRate: playlist.sampleRate,
+                version: playlist.version,
+                key: playlist.key
+            )
+        }
 
         playlists[index] = updated
         savePlaylists()
@@ -367,18 +544,29 @@ class DAWPlaylistManager: ObservableObject {
             )
         }
 
-        let updated = DAWPlaylist(
-            id: playlist.id,
-            name: playlist.name,
-            sourceFile: playlist.sourceFile,
-            dawType: playlist.dawType,
-            dateImported: playlist.dateImported,
-            entries: updatedEntries,
-            tempo: playlist.tempo,
-            sampleRate: playlist.sampleRate,
-            version: playlist.version,
-            key: playlist.key
-        )
+        // Create updated playlist based on type
+        let updated: DAWPlaylist
+        if playlist.playlistType == .custom {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: playlist.name,
+                dateImported: playlist.dateImported,
+                entries: updatedEntries
+            )
+        } else {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: playlist.name,
+                sourceFile: playlist.sourceFile!,
+                dawType: playlist.dawType!,
+                dateImported: playlist.dateImported,
+                entries: updatedEntries,
+                tempo: playlist.tempo,
+                sampleRate: playlist.sampleRate,
+                version: playlist.version,
+                key: playlist.key
+            )
+        }
 
         playlists[index] = updated
         savePlaylists()
@@ -412,17 +600,41 @@ class DAWPlaylistManager: ObservableObject {
         switch ext {
         case "als":
             return .abletonLive
-        case "logic":
+        case "logic", "logicx":
             return .logicPro
+        case "band":
+            return .garageBand
+        case "concert":
+            return .mainStage
         case "cpr":
             return .cubase
+        case "npr":
+            return .nuendo
         case "song":
             return .studioOne
+        case "rpp", "rpp-bak":
+            return .reaper
+        case "reason", "rns":
+            return .reason
         case "ptx", "txt":
             // Pro Tools supports both .ptx (binary) and .txt (Session Info export)
             return .proTools
         case "bwproject":
             return .bitwig
+        case "flp":
+            return .flStudio
+        case "xrns":
+            return .renoise
+        case "motu":
+            return .digitalPerformer
+        case "drp":
+            return .fairlight
+        case "ardour":
+            return .ardour
+        case "mixbus":
+            return .mixbus
+        case "tracktionedit":
+            return .tracktion
         default:
             return .abletonLive // Default
         }

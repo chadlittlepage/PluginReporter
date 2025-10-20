@@ -73,6 +73,10 @@ final class CloudKitPreferencesSync: PreferencesSyncing {
         static let pdfPage = "sync_pdfPage"
         static let pdfLandscape = "sync_pdfLandscape"
         static let pdfMargin = "sync_pdfMargin"
+        static let pdfTopMargin = "sync_pdfTopMargin"
+        static let pdfBottomMargin = "sync_pdfBottomMargin"
+        static let pdfLeftMargin = "sync_pdfLeftMargin"
+        static let pdfRightMargin = "sync_pdfRightMargin"
         static let pdfFontSize = "sync_pdfFontSize"
         static let showObsoleteOnly = "sync_showObsoleteOnly"
     }
@@ -148,6 +152,38 @@ final class CloudKitPreferencesSync: PreferencesSyncing {
             }
             .store(in: &cancellables)
 
+        prefs.$pdfTopMargin
+            .dropFirst()
+            .sink { [weak self] value in
+                self?.store.set(Double(value), forKey: Keys.pdfTopMargin)
+                self?.store.synchronize()
+            }
+            .store(in: &cancellables)
+
+        prefs.$pdfBottomMargin
+            .dropFirst()
+            .sink { [weak self] value in
+                self?.store.set(Double(value), forKey: Keys.pdfBottomMargin)
+                self?.store.synchronize()
+            }
+            .store(in: &cancellables)
+
+        prefs.$pdfLeftMargin
+            .dropFirst()
+            .sink { [weak self] value in
+                self?.store.set(Double(value), forKey: Keys.pdfLeftMargin)
+                self?.store.synchronize()
+            }
+            .store(in: &cancellables)
+
+        prefs.$pdfRightMargin
+            .dropFirst()
+            .sink { [weak self] value in
+                self?.store.set(Double(value), forKey: Keys.pdfRightMargin)
+                self?.store.synchronize()
+            }
+            .store(in: &cancellables)
+
         prefs.$pdfFontSize
             .dropFirst()
             .sink { [weak self] value in
@@ -204,6 +240,22 @@ final class CloudKitPreferencesSync: PreferencesSyncing {
 
         if store.object(forKey: Keys.pdfMargin) != nil {
             prefs.pdfMargin = CGFloat(store.double(forKey: Keys.pdfMargin))
+        }
+
+        if store.object(forKey: Keys.pdfTopMargin) != nil {
+            prefs.pdfTopMargin = CGFloat(store.double(forKey: Keys.pdfTopMargin))
+        }
+
+        if store.object(forKey: Keys.pdfBottomMargin) != nil {
+            prefs.pdfBottomMargin = CGFloat(store.double(forKey: Keys.pdfBottomMargin))
+        }
+
+        if store.object(forKey: Keys.pdfLeftMargin) != nil {
+            prefs.pdfLeftMargin = CGFloat(store.double(forKey: Keys.pdfLeftMargin))
+        }
+
+        if store.object(forKey: Keys.pdfRightMargin) != nil {
+            prefs.pdfRightMargin = CGFloat(store.double(forKey: Keys.pdfRightMargin))
         }
 
         if store.object(forKey: Keys.pdfFontSize) != nil {

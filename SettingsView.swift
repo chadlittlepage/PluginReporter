@@ -241,53 +241,82 @@ struct SettingsView: View {
                     .padding(.horizontal, 20)
                 }
 
-                // MARK: - PDF Export
+                // MARK: - Export Column Selection
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("PDF Export")
+                    Text("Export Columns")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 20)
 
-                    VStack(spacing: 12) {
-                        HStack {
-                            Picker("Page Size", selection: $prefs.pdfPage) {
-                                ForEach(PDFExportOptions.Page.allCases) { p in
-                                    Text(p.rawValue).tag(p)
-                                }
-                            }
-                            .frame(width: 150)
+                    VStack(spacing: 16) {
+                        Text("Select which columns to include in PDF exports")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                            Toggle("Landscape", isOn: $prefs.pdfLandscape)
+                        // Column toggle buttons in correct order
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96))], spacing: 10) {  // 120 * 0.8 = 96, 12 * 0.8 = 9.6 ≈ 10
+                            ColumnToggleButton(label: "Rating", isOn: $prefs.pdfShowRating)
+                            ColumnToggleButton(label: "Name", isOn: $prefs.pdfShowName)
+                            ColumnToggleButton(label: "Publisher", isOn: $prefs.pdfShowPublisher)
+                            ColumnToggleButton(label: "Type", isOn: $prefs.pdfShowType)
+                            ColumnToggleButton(label: "Style", isOn: $prefs.pdfShowStyle)
+                            ColumnToggleButton(label: "Version", isOn: $prefs.pdfShowVersion)
+                            ColumnToggleButton(label: "Arch", isOn: $prefs.pdfShowArch)
+                            ColumnToggleButton(label: "Date", isOn: $prefs.pdfShowDate)
+                            ColumnToggleButton(label: "Size", isOn: $prefs.pdfShowSize)
+                            ColumnToggleButton(label: "Requirement", isOn: $prefs.pdfShowRequirement)
+                            ColumnToggleButton(label: "Obsolete", isOn: $prefs.pdfShowObsolete)
+                            ColumnToggleButton(label: "Missing", isOn: $prefs.pdfShowMissing)
+                            ColumnToggleButton(label: "Track", isOn: $prefs.pdfShowTrack)
+                            ColumnToggleButton(label: "Notes", isOn: $prefs.pdfShowNotes)
+                            ColumnToggleButton(label: "Path", isOn: $prefs.pdfShowPath)
+                        }
+
+                        // Quick actions
+                        HStack {
+                            Button("Select All") {
+                                prefs.pdfShowRating = true
+                                prefs.pdfShowName = true
+                                prefs.pdfShowPublisher = true
+                                prefs.pdfShowType = true
+                                prefs.pdfShowStyle = true
+                                prefs.pdfShowVersion = true
+                                prefs.pdfShowArch = true
+                                prefs.pdfShowDate = true
+                                prefs.pdfShowSize = true
+                                prefs.pdfShowRequirement = true
+                                prefs.pdfShowObsolete = true
+                                prefs.pdfShowMissing = true
+                                prefs.pdfShowTrack = true
+                                prefs.pdfShowNotes = true
+                                prefs.pdfShowPath = true
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button("Deselect All") {
+                                prefs.pdfShowRating = false
+                                prefs.pdfShowName = false
+                                prefs.pdfShowPublisher = false
+                                prefs.pdfShowType = false
+                                prefs.pdfShowStyle = false
+                                prefs.pdfShowVersion = false
+                                prefs.pdfShowArch = false
+                                prefs.pdfShowDate = false
+                                prefs.pdfShowSize = false
+                                prefs.pdfShowRequirement = false
+                                prefs.pdfShowObsolete = false
+                                prefs.pdfShowMissing = false
+                                prefs.pdfShowTrack = false
+                                prefs.pdfShowNotes = false
+                                prefs.pdfShowPath = false
+                            }
+                            .buttonStyle(.bordered)
+
                             Spacer()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-
-                        VStack(spacing: 8) {
-                            HStack {
-                                Text("Margins")
-                                Spacer()
-                                Text("\(Int(prefs.pdfMargin)) pt")
-                                    .monospacedDigit()
-                                    .foregroundColor(.secondary)
-                            }
-                            Slider(value: Binding(get: { Double(prefs.pdfMargin) }, set: { prefs.pdfMargin = CGFloat($0) }), in: 12...72)
-                        }
-                        .padding(.horizontal, 16)
-
-                        VStack(spacing: 8) {
-                            HStack {
-                                Text("Font Size")
-                                Spacer()
-                                Text("\(Int(prefs.pdfFontSize)) pt")
-                                    .monospacedDigit()
-                                    .foregroundColor(.secondary)
-                            }
-                            Slider(value: Binding(get: { Double(prefs.pdfFontSize) }, set: { prefs.pdfFontSize = CGFloat($0) }), in: 7...14)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
                     }
+                    .padding(16)
                     .background(cardBackground)
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
@@ -493,5 +522,49 @@ struct SettingsView: View {
             let merged = Array(Set(prefs.extraScanPaths).union(new)).sorted()
             prefs.extraScanPaths = merged
         }
+    }
+}
+
+// MARK: - Column Toggle Button
+
+struct ColumnToggleButton: View {
+    let label: String
+    @Binding var isOn: Bool
+
+    // Desaturated blue - 20% less saturated (moved 20% towards grey)
+    private var desaturatedBlue: Color {
+        #if os(macOS)
+        Color(red: 0.24, green: 0.52, blue: 0.78)  // Less saturated blue
+        #else
+        Color.accentColor
+        #endif
+    }
+
+    var body: some View {
+        Button(action: { isOn.toggle() }) {
+            HStack(spacing: 6) {  // 8 * 0.8 = 6.4 ≈ 6
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isOn ? desaturatedBlue : .secondary)
+                    .font(.system(size: 13))  // 16 * 0.8 = 12.8 ≈ 13
+
+                Text(label)
+                    .font(.system(size: 12))  // 8 + 4 = 12
+                    .foregroundColor(isOn ? .primary : .secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)  // 8 * 0.8 = 6.4 ≈ 6
+            .padding(.horizontal, 10)  // 12 * 0.8 = 9.6 ≈ 10
+            .background(
+                RoundedRectangle(cornerRadius: 6)  // 8 * 0.8 = 6.4 ≈ 6
+                    .fill(isOn ? desaturatedBlue.opacity(0.15) : Color.secondary.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)  // 8 * 0.8 = 6.4 ≈ 6
+                    .strokeBorder(isOn ? desaturatedBlue.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }

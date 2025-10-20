@@ -2,6 +2,21 @@ import SwiftUI
 import Foundation
 #if os(macOS)
 import AppKit
+import UniformTypeIdentifiers
+
+// MARK: - Plugin Drag Data
+
+/// Data structure for dragging plugins to playlists
+struct PluginDragData: Codable {
+    let plugins: [PluginInfo]
+
+    struct PluginInfo: Codable {
+        let name: String
+        let publisher: String
+        let type: String
+        let path: String
+    }
+}
 
 @MainActor struct MacPluginTable: View {
     let rows: [PluginItem]
@@ -41,6 +56,7 @@ import AppKit
     @State private var wSize: CGFloat = 80         // Narrower for file sizes
     @State private var wRequirement: CGFloat = 110 // Good for "Universal" etc
     @State private var wObsolete: CGFloat = 90     // Narrow for Yes/No
+    @State private var wMissing: CGFloat = 90      // Narrow for Yes/No
     @State private var wTrack: CGFloat = 120       // For DAW track names
     @State private var wNotes: CGFloat = 80        // For user notes
     @State private var wPath: CGFloat = 300        // Narrower so vertical scrollbar sits near regular columns
@@ -68,7 +84,7 @@ import AppKit
     private let rowDividerHeight: CGFloat = 16
 
     // MARK: Manual sorting (reliable across macOS versions)
-    enum SortKey: String, CaseIterable, Identifiable { case rating, name, publisher, type, style, version, arch, date, size, requirement, obsolete, track, path; var id: String { rawValue } }
+    enum SortKey: String, CaseIterable, Identifiable { case rating, name, publisher, type, style, version, arch, date, size, requirement, obsolete, missing, track, path; var id: String { rawValue } }
     @State private var manualSortKey: SortKey = .name
     @State private var manualAscending: Bool = true
 
@@ -339,6 +355,7 @@ import AppKit
         case .size: column = "Size"
         case .requirement: column = "Requirement"
         case .obsolete: column = "Obsolete"
+        case .missing: column = "Missing"
         case .track: column = "Track"
         case .path: column = "Path"
         }
@@ -399,6 +416,8 @@ import AppKit
             sorted = rows.sorted { manualAscending ? ($0.runtimeRequirement < $1.runtimeRequirement) : ($0.runtimeRequirement > $1.runtimeRequirement) }
         case .obsolete:
             sorted = rows.sorted { manualAscending ? ($0.obsoleteText < $1.obsoleteText) : ($0.obsoleteText > $1.obsoleteText) }
+        case .missing:
+            sorted = rows.sorted { manualAscending ? ($0.missingText < $1.missingText) : ($0.missingText > $1.missingText) }
         case .track:
             sorted = rows.sorted { manualAscending ? (($0.trackName ?? "") < ($1.trackName ?? "")) : (($0.trackName ?? "") > ($1.trackName ?? "")) }
         case .path:
@@ -617,6 +636,12 @@ import AppKit
                     }
                     MacColumnDivider(leftWidth: $wObsolete, minWidth: minColWidth, height: rowDividerHeight)
 
+                    MacSortHeaderButton(title: "Missing", active: manualSortKey == .missing, ascending: manualSortKey == .missing ? manualAscending : true, width: wMissing, height: headerHeight) {
+                        if manualSortKey == .missing { manualAscending.toggle() } else { manualSortKey = .missing; manualAscending = true }
+                        sortStatus = makeSortStatus()
+                    }
+                    MacColumnDivider(leftWidth: $wMissing, minWidth: minColWidth, height: rowDividerHeight)
+
                     MacSortHeaderButton(title: "Track", active: manualSortKey == .track, ascending: manualSortKey == .track ? manualAscending : true, width: wTrack, height: headerHeight) {
                         if manualSortKey == .track { manualAscending.toggle() } else { manualSortKey = .track; manualAscending = true }
                         sortStatus = makeSortStatus()
@@ -654,7 +679,7 @@ import AppKit
                                         wRating: wRating, wName: wName, wPublisher: wPublisher, wType: wType,
                                         wStyle: wStyle, wVersion: wVersion, wArch: wArch,
                                         wDate: wDate, wSize: wSize, wRequirement: wRequirement,
-                                        wObsolete: wObsolete, wTrack: wTrack, wNotes: wNotes, wPath: wPath
+                                        wObsolete: wObsolete, wMissing: wMissing, wTrack: wTrack, wNotes: wNotes, wPath: wPath
                                     ),
                                     isSelected: macSelection.contains(row.id),
                                     zebra: zebra,
@@ -948,6 +973,7 @@ private struct ColumnWidths {
     let wSize: CGFloat
     let wRequirement: CGFloat
     let wObsolete: CGFloat
+    let wMissing: CGFloat
     let wTrack: CGFloat
     let wNotes: CGFloat
     let wPath: CGFloat
@@ -1255,6 +1281,8 @@ private struct OptimizedTableRow: View {
                 TableDivider()
                 TableCell(text: row.obsoleteText, width: columnWidths.wObsolete)
                 TableDivider()
+                TableCell(text: row.missingText, width: columnWidths.wMissing)
+                TableDivider()
                 TableCell(text: row.trackName ?? "", width: columnWidths.wTrack)
                 TableDivider()
                 NotesCell(
@@ -1272,6 +1300,7 @@ private struct OptimizedTableRow: View {
                 Spacer(minLength: 0)
             }
             .frame(height: 32)
+            .foregroundColor(row.missing ? Color.red : nil)
         }
         .frame(height: 32)
         .frame(maxWidth: .infinity)
@@ -1373,6 +1402,54 @@ private struct OptimizedTableRow: View {
         }
         .sheet(isPresented: $showTagsEditor) {
             TagsEditorSheet(plugin: row)
+        }
+        .onDrag {
+            // If dragging a selected plugin, drag all selected plugins
+            // Otherwise, just drag this one plugin
+            let pluginsToDrag = isSelected ? selectedPlugins : [row]
+
+            print("🚀 Starting drag of \(pluginsToDrag.count) plugin(s)")
+
+            // Convert to drag data
+            let pluginInfos = pluginsToDrag.map { plugin in
+                PluginDragData.PluginInfo(
+                    name: plugin.name,
+                    publisher: plugin.publisher,
+                    type: plugin.type,
+                    path: plugin.path
+                )
+            }
+
+            let pluginData = PluginDragData(plugins: pluginInfos)
+
+            guard let encoded = try? JSONEncoder().encode(pluginData) else {
+                print("❌ Failed to encode plugin data")
+                return NSItemProvider()
+            }
+
+            print("✅ Encoded \(encoded.count) bytes of plugin data")
+
+            let itemProvider = NSItemProvider()
+
+            // Set suggested name to show count
+            if pluginsToDrag.count > 1 {
+                itemProvider.suggestedName = "\(pluginsToDrag.count) plugins"
+            } else {
+                itemProvider.suggestedName = pluginsToDrag[0].name
+            }
+
+            itemProvider.registerDataRepresentation(
+                forTypeIdentifier: "com.vibeaudio.pluginreporter.plugin",
+                visibility: .all
+            ) { completion in
+                print("📦 Provider asked to provide data")
+                completion(encoded, nil)
+                return nil
+            }
+
+            print("✅ Created NSItemProvider with identifier: com.vibeaudio.pluginreporter.plugin")
+
+            return itemProvider
         }
         #endif
     }

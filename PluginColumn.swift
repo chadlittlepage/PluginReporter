@@ -16,6 +16,7 @@ public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable 
     case path
     case requirement
     case obsolete
+    case missing
 
     // MARK: Identifiable
     public var id: String { rawValue }
@@ -34,6 +35,7 @@ public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable 
         case .path:          return "Path"
         case .requirement:   return "Requirement"
         case .obsolete:      return "Obsolete"
+        case .missing:       return "Missing"
         }
     }
 
@@ -51,6 +53,7 @@ public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable 
         case .path:          return 260
         case .requirement:   return 140
         case .obsolete:      return 70
+        case .missing:       return 70
         }
     }
 }

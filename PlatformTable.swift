@@ -6,9 +6,10 @@ import Foundation
 import AppKit
 #endif
 
-// Helper to enable sorting on the Obsolete column (String is Comparable; Bool is not)
+// Helper to enable sorting on the Obsolete/Missing columns (String is Comparable; Bool is not)
 extension PluginItem {
     var obsoleteText: String { obsolete ? "Yes" : "No" }
+    var missingText: String { missing ? "Yes" : "No" }
 
     var versionSortKey: String {
         // Use a zero-padded numeric-aware key so 1.10 > 1.2

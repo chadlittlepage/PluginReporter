@@ -20,6 +20,8 @@ struct PlaylistMetadataPanel: View {
     @State private var editedSampleRate: String = ""
     @State private var editedKey: String = ""
     @State private var editedVersion: String = ""
+    @State private var editedType: String = ""
+    @State private var editedCreated: String = ""
 
     private let panelWidth: CGFloat = 350
 
@@ -32,7 +34,8 @@ struct PlaylistMetadataPanel: View {
     }
 
     var body: some View {
-        if isVisible, let playlist = playlist {
+        if isVisible, let initialPlaylist = playlist,
+           let currentPlaylist = playlistManager.playlists.first(where: { $0.id == initialPlaylist.id }) {
             VStack(alignment: .leading, spacing: 0) {
                 // Title (matching DAW Playlists sidebar style)
                 HStack(spacing: 12) {
@@ -51,24 +54,24 @@ struct PlaylistMetadataPanel: View {
                 Divider()
 
                 // Header
-                headerSection(playlist: playlist)
+                headerSection(playlist: currentPlaylist)
 
                 Divider()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         // Project Info Section
-                        projectInfoSection(playlist: playlist)
+                        projectInfoSection(playlist: currentPlaylist)
 
                         Divider()
 
                         // Editable Metadata Section
-                        metadataSection(playlist: playlist)
+                        metadataSection(playlist: currentPlaylist)
 
                         Divider()
 
                         // Statistics Section
-                        statisticsSection(playlist: playlist)
+                        statisticsSection(playlist: currentPlaylist)
                     }
                     .padding(16)
                 }
@@ -83,11 +86,13 @@ struct PlaylistMetadataPanel: View {
             )
             .onAppear {
                 // Initialize edit fields with current values
-                editedName = playlist.name
-                editedTempo = playlist.tempo.map { String(format: "%.1f", $0) } ?? ""
-                editedSampleRate = playlist.sampleRate.map { String($0) } ?? ""
-                editedKey = playlist.key ?? ""
-                editedVersion = playlist.version ?? ""
+                editedName = currentPlaylist.name
+                editedTempo = currentPlaylist.tempo.map { String(format: "%.1f", $0) } ?? ""
+                editedSampleRate = currentPlaylist.sampleRate.map { String($0) } ?? ""
+                editedKey = currentPlaylist.key ?? ""
+                editedVersion = currentPlaylist.version ?? ""
+                editedType = currentPlaylist.playlistType == .custom ? "Custom Playlist" : (currentPlaylist.dawType?.rawValue ?? "DAW Import")
+                editedCreated = currentPlaylist.dateImported.formatted(date: .long, time: .standard)
             }
         }
     }
@@ -97,37 +102,58 @@ struct PlaylistMetadataPanel: View {
     @ViewBuilder
     private func headerSection(playlist: DAWPlaylist) -> some View {
         HStack(spacing: 12) {
-            // Playlist icon
+            // Playlist icon - Green for DAW imports, Yellow for custom
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(LinearGradient(
-                        colors: [Color.green.opacity(0.6), Color.green.opacity(0.3)],
+                        colors: playlist.playlistType == .custom ?
+                            [Color.yellow.opacity(0.6), Color.yellow.opacity(0.3)] :
+                            [Color.green.opacity(0.6), Color.green.opacity(0.3)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))
 
-                Image(systemName: "music.note.list")
+                Image(systemName: playlist.playlistType == .custom ? "folder.fill" : "music.note.list")
                     .font(.system(size: 24))
                     .foregroundColor(.white)
             }
             .frame(width: 60, height: 60)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(playlist.name)
+            VStack(alignment: .leading, spacing: 6) {
+                // Editable Name with border
+                TextField("Playlist name", text: $editedName)
                     .font(.headline)
-                    .lineLimit(2)
+                    .textFieldStyle(.plain)
+                    .padding(6)
+                    .background(textFieldBackground)
+                    .cornerRadius(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                    )
+                    .onChange(of: editedName) { newValue in
+                        updatePlaylistMetadata(playlist, name: newValue)
+                    }
 
-                Text(playlist.dawType.rawValue)
+                // DAW Type (read-only display, edited below in Project Info)
+                Text(editedType.isEmpty ? (playlist.playlistType == .custom ? "Custom" : (playlist.dawType?.rawValue ?? "")) : editedType)
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.caption2)
-                    Text(playlist.dateImported.formatted(date: .abbreviated, time: .omitted))
-                        .font(.caption2)
+                // 5-Star Rating (moved below DAW)
+                HStack(spacing: 3) {
+                    ForEach(1...5, id: \.self) { star in
+                        Image(systemName: (playlist.rating ?? 0) >= star ? "star.fill" : "star")
+                            .font(.caption)
+                            .foregroundColor((playlist.rating ?? 0) >= star ? .yellow : .gray)
+                            .onTapGesture {
+                                // If clicking the current rating, unset it (set to 0)
+                                // Otherwise, set to the clicked star
+                                let newRating = (playlist.rating == star) ? 0 : star
+                                updatePlaylistRating(playlist, rating: newRating)
+                            }
+                    }
                 }
-                .foregroundColor(.secondary)
             }
 
             Spacer()
@@ -144,11 +170,66 @@ struct PlaylistMetadataPanel: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
-            VStack(alignment: .leading, spacing: 8) {
-                infoRow(label: "Source File", value: playlist.sourceFile.lastPathComponent)
-                infoRow(label: "Path", value: playlist.sourceFile.path)
-                infoRow(label: "DAW Type", value: playlist.dawType.rawValue)
-                infoRow(label: "Imported", value: playlist.dateImported.formatted(date: .long, time: .standard))
+            VStack(alignment: .leading, spacing: 12) {
+                // DAW (editable - updates top display)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("DAW")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    TextField("DAW (e.g., Pro Tools, Logic)", text: $editedType)
+                        .textFieldStyle(.plain)
+                        .font(.body)
+                        .padding(8)
+                        .background(textFieldBackground)
+                        .cornerRadius(4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                        )
+                        .onChange(of: editedType) { newValue in
+                            updatePlaylistMetadata(playlist, version: newValue)
+                        }
+                }
+
+                // Created Date (read-only, no border)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Created")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(editedCreated)
+                        .font(.body)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundColor(.secondary)
+                }
+
+                // Only show source file and path for DAW playlists
+                if playlist.playlistType == .dawImport {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Source File")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(playlist.sourceFile?.lastPathComponent ?? "—")
+                            .font(.caption)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(textFieldBackground.opacity(0.5))
+                            .cornerRadius(4)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Path")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(playlist.sourceFile?.path ?? "—")
+                            .font(.caption2)
+                            .lineLimit(3)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(textFieldBackground.opacity(0.5))
+                            .cornerRadius(4)
+                    }
+                }
             }
         }
     }
@@ -163,7 +244,7 @@ struct PlaylistMetadataPanel: View {
                 .fontWeight(.semibold)
 
             VStack(alignment: .leading, spacing: 12) {
-                // Name
+                // Name (always editable)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Name")
                         .font(.caption)
@@ -182,7 +263,7 @@ struct PlaylistMetadataPanel: View {
                         }
                 }
 
-                // Tempo/BPM
+                // Tempo/BPM (always editable)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
                         Image(systemName: "metronome")
@@ -208,7 +289,7 @@ struct PlaylistMetadataPanel: View {
                         }
                 }
 
-                // Sample Rate
+                // Sample Rate (always editable)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
                         Image(systemName: "waveform")
@@ -234,7 +315,7 @@ struct PlaylistMetadataPanel: View {
                         }
                 }
 
-                // Musical Key
+                // Musical Key (always editable)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
                         Image(systemName: "music.note")
@@ -258,9 +339,9 @@ struct PlaylistMetadataPanel: View {
                         }
                 }
 
-                // Version
+                // Version (always editable)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DAW Version")
+                    Text(playlist.playlistType == .custom ? "Notes / Version" : "DAW Version")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextField("Version", text: $editedVersion)
@@ -329,6 +410,41 @@ struct PlaylistMetadataPanel: View {
 
     // MARK: - Update Logic
 
+    private func updatePlaylistRating(_ playlist: DAWPlaylist, rating: Int) {
+        // Create updated playlist with new rating
+        let updated: DAWPlaylist
+        if playlist.playlistType == .custom {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: playlist.name,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: playlist.tempo,
+                sampleRate: playlist.sampleRate,
+                version: playlist.version,
+                key: playlist.key,
+                rating: rating
+            )
+        } else {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: playlist.name,
+                sourceFile: playlist.sourceFile!,
+                dawType: playlist.dawType!,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: playlist.tempo,
+                sampleRate: playlist.sampleRate,
+                version: playlist.version,
+                key: playlist.key,
+                rating: rating
+            )
+        }
+
+        // Update in manager
+        playlistManager.updatePlaylist(updated)
+    }
+
     private func updatePlaylistMetadata(
         _ playlist: DAWPlaylist,
         name: String? = nil,
@@ -337,19 +453,35 @@ struct PlaylistMetadataPanel: View {
         key: String? = nil,
         version: String? = nil
     ) {
-        // Create updated playlist
-        let updated = DAWPlaylist(
-            id: playlist.id,
-            name: name ?? playlist.name,
-            sourceFile: playlist.sourceFile,
-            dawType: playlist.dawType,
-            dateImported: playlist.dateImported,
-            entries: playlist.entries,
-            tempo: tempo ?? playlist.tempo,
-            sampleRate: sampleRate ?? playlist.sampleRate,
-            version: version ?? playlist.version,
-            key: key ?? playlist.key
-        )
+        // Create updated playlist based on type
+        let updated: DAWPlaylist
+        if playlist.playlistType == .custom {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: name ?? playlist.name,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: tempo ?? playlist.tempo,
+                sampleRate: sampleRate ?? playlist.sampleRate,
+                version: version ?? playlist.version,
+                key: key ?? playlist.key,
+                rating: playlist.rating
+            )
+        } else {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: name ?? playlist.name,
+                sourceFile: playlist.sourceFile!,
+                dawType: playlist.dawType!,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: tempo ?? playlist.tempo,
+                sampleRate: sampleRate ?? playlist.sampleRate,
+                version: version ?? playlist.version,
+                key: key ?? playlist.key,
+                rating: playlist.rating
+            )
+        }
 
         // Update in manager
         playlistManager.updatePlaylist(updated)

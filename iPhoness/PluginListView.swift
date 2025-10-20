@@ -292,11 +292,11 @@ struct PluginListView: View {
                                 SortBadge(title: sortOrderBadge, onRemove: { sortOrder = .name })
                             }
 
-                            ForEach(Array(selectedFormats), id: \.self) { format in
-                                FilterChip(title: format, onRemove: { selectedFormats.remove(format) })
+                            ForEach(Array(selectedFormats).sorted(by: { ColorUtilities.formatSortOrder($0) < ColorUtilities.formatSortOrder($1) }), id: \.self) { format in
+                                FilterChip(title: format, onRemove: { selectedFormats.remove(format) }, color: ColorUtilities.colorForFormat(format))
                             }
                             ForEach(Array(selectedStarRatings).sorted(by: >), id: \.self) { rating in
-                                FilterChip(title: "\(rating)★", onRemove: { selectedStarRatings.remove(rating) })
+                                FilterChip(title: "\(rating)★", onRemove: { selectedStarRatings.remove(rating) }, color: .yellow)
                             }
                             if let style = selectedStyle {
                                 FilterChip(title: style, onRemove: { selectedStyle = nil })

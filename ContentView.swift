@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
@@ -8,6 +9,26 @@ import UIKit
 // Disambiguate project types in case of name collisions
 typealias AppPluginItem = PluginItem
 typealias AppPreferences = Preferences
+
+/// Struct for decoding imported JSON plugin data
+struct ImportedJSONPlugin: Codable {
+    let id: UUID
+    let rating: Int
+    let name: String
+    let publisher: String
+    let type: String
+    let style: String
+    let version: String
+    let architectures: String
+    let date: String
+    let size: String
+    let requirement: String
+    let obsolete: Bool
+    let missing: Bool
+    let track: String?
+    let notes: String
+    let path: String
+}
 
 struct ContentView: View {
     @EnvironmentObject private var scanner: PluginScanner
@@ -32,13 +53,11 @@ struct ContentView: View {
 
     // INSTANT bar graph - cached counts (only updates on batch completion)
     @State private var cachedBarCounts = FormatCounts()
+    @State private var totalPluginCounts = FormatCounts()  // Unfiltered counts for playlist mode
     @State private var lastBarUpdateCount = 0
 
     // REACTIVE: Filtered plugins that updates automatically
     @State private var displayedPlugins: [AppPluginItem] = []
-
-    // MARK: Star rating filter state
-    @State private var selectedStarRatings: Set<Int> = [] // Filter by 1-5 star ratings
 
     // MARK: Batch uninstall state
     @State private var showBatchUninstall = false
@@ -54,9 +73,12 @@ struct ContentView: View {
     @State private var activePlaylistFilters: [DAWPlaylist] = []
     @StateObject private var playlistManager = DAWPlaylistManager.shared
     @State private var showDAWImport = false
+    @State private var showCreateCustomPlaylist = false
     @State private var showDuplicatePlaylistWarning = false
     @State private var pendingImportURL: URL?
     @State private var existingPlaylistToReplace: DAWPlaylist?
+    @State private var showJSONImportDialog = false
+    @State private var pendingJSONImportURL: URL?
     #endif
 
     private func toggleDetailPanel() {
@@ -71,30 +93,48 @@ struct ContentView: View {
     private func updateDisplayedPlugins() {
         let allPlugins = scanner.plugins.map(AppPluginItem.init)
 
-        var filtered = FastFilterEngine.filter(
-            plugins: allPlugins,
-            formats: prefs.selectedFormats,
-            publishers: prefs.selectedPublishers,
-            styles: prefs.selectedStyles,
-            searchText: searchText
-        )
+        // Check if playlist is active - if so, skip ALL filters initially and apply them after playlist filtering
+        #if os(macOS)
+        let hasActivePlaylist = !activePlaylistFilters.isEmpty
+        #else
+        let hasActivePlaylist = false
+        #endif
 
-        // Apply star rating filter if any selected
-        if !selectedStarRatings.isEmpty {
-            let ratingsManager = RatingsManager.shared
-            filtered = filtered.filter { plugin in
-                let rating = ratingsManager.getRating(forName: plugin.name)
-                return selectedStarRatings.contains(rating)
+        var filtered: [AppPluginItem]
+
+        if hasActivePlaylist {
+            // When playlist is active, don't filter yet - we'll filter the playlist results
+            filtered = allPlugins
+        } else {
+            // Normal filtering when no playlist is active
+            filtered = FastFilterEngine.filter(
+                plugins: allPlugins,
+                formats: prefs.selectedFormats,
+                publishers: prefs.selectedPublishers,
+                styles: prefs.selectedStyles,
+                searchText: searchText
+            )
+
+            // Apply star rating filter if any selected
+            if !prefs.selectedStarRatings.isEmpty {
+                let ratingsManager = RatingsManager.shared
+                filtered = filtered.filter { plugin in
+                    let rating = ratingsManager.getRating(forName: plugin.name)
+                    return prefs.selectedStarRatings.contains(rating)
+                }
             }
         }
 
         // Apply playlist filter if active
         #if os(macOS)
         if !activePlaylistFilters.isEmpty {
-            // Create a dictionary mapping (name, format) to track names from ALL selected playlists
+            // Create a dictionary mapping (name, format) to track names and entries from ALL selected playlists
             var playlistTrackMap: [String: [String]] = [:]
+            var allPlaylistEntries: [DAWPlaylistEntry] = []
+
             for activePlaylist in activePlaylistFilters {
                 for entry in activePlaylist.entries {
+                    allPlaylistEntries.append(entry)
                     let key = "\(entry.pluginName.lowercased())_\(entry.pluginFormat.rawValue)"
                     if playlistTrackMap[key] == nil {
                         playlistTrackMap[key] = []
@@ -105,16 +145,74 @@ struct ContentView: View {
                 }
             }
 
-            // Filter and add track names
-            filtered = filtered.compactMap { plugin in
+            // Filter installed plugins and add track names
+            var installedPlugins = filtered.compactMap { plugin -> AppPluginItem? in
                 let key = "\(plugin.name.lowercased())_\(plugin.type)"
                 if let trackNames = playlistTrackMap[key] {
                     // Create a new PluginItem with the track names joined
                     var updatedPlugin = plugin
                     updatedPlugin.trackName = trackNames.sorted().joined(separator: ", ")
+                    updatedPlugin.missing = false
                     return updatedPlugin
                 }
                 return nil
+            }
+
+            // Find missing plugins (in playlist but not installed)
+            let installedKeys = Set(installedPlugins.map { "\($0.name.lowercased())_\($0.type)" })
+            let missingPlugins = allPlaylistEntries.compactMap { entry -> AppPluginItem? in
+                let key = "\(entry.pluginName.lowercased())_\(entry.pluginFormat.rawValue)"
+                guard !installedKeys.contains(key) else { return nil }
+
+                // Create a placeholder plugin item for the missing plugin
+                let trackNames = playlistTrackMap[key]?.sorted().joined(separator: ", ") ?? ""
+                return AppPluginItem(
+                    name: entry.pluginName,
+                    publisher: "",
+                    version: "",
+                    type: entry.pluginFormat.rawValue,
+                    style: "",
+                    architectures: "",
+                    date: nil,
+                    sizeBytes: 0,
+                    path: "",
+                    runtimeRequirement: "",
+                    obsolete: false,
+                    trackName: trackNames,
+                    missing: true
+                )
+            }
+
+            // Remove duplicates from missing plugins
+            var uniqueMissing: [AppPluginItem] = []
+            var seenKeys = Set<String>()
+            for plugin in missingPlugins {
+                let key = "\(plugin.name.lowercased())_\(plugin.type)"
+                if !seenKeys.contains(key) {
+                    seenKeys.insert(key)
+                    uniqueMissing.append(plugin)
+                }
+            }
+
+            // Combine installed and missing plugins
+            filtered = installedPlugins + uniqueMissing
+
+            // NOW apply ALL filters to the playlist results (format, publisher, style, search, ratings)
+            filtered = FastFilterEngine.filter(
+                plugins: filtered,
+                formats: prefs.selectedFormats,
+                publishers: prefs.selectedPublishers,
+                styles: prefs.selectedStyles,
+                searchText: searchText
+            )
+
+            // Apply star rating filter if any selected
+            if !prefs.selectedStarRatings.isEmpty {
+                let ratingsManager = RatingsManager.shared
+                filtered = filtered.filter { plugin in
+                    let rating = ratingsManager.getRating(forName: plugin.name)
+                    return prefs.selectedStarRatings.contains(rating)
+                }
             }
         }
         #endif
@@ -160,75 +258,135 @@ struct ContentView: View {
     
     // SPEED: Real bar graph using cached counts - CLICKABLE to filter!
     private var realBarGraph: some View {
-        let counts = cachedBarCounts  // Use cached value instead of recalculating!
+        // Always use totalPluginCounts for bar visualization to keep all bars visible
+        // Display counts show filtered results
+        let displayCounts = cachedBarCounts  // What to display in the count labels (filtered)
+        let barCounts = totalPluginCounts    // What to use for bar length calculations (unfiltered)
         let isEmpty = scanner.plugins.isEmpty
-        let total = Swift.max(1, counts.au + counts.vst + counts.vst3 + counts.aax + counts.clap + counts.lv2 + counts.obsolete)
+
+        // For ALL modes, use total counts for bar visualization
+        let total = Swift.max(1, barCounts.au + barCounts.vst + barCounts.vst3 + barCounts.aax + barCounts.clap + barCounts.lv2 + barCounts.obsolete)
 
         return VStack(alignment: .leading, spacing: 6) {
-            if counts.au > 0 {
+            // When playlist sidebar is open, show playlist-specific counts in the value label
+            if showPlaylistSidebar {
+                // Playlist mode: show all bars with total-based fractions, display filtered counts
                 BarRow(
-                    label: "AU", value: counts.au,
-                    fraction: isEmpty ? 0.0 : Double(counts.au) / Double(total),
+                    label: "AU", value: totalPluginCounts.au,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.au) / Double(total),
+                    color: .blue,
+                    onTap: { toggleFormat(.AU) },
+                    isSelected: prefs.selectedFormats.contains(.AU),
+                    onUninstall: { batchUninstallFormat("AU") },
+                    playlistCount: displayCounts.au
+                )
+                BarRow(
+                    label: "VST", value: totalPluginCounts.vst,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.vst) / Double(total),
+                    color: .green,
+                    onTap: { toggleFormat(.VST) },
+                    isSelected: prefs.selectedFormats.contains(.VST),
+                    onUninstall: { batchUninstallFormat("VST") },
+                    playlistCount: displayCounts.vst
+                )
+                BarRow(
+                    label: "VST3", value: totalPluginCounts.vst3,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.vst3) / Double(total),
+                    color: .teal,
+                    onTap: { toggleFormat(.VST3) },
+                    isSelected: prefs.selectedFormats.contains(.VST3),
+                    onUninstall: { batchUninstallFormat("VST3") },
+                    playlistCount: displayCounts.vst3
+                )
+                BarRow(
+                    label: "AAX", value: totalPluginCounts.aax,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.aax) / Double(total),
+                    color: .purple,
+                    onTap: { toggleFormat(.AAX) },
+                    isSelected: prefs.selectedFormats.contains(.AAX),
+                    onUninstall: { batchUninstallFormat("AAX") },
+                    playlistCount: displayCounts.aax
+                )
+                BarRow(
+                    label: "CLAP", value: totalPluginCounts.clap,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.clap) / Double(total),
+                    color: .orange,
+                    onTap: { toggleFormat(.CLAP) },
+                    isSelected: prefs.selectedFormats.contains(.CLAP),
+                    onUninstall: { batchUninstallFormat("CLAP") },
+                    playlistCount: displayCounts.clap
+                )
+                BarRow(
+                    label: "LV2", value: totalPluginCounts.lv2,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.lv2) / Double(total),
+                    color: .gray,
+                    onTap: { toggleFormat(.LV2) },
+                    isSelected: prefs.selectedFormats.contains(.LV2),
+                    onUninstall: { batchUninstallFormat("LV2") },
+                    playlistCount: displayCounts.lv2
+                )
+                BarRow(
+                    label: "OBSLT", value: totalPluginCounts.obsolete,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.obsolete) / Double(total),
+                    color: .red,
+                    onTap: { toggleFormat(.OBSLT) },
+                    isSelected: prefs.selectedFormats.contains(.OBSLT),
+                    onUninstall: { batchUninstallFormat("OBSLT") },
+                    playlistCount: displayCounts.obsolete
+                )
+            } else {
+                // Normal mode: show all bars always using total counts for bar lengths
+                BarRow(
+                    label: "AU", value: displayCounts.au,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.au) / Double(total),
                     color: .blue,
                     onTap: { toggleFormat(.AU) },
                     isSelected: prefs.selectedFormats.contains(.AU),
                     onUninstall: { batchUninstallFormat("AU") }
                 )
-            }
-            if counts.vst > 0 {
                 BarRow(
-                    label: "VST", value: counts.vst,
-                    fraction: isEmpty ? 0.0 : Double(counts.vst) / Double(total),
+                    label: "VST", value: displayCounts.vst,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.vst) / Double(total),
                     color: .green,
                     onTap: { toggleFormat(.VST) },
                     isSelected: prefs.selectedFormats.contains(.VST),
                     onUninstall: { batchUninstallFormat("VST") }
                 )
-            }
-            if counts.vst3 > 0 {
                 BarRow(
-                    label: "VST3", value: counts.vst3,
-                    fraction: isEmpty ? 0.0 : Double(counts.vst3) / Double(total),
+                    label: "VST3", value: displayCounts.vst3,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.vst3) / Double(total),
                     color: .teal,
                     onTap: { toggleFormat(.VST3) },
                     isSelected: prefs.selectedFormats.contains(.VST3),
                     onUninstall: { batchUninstallFormat("VST3") }
                 )
-            }
-            if counts.aax > 0 {
                 BarRow(
-                    label: "AAX", value: counts.aax,
-                    fraction: isEmpty ? 0.0 : Double(counts.aax) / Double(total),
+                    label: "AAX", value: displayCounts.aax,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.aax) / Double(total),
                     color: .purple,
                     onTap: { toggleFormat(.AAX) },
                     isSelected: prefs.selectedFormats.contains(.AAX),
                     onUninstall: { batchUninstallFormat("AAX") }
                 )
-            }
-            if counts.clap > 0 {
                 BarRow(
-                    label: "CLAP", value: counts.clap,
-                    fraction: isEmpty ? 0.0 : Double(counts.clap) / Double(total),
+                    label: "CLAP", value: displayCounts.clap,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.clap) / Double(total),
                     color: .orange,
                     onTap: { toggleFormat(.CLAP) },
                     isSelected: prefs.selectedFormats.contains(.CLAP),
                     onUninstall: { batchUninstallFormat("CLAP") }
                 )
-            }
-            if counts.lv2 > 0 {
                 BarRow(
-                    label: "LV2", value: counts.lv2,
-                    fraction: isEmpty ? 0.0 : Double(counts.lv2) / Double(total),
+                    label: "LV2", value: displayCounts.lv2,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.lv2) / Double(total),
                     color: .gray,
                     onTap: { toggleFormat(.LV2) },
                     isSelected: prefs.selectedFormats.contains(.LV2),
                     onUninstall: { batchUninstallFormat("LV2") }
                 )
-            }
-            if counts.obsolete > 0 {
                 BarRow(
-                    label: "OBSLT", value: counts.obsolete,
-                    fraction: isEmpty ? 0.0 : Double(counts.obsolete) / Double(total),
+                    label: "OBSLT", value: displayCounts.obsolete,
+                    fraction: isEmpty ? 0.0 : Double(barCounts.obsolete) / Double(total),
                     color: .red,
                     onTap: { toggleFormat(.OBSLT) },
                     isSelected: prefs.selectedFormats.contains(.OBSLT),
@@ -332,8 +490,8 @@ struct ContentView: View {
                     Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
                     #if os(macOS)
                     Button("Export PDF") {
-                        let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
-                        ExportManager.exportPDF(rows: displayedPlugins, options: opts)
+                        // Use Quick Export with Page Setup settings
+                        quickExportPDF(plugins: displayedPlugins, preferences: prefs)
                     }
                     #endif
                 } label: {
@@ -419,8 +577,8 @@ struct ContentView: View {
             Menu {
                 #if os(macOS)
                 Button("Export PDF") {
-                    let opts = PDFExportOptions(page: prefs.pdfPage, landscape: prefs.pdfLandscape, margin: prefs.pdfMargin, fontSize: prefs.pdfFontSize)
-                    ExportManager.exportPDF(rows: displayedPlugins, options: opts)
+                    // Use Quick Export with Page Setup settings
+                    quickExportPDF(plugins: displayedPlugins, preferences: prefs)
                 }
                 #endif
                 Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
@@ -497,6 +655,18 @@ struct ContentView: View {
             .sheet(isPresented: $showDetailSheet) { detailSheet }
             .sheet(isPresented: $showBatchUninstall) { batchUninstallSheet }
             #if os(macOS)
+            .sheet(isPresented: $showCreateCustomPlaylist) {
+                CreateCustomPlaylistView(playlistManager: playlistManager) { newPlaylist in
+                    // After creating, just open the sidebar but DON'T filter
+                    // This lets users see all plugins to drag into the new playlist
+                    showPlaylistSidebar = true
+                    // DON'T auto-select the playlist - let user drag plugins to it
+                    // activePlaylistFilters = [newPlaylist]
+                    // updateDisplayedPlugins()
+                }
+            }
+            #endif
+            #if os(macOS)
             .alert("Replace Existing Playlist?", isPresented: $showDuplicatePlaylistWarning) {
                 Button("Cancel", role: .cancel) {
                     pendingImportURL = nil
@@ -514,18 +684,48 @@ struct ContentView: View {
                     Text("A playlist named \"\(existingPlaylist.name)\" already exists. Do you want to replace it with the new version?")
                 }
             }
+            .alert("Import JSON", isPresented: $showJSONImportDialog) {
+                Button("Plugin Listing") {
+                    if let url = pendingJSONImportURL {
+                        performJSONImportToListing(url: url)
+                    }
+                    pendingJSONImportURL = nil
+                }
+                Button("New Playlist") {
+                    if let url = pendingJSONImportURL {
+                        performJSONImportToPlaylist(url: url)
+                    }
+                    pendingJSONImportURL = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingJSONImportURL = nil
+                }
+            } message: {
+                Text("Would you like to import ratings and notes to the Plugin Listing, or create a new Playlist?")
+            }
             #endif
             .onAppear {
                 updateDisplayedPlugins()
                 setupNotificationListeners()
             }
+            #if os(macOS)
+            .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                handleFileDrop(providers: providers)
+                return true
+            }
+            #endif
             .onChange(of: appState.selected) { _ in handleSelectionChange() }
             .onChange(of: prefs.selectedFormats) { _ in updateDisplayedPlugins() }
             .onChange(of: prefs.selectedPublishers) { _ in updateDisplayedPlugins() }
             .onChange(of: prefs.selectedStyles) { _ in updateDisplayedPlugins() }
-            .onChange(of: selectedStarRatings) { _ in updateDisplayedPlugins() }
+            .onChange(of: prefs.selectedStarRatings) { _ in updateDisplayedPlugins() }
             .onChange(of: searchText) { newValue in handleSearchTextChange(newValue) }
-            .onChange(of: scanner.plugins.count) { _ in updateDisplayedPlugins() }
+            .onChange(of: scanner.plugins.count) { _ in
+                updateDisplayedPlugins()
+                // Update total unfiltered counts for playlist mode bar graph
+                let allPlugins = scanner.plugins.map(AppPluginItem.init)
+                totalPluginCounts = quickCount(rows: allPlugins)
+            }
     }
 
     @ViewBuilder
@@ -579,9 +779,28 @@ struct ContentView: View {
         panel.title = "Select DAW Project"
         panel.message = "Choose a DAW project file (.als for Ableton, .txt for Pro Tools, .bwproject for Bitwig)"
         panel.allowedContentTypes = [
-            .init(filenameExtension: "als"),
-            .init(filenameExtension: "txt"),
-            .init(filenameExtension: "bwproject")
+            .init(filenameExtension: "als"),        // Ableton Live
+            .init(filenameExtension: "logic"),      // Logic Pro
+            .init(filenameExtension: "logicx"),     // Logic Pro X
+            .init(filenameExtension: "band"),       // GarageBand
+            .init(filenameExtension: "concert"),    // MainStage
+            .init(filenameExtension: "cpr"),        // Cubase
+            .init(filenameExtension: "npr"),        // Nuendo
+            .init(filenameExtension: "song"),       // Studio One
+            .init(filenameExtension: "rpp"),        // Reaper
+            .init(filenameExtension: "rpp-bak"),    // Reaper Backup
+            .init(filenameExtension: "reason"),     // Reason
+            .init(filenameExtension: "rns"),        // Reason
+            .init(filenameExtension: "txt"),        // Pro Tools Text Export
+            .init(filenameExtension: "ptx"),        // Pro Tools Session
+            .init(filenameExtension: "bwproject"),  // Bitwig
+            .init(filenameExtension: "flp"),        // FL Studio
+            .init(filenameExtension: "xrns"),       // Renoise
+            .init(filenameExtension: "motu"),       // Digital Performer
+            .init(filenameExtension: "drp"),        // Fairlight
+            .init(filenameExtension: "ardour"),     // Ardour
+            .init(filenameExtension: "mixbus"),     // Mixbus
+            .init(filenameExtension: "tracktionedit") // Tracktion
         ].compactMap { $0 }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -641,6 +860,190 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private func importJSON() {
+        let panel = NSOpenPanel()
+        panel.title = "Import JSON"
+        panel.message = "Choose a JSON file exported from Plugin Reporter"
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            Task { @MainActor in
+                self.pendingJSONImportURL = url
+                self.showJSONImportDialog = true
+            }
+        }
+    }
+
+    private func performJSONImportToListing(url: URL) {
+        Task {
+            do {
+                let data = try Data(contentsOf: url)
+                let decoder = JSONDecoder()
+                let importedPlugins = try decoder.decode([ImportedJSONPlugin].self, from: data)
+
+                await MainActor.run {
+                    // Import ratings and notes for matching plugins
+                    var ratingsImported = 0
+                    var notesImported = 0
+
+                    for plugin in importedPlugins {
+                        // Match by path for exact matching
+                        if plugin.rating > 0 {
+                            RatingsManager.shared.setRating(for: plugin.path, rating: plugin.rating)
+                            ratingsImported += 1
+                        }
+                        if !plugin.notes.isEmpty {
+                            NotesManager.shared.setNote(for: plugin.path, note: plugin.notes)
+                            notesImported += 1
+                        }
+                    }
+
+                    AppLogger.info("JSON import to listing: \(ratingsImported) ratings, \(notesImported) notes")
+
+                    // Show success alert
+                    let alert = NSAlert()
+                    alert.messageText = "Import Complete"
+                    alert.informativeText = "Imported \(ratingsImported) ratings and \(notesImported) notes to Plugin Listing."
+                    alert.alertStyle = .informational
+                    alert.runModal()
+                }
+            } catch {
+                await MainActor.run {
+                    AppLogger.error("Failed to import JSON: \(error.localizedDescription)")
+                    let alert = NSAlert()
+                    alert.messageText = "Import Failed"
+                    alert.informativeText = "Failed to import JSON file: \(error.localizedDescription)"
+                    alert.alertStyle = .critical
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    private func performJSONImportToPlaylist(url: URL) {
+        Task {
+            do {
+                let data = try Data(contentsOf: url)
+                let decoder = JSONDecoder()
+                let importedPlugins = try decoder.decode([ImportedJSONPlugin].self, from: data)
+
+                await MainActor.run {
+                    // Create a new playlist with the imported plugins
+                    let playlistName = url.deletingPathExtension().lastPathComponent
+
+                    // Create custom playlist entries from imported JSON
+                    let entries = importedPlugins.map { plugin in
+                        DAWPlaylistEntry(
+                            pluginName: plugin.name,
+                            pluginManufacturer: plugin.publisher,
+                            trackName: plugin.track ?? "Imported",
+                            trackIndex: 0,
+                            deviceIndex: 0,
+                            pluginFormat: PluginFormat(rawValue: plugin.type) ?? .VST3,
+                            isInstalled: !plugin.missing,
+                            matchedPluginPath: plugin.path
+                        )
+                    }
+
+                    // Create custom playlist
+                    let playlist = DAWPlaylist(
+                        name: playlistName,
+                        entries: entries
+                    )
+
+                    // Add to playlist manager
+                    self.playlistManager.addCustomPlaylist(playlist)
+
+                    // Also import ratings and notes
+                    var ratingsImported = 0
+                    var notesImported = 0
+
+                    for plugin in importedPlugins {
+                        if plugin.rating > 0 {
+                            RatingsManager.shared.setRating(for: plugin.path, rating: plugin.rating)
+                            ratingsImported += 1
+                        }
+                        if !plugin.notes.isEmpty {
+                            NotesManager.shared.setNote(for: plugin.path, note: plugin.notes)
+                            notesImported += 1
+                        }
+                    }
+
+                    AppLogger.info("JSON import to playlist '\(playlistName)': \(entries.count) plugins, \(ratingsImported) ratings, \(notesImported) notes")
+
+                    // Open playlist sidebar and select the newly imported playlist
+                    self.showPlaylistSidebar = true
+                    self.activePlaylistFilters = [playlist]
+
+                    // Show success alert
+                    let alert = NSAlert()
+                    alert.messageText = "Import Complete"
+                    alert.informativeText = "Created playlist '\(playlistName)' with \(entries.count) plugins.\nImported \(ratingsImported) ratings and \(notesImported) notes."
+                    alert.alertStyle = .informational
+                    alert.runModal()
+                }
+            } catch {
+                await MainActor.run {
+                    AppLogger.error("Failed to import JSON: \(error.localizedDescription)")
+                    let alert = NSAlert()
+                    alert.messageText = "Import Failed"
+                    alert.informativeText = "Failed to import JSON file: \(error.localizedDescription)"
+                    alert.alertStyle = .critical
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    private func handleFileDrop(providers: [NSItemProvider]) -> Bool {
+        // Supported DAW file extensions
+        let supportedExtensions = [
+            "als", "logicx", "band", "concert", "cpr", "npr", "song",
+            "ptx", "txt", "bwproject", "reason", "rpp", "motu", "flp",
+            "tracktionedit", "ardour", "mixbus", "xrns", "drp"
+        ]
+
+        guard let provider = providers.first else { return false }
+
+        provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { (urlData, error) in
+            guard let data = urlData as? Data,
+                  let url = URL(dataRepresentation: data, relativeTo: nil) else {
+                return
+            }
+
+            let fileExtension = url.pathExtension.lowercased()
+
+            // Check if it's a supported DAW file
+            guard supportedExtensions.contains(fileExtension) else {
+                print("❌ Unsupported file type: .\(fileExtension)")
+                return
+            }
+
+            print("📥 Dropped DAW file: \(url.lastPathComponent)")
+
+            // Check for duplicate playlist
+            DispatchQueue.main.async {
+                let projectName = url.deletingPathExtension().lastPathComponent
+
+                if let existing = self.playlistManager.playlists.first(where: { $0.name == projectName }) {
+                    // Show duplicate warning
+                    self.pendingImportURL = url
+                    self.existingPlaylistToReplace = existing
+                    self.showDuplicatePlaylistWarning = true
+                } else {
+                    // Import directly
+                    self.performImport(url: url, replacingPlaylist: nil)
+                }
+            }
+        }
+
+        return true
     }
     #endif
 
@@ -703,7 +1106,7 @@ struct ContentView: View {
                                 .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .padding(.top, 10)  // 10px padding above Rating
-                            StarsSelector(selectedStarRatings: $selectedStarRatings)
+                            StarsSelector(selectedStarRatings: $prefs.selectedStarRatings)
                                 .padding(.bottom, 10)  // 10px padding below Rating
                         }
 
@@ -740,10 +1143,10 @@ struct ContentView: View {
                             .padding(.top, 10)
 
                         // Clear Filters button
-                        if !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty || !prefs.selectedStyles.isEmpty || !prefs.selectedPublishers.isEmpty {
+                        if !prefs.selectedFormats.isEmpty || !prefs.selectedStarRatings.isEmpty || !prefs.selectedStyles.isEmpty || !prefs.selectedPublishers.isEmpty {
                             Button {
                                 prefs.selectedFormats.removeAll()
-                                selectedStarRatings.removeAll()
+                                prefs.selectedStarRatings.removeAll()
                                 prefs.selectedStyles.removeAll()
                                 prefs.selectedPublishers.removeAll()
                                 updateDisplayedPlugins()
@@ -864,6 +1267,9 @@ struct ContentView: View {
                     // Force detail panel refresh to show playlist metadata
                     detailPanelRefreshTrigger.toggle()
                 },
+                onImport: {
+                    showCreateCustomPlaylist = true
+                },
                 playlistManager: playlistManager
             )
         }
@@ -884,86 +1290,179 @@ struct ContentView: View {
             Task { @MainActor in
                 self.lastBarUpdateCount = currentCount
                 self.cachedBarCounts = self.quickCount(rows: rows)
+                // Also update total unfiltered counts for playlist mode
+                let allPlugins = scanner.plugins.map(AppPluginItem.init)
+                self.totalPluginCounts = self.quickCount(rows: allPlugins)
             }
         }
 
-        // Always use cached counts for INSTANT display
-        let counts = cachedBarCounts
-        // Use MAX value instead of total, so largest bar fills 100%
-        let maxCount = Swift.max(1, counts.au, counts.vst, counts.vst3, counts.aax, counts.clap, counts.lv2, counts.obsolete)
-        let hasData = currentCount > 0
+        // When playlists are open, show total counts; otherwise show filtered counts
+        let displayCounts = showPlaylistSidebar ? totalPluginCounts : cachedBarCounts
+        let playlistCounts = cachedBarCounts  // Filtered counts for playlist mode
+        let isEmpty = scanner.plugins.isEmpty
+
+        // Use MAX count method (like normal mode) for consistent bar sizing
+        let maxCount = Swift.max(1, playlistCounts.au, playlistCounts.vst, playlistCounts.vst3, playlistCounts.aax, playlistCounts.clap, playlistCounts.lv2, playlistCounts.obsolete, playlistCounts.missing)
 
         return VStack(alignment: .leading, spacing: 6) {
-            // Only show bars for plugin types that exist (at least 1 plugin)
-            if counts.au > 0 {
-                BarRow(
-                    label: "AU", value: counts.au,
-                    fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0,
-                    color: Color.blue,
-                    onTap: { toggleFormat(.AU) },
-                    isSelected: prefs.selectedFormats.contains(.AU),
-                    onUninstall: { batchUninstallFormat("AU") }
-                )
-            }
-            if counts.vst > 0 {
-                BarRow(
-                    label: "VST", value: counts.vst,
-                    fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0,
-                    color: Color.green,
-                    onTap: { toggleFormat(.VST) },
-                    isSelected: prefs.selectedFormats.contains(.VST),
-                    onUninstall: { batchUninstallFormat("VST") }
-                )
-            }
-            if counts.vst3 > 0 {
-                BarRow(
-                    label: "VST3", value: counts.vst3,
-                    fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0,
-                    color: Color.teal,
-                    onTap: { toggleFormat(.VST3) },
-                    isSelected: prefs.selectedFormats.contains(.VST3),
-                    onUninstall: { batchUninstallFormat("VST3") }
-                )
-            }
-            if counts.aax > 0 {
-                BarRow(
-                    label: "AAX", value: counts.aax,
-                    fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0,
-                    color: Color.purple,
-                    onTap: { toggleFormat(.AAX) },
-                    isSelected: prefs.selectedFormats.contains(.AAX),
-                    onUninstall: { batchUninstallFormat("AAX") }
-                )
-            }
-            if counts.clap > 0 {
-                BarRow(
-                    label: "CLAP", value: counts.clap,
-                    fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0,
-                    color: Color.orange,
-                    onTap: { toggleFormat(.CLAP) },
-                    isSelected: prefs.selectedFormats.contains(.CLAP),
-                    onUninstall: { batchUninstallFormat("CLAP") }
-                )
-            }
-            if counts.lv2 > 0 {
-                BarRow(
-                    label: "LV2", value: counts.lv2,
-                    fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0,
-                    color: Color.gray,
-                    onTap: { toggleFormat(.LV2) },
-                    isSelected: prefs.selectedFormats.contains(.LV2),
-                    onUninstall: { batchUninstallFormat("LV2") }
-                )
-            }
-            if counts.obsolete > 0 {
-                BarRow(
-                    label: "OBSLT", value: counts.obsolete,
-                    fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0,
-                    color: Color.red,
-                    onTap: { toggleFormat(.OBSLT) },
-                    isSelected: prefs.selectedFormats.contains(.OBSLT),
-                    onUninstall: { batchUninstallFormat("OBSLT") }
-                )
+            // When playlist sidebar is open, show bars for types that exist in library OR in playlist
+            // Otherwise, only show bars when count > 0
+            if showPlaylistSidebar {
+                // Playlist mode: show bars for types in library or playlist, with bar length based on playlist counts
+                if displayCounts.au > 0 || playlistCounts.au > 0 {
+                    BarRow(
+                        label: "AU", value: playlistCounts.au,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.au) / Double(maxCount),
+                        color: .blue,
+                        onTap: { toggleFormat(.AU) },
+                        isSelected: prefs.selectedFormats.contains(.AU),
+                        onUninstall: { batchUninstallFormat("AU") }
+                    )
+                }
+                if displayCounts.vst > 0 || playlistCounts.vst > 0 {
+                    BarRow(
+                        label: "VST", value: playlistCounts.vst,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.vst) / Double(maxCount),
+                        color: .green,
+                        onTap: { toggleFormat(.VST) },
+                        isSelected: prefs.selectedFormats.contains(.VST),
+                        onUninstall: { batchUninstallFormat("VST") }
+                    )
+                }
+                if displayCounts.vst3 > 0 || playlistCounts.vst3 > 0 {
+                    BarRow(
+                        label: "VST3", value: playlistCounts.vst3,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.vst3) / Double(maxCount),
+                        color: .teal,
+                        onTap: { toggleFormat(.VST3) },
+                        isSelected: prefs.selectedFormats.contains(.VST3),
+                        onUninstall: { batchUninstallFormat("VST3") }
+                    )
+                }
+                if displayCounts.aax > 0 || playlistCounts.aax > 0 {
+                    BarRow(
+                        label: "AAX", value: playlistCounts.aax,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.aax) / Double(maxCount),
+                        color: .purple,
+                        onTap: { toggleFormat(.AAX) },
+                        isSelected: prefs.selectedFormats.contains(.AAX),
+                        onUninstall: { batchUninstallFormat("AAX") }
+                    )
+                }
+                if displayCounts.clap > 0 || playlistCounts.clap > 0 {
+                    BarRow(
+                        label: "CLAP", value: playlistCounts.clap,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.clap) / Double(maxCount),
+                        color: .orange,
+                        onTap: { toggleFormat(.CLAP) },
+                        isSelected: prefs.selectedFormats.contains(.CLAP),
+                        onUninstall: { batchUninstallFormat("CLAP") }
+                    )
+                }
+                if displayCounts.lv2 > 0 || playlistCounts.lv2 > 0 {
+                    BarRow(
+                        label: "LV2", value: playlistCounts.lv2,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.lv2) / Double(maxCount),
+                        color: .gray,
+                        onTap: { toggleFormat(.LV2) },
+                        isSelected: prefs.selectedFormats.contains(.LV2),
+                        onUninstall: { batchUninstallFormat("LV2") }
+                    )
+                }
+                if displayCounts.obsolete > 0 || playlistCounts.obsolete > 0 {
+                    BarRow(
+                        label: "OBSLT", value: playlistCounts.obsolete,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.obsolete) / Double(maxCount),
+                        color: .red,
+                        onTap: { toggleFormat(.OBSLT) },
+                        isSelected: prefs.selectedFormats.contains(.OBSLT),
+                        onUninstall: { batchUninstallFormat("OBSLT") }
+                    )
+                }
+                if playlistCounts.missing > 0 {
+                    BarRow(
+                        label: "MISNG", value: playlistCounts.missing,
+                        fraction: isEmpty ? 0.0 : Double(playlistCounts.missing) / Double(maxCount),
+                        color: .red
+                    )
+                }
+            } else {
+                // Normal mode: show bars for types that exist in library (total > 0), using total counts for bar lengths
+                let counts = cachedBarCounts  // Filtered counts for display
+                let totalCounts = totalPluginCounts  // Unfiltered counts for bar fractions
+                let maxCount = Swift.max(1, totalCounts.au, totalCounts.vst, totalCounts.vst3, totalCounts.aax, totalCounts.clap, totalCounts.lv2, totalCounts.obsolete)
+                let hasData = currentCount > 0
+
+                if totalCounts.au > 0 {
+                    BarRow(
+                        label: "AU", value: counts.au,
+                        fraction: hasData ? Double(totalCounts.au) / Double(maxCount) : 0.0,
+                        color: Color.blue,
+                        onTap: { toggleFormat(.AU) },
+                        isSelected: prefs.selectedFormats.contains(.AU),
+                        onUninstall: { batchUninstallFormat("AU") }
+                    )
+                }
+                if totalCounts.vst > 0 {
+                    BarRow(
+                        label: "VST", value: counts.vst,
+                        fraction: hasData ? Double(totalCounts.vst) / Double(maxCount) : 0.0,
+                        color: Color.green,
+                        onTap: { toggleFormat(.VST) },
+                        isSelected: prefs.selectedFormats.contains(.VST),
+                        onUninstall: { batchUninstallFormat("VST") }
+                    )
+                }
+                if totalCounts.vst3 > 0 {
+                    BarRow(
+                        label: "VST3", value: counts.vst3,
+                        fraction: hasData ? Double(totalCounts.vst3) / Double(maxCount) : 0.0,
+                        color: Color.teal,
+                        onTap: { toggleFormat(.VST3) },
+                        isSelected: prefs.selectedFormats.contains(.VST3),
+                        onUninstall: { batchUninstallFormat("VST3") }
+                    )
+                }
+                if totalCounts.aax > 0 {
+                    BarRow(
+                        label: "AAX", value: counts.aax,
+                        fraction: hasData ? Double(totalCounts.aax) / Double(maxCount) : 0.0,
+                        color: Color.purple,
+                        onTap: { toggleFormat(.AAX) },
+                        isSelected: prefs.selectedFormats.contains(.AAX),
+                        onUninstall: { batchUninstallFormat("AAX") }
+                    )
+                }
+                if totalCounts.clap > 0 {
+                    BarRow(
+                        label: "CLAP", value: counts.clap,
+                        fraction: hasData ? Double(totalCounts.clap) / Double(maxCount) : 0.0,
+                        color: Color.orange,
+                        onTap: { toggleFormat(.CLAP) },
+                        isSelected: prefs.selectedFormats.contains(.CLAP),
+                        onUninstall: { batchUninstallFormat("CLAP") }
+                    )
+                }
+                if totalCounts.lv2 > 0 {
+                    BarRow(
+                        label: "LV2", value: counts.lv2,
+                        fraction: hasData ? Double(totalCounts.lv2) / Double(maxCount) : 0.0,
+                        color: Color.gray,
+                        onTap: { toggleFormat(.LV2) },
+                        isSelected: prefs.selectedFormats.contains(.LV2),
+                        onUninstall: { batchUninstallFormat("LV2") }
+                    )
+                }
+                if totalCounts.obsolete > 0 {
+                    BarRow(
+                        label: "OBSLT", value: counts.obsolete,
+                        fraction: hasData ? Double(totalCounts.obsolete) / Double(maxCount) : 0.0,
+                        color: Color.red,
+                        onTap: { toggleFormat(.OBSLT) },
+                        isSelected: prefs.selectedFormats.contains(.OBSLT),
+                        onUninstall: { batchUninstallFormat("OBSLT") }
+                    )
+                }
             }
 
             // Action buttons
@@ -1045,7 +1544,7 @@ struct ContentView: View {
         #if os(macOS)
         // Action buttons arranged horizontally
         let hasPlaylist = !activePlaylistFilters.isEmpty
-        let hasFilters = !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty
+        let hasFilters = !prefs.selectedFormats.isEmpty || !prefs.selectedStarRatings.isEmpty
 
         if hasPlaylist || hasFilters {
             HStack(spacing: 8) {
@@ -1069,7 +1568,7 @@ struct ContentView: View {
                 if hasFilters {
                     Button {
                         prefs.selectedFormats.removeAll()
-                        selectedStarRatings.removeAll()
+                        prefs.selectedStarRatings.removeAll()
                         updateDisplayedPlugins()
                     } label: {
                         HStack(spacing: 6) {
@@ -1087,10 +1586,10 @@ struct ContentView: View {
             .padding(.top, 4)
         }
         #else
-        if !prefs.selectedFormats.isEmpty || !selectedStarRatings.isEmpty {
+        if !prefs.selectedFormats.isEmpty || !prefs.selectedStarRatings.isEmpty {
             Button {
                 prefs.selectedFormats.removeAll()
-                selectedStarRatings.removeAll()
+                prefs.selectedStarRatings.removeAll()
                 updateDisplayedPlugins()
             } label: {
                 HStack(spacing: 6) {
@@ -1130,6 +1629,7 @@ struct ContentView: View {
                 }
             }
             if row.obsolete { c.obsolete += 1 }
+            if row.missing { c.missing += 1 }
         }
         return c
     }
@@ -1141,6 +1641,10 @@ struct ContentView: View {
         // File menu
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ImportDAWProject"), object: nil, queue: .main) { [self] _ in
             self.importDAWProject()
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ImportJSON"), object: nil, queue: .main) { [self] _ in
+            self.importJSON()
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportCSV"), object: nil, queue: .main) { [self] _ in
@@ -1156,8 +1660,96 @@ struct ContentView: View {
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportPDF"), object: nil, queue: .main) { [self] _ in
-            let opts = PDFExportOptions(page: self.prefs.pdfPage, landscape: self.prefs.pdfLandscape, margin: self.prefs.pdfMargin, fontSize: self.prefs.pdfFontSize)
-            ExportManager.exportPDF(rows: self.displayedPlugins, options: opts)
+            // Quick export using Page Setup settings (landscape by default)
+            let plugins = self.displayedPlugins
+            print("🔵 ContentView: Sending \(plugins.count) plugins to Quick Export")
+            print("🔵 First 5: \(plugins.prefix(5).map { $0.name })")
+            quickExportPDF(plugins: plugins, preferences: self.prefs)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ShowPageSetup"), object: nil, queue: .main) { [self] _ in
+            // Show Page Setup with current displayed plugins (matches what will be exported)
+            let plugins = self.displayedPlugins
+            print("🔵 ContentView: Sending \(plugins.count) plugins to Page Setup")
+            print("🔵 First 5: \(plugins.prefix(5).map { $0.name })")
+            showCustomPageSetup(preferences: self.prefs, plugins: plugins)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("PrintPlugins"), object: nil, queue: .main) { [self] _ in
+            // Print current displayed plugins using Page Setup settings
+            print("🖨️ Print button clicked")
+            print("📐 Margins from prefs: T=\(self.prefs.pdfTopMargin), B=\(self.prefs.pdfBottomMargin), L=\(self.prefs.pdfLeftMargin), R=\(self.prefs.pdfRightMargin)")
+            print("📄 Page: \(self.prefs.pdfPage.rawValue), Landscape: \(self.prefs.pdfLandscape)")
+
+            let plugins = self.displayedPlugins
+
+            // Create a copy of NSPrintInfo to configure with our preferences
+            let printInfo = NSPrintInfo.shared.copy() as! NSPrintInfo
+
+            var pageSize = self.prefs.pdfPage.sizePoints
+            if self.prefs.pdfLandscape {
+                pageSize = CGSize(width: pageSize.height, height: pageSize.width)
+            }
+            // Set paper size and orientation
+            printInfo.paperSize = pageSize
+            printInfo.orientation = self.prefs.pdfLandscape ? .landscape : .portrait
+
+            // CRITICAL: Set margins in the dictionary to make them stick in the print panel
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.leftMargin] = self.prefs.pdfLeftMargin
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.rightMargin] = self.prefs.pdfRightMargin
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.topMargin] = self.prefs.pdfTopMargin
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.bottomMargin] = self.prefs.pdfBottomMargin
+
+            // Also set via properties
+            printInfo.leftMargin = self.prefs.pdfLeftMargin
+            printInfo.rightMargin = self.prefs.pdfRightMargin
+            printInfo.topMargin = self.prefs.pdfTopMargin
+            printInfo.bottomMargin = self.prefs.pdfBottomMargin
+
+            print("✅ Set printInfo margins: T=\(printInfo.topMargin), B=\(printInfo.bottomMargin), L=\(printInfo.leftMargin), R=\(printInfo.rightMargin)")
+
+            // Also update the shared instance so createPrintablePluginView can use it
+            NSPrintInfo.shared.paperSize = pageSize
+            NSPrintInfo.shared.orientation = self.prefs.pdfLandscape ? .landscape : .portrait
+            NSPrintInfo.shared.leftMargin = self.prefs.pdfLeftMargin
+            NSPrintInfo.shared.rightMargin = self.prefs.pdfRightMargin
+            NSPrintInfo.shared.topMargin = self.prefs.pdfTopMargin
+            NSPrintInfo.shared.bottomMargin = self.prefs.pdfBottomMargin
+
+            let printView = createPrintablePluginView(plugins: plugins, preferences: self.prefs)
+
+            if let window = NSApp.keyWindow {
+                let printOperation = NSPrintOperation(view: printView, printInfo: printInfo)
+
+                // Generate filename with timestamp (same as Quick Export)
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+                let timestamp = formatter.string(from: Date())
+                let defaultName = "Plugins_\(timestamp)"
+
+                // Set the job title which becomes the default filename when saving as PDF
+                printOperation.jobTitle = defaultName
+
+                // Access the print panel and update it with our settings
+                let printPanel = printOperation.printPanel
+                printPanel.options.insert(.showsPaperSize)
+                printPanel.options.insert(.showsOrientation)
+
+                // Force the panel to use our printInfo
+                printOperation.printInfo.leftMargin = self.prefs.pdfLeftMargin
+                printOperation.printInfo.rightMargin = self.prefs.pdfRightMargin
+                printOperation.printInfo.topMargin = self.prefs.pdfTopMargin
+                printOperation.printInfo.bottomMargin = self.prefs.pdfBottomMargin
+
+                print("🖨️ Final check before panel - margins: T=\(printOperation.printInfo.topMargin), B=\(printOperation.printInfo.bottomMargin), L=\(printOperation.printInfo.leftMargin), R=\(printOperation.printInfo.rightMargin)")
+                print("📄 Default filename: \(defaultName)")
+
+                // Run as a free-floating window instead of modal sheet
+                // This allows moving and resizing freely
+                DispatchQueue.main.async {
+                    printOperation.run()
+                }
+            }
         }
 
         // View menu
@@ -1206,6 +1798,28 @@ struct ContentView: View {
             guard !self.appState.selected.isEmpty else { return }
             self.batchUninstallPlugins = self.appState.selected
             self.showBatchUninstall = true
+        }
+
+        // Playlists menu
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("NewPlaylist"), object: nil, queue: .main) { [self] _ in
+            self.showCreateCustomPlaylist = true
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("PlaylistSortDateImported"), object: nil, queue: .main) { _ in
+            // This will need to access the PlaylistSidebarView state - posting notification for now
+            NotificationCenter.default.post(name: NSNotification.Name("SetPlaylistSort"), object: "dateImported")
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("PlaylistSortName"), object: nil, queue: .main) { _ in
+            NotificationCenter.default.post(name: NSNotification.Name("SetPlaylistSort"), object: "name")
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("PlaylistFilterMissing"), object: nil, queue: .main) { _ in
+            NotificationCenter.default.post(name: NSNotification.Name("TogglePlaylistFilterMissing"), object: nil)
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("PlaylistClearAllFilters"), object: nil, queue: .main) { _ in
+            NotificationCenter.default.post(name: NSNotification.Name("ClearPlaylistFilters"), object: nil)
         }
         #endif
     }
@@ -1302,6 +1916,7 @@ private struct FormatCounts: Equatable, Hashable {
     var clap: Int = 0
     var lv2: Int = 0
     var obsolete: Int = 0
+    var missing: Int = 0
 }
 
 private func formatCountsFromList(for rows: [AppPluginItem]) -> FormatCounts {
@@ -1341,6 +1956,9 @@ private func formatCountsFromList(for rows: [AppPluginItem]) -> FormatCounts {
 
         // Check obsolete flag efficiently
         if row.obsolete { c.obsolete += 1 }
+
+        // Check missing flag efficiently
+        if row.missing { c.missing += 1 }
     }
 
     return c
@@ -1392,6 +2010,7 @@ private struct BarRow: View {
     var onTap: (() -> Void)? = nil  // Optional click handler
     var isSelected: Bool = false     // Show if this format is filtered
     var onUninstall: (() -> Void)? = nil  // Optional uninstall handler
+    var playlistCount: Int? = nil  // Optional playlist-specific count
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1430,12 +2049,32 @@ private struct BarRow: View {
             }
             .frame(maxWidth: .infinity)
 
-            Text("\(value)")
-                .font(.caption2)
-                .fontWeight(isSelected ? .bold : .semibold)
-                .foregroundStyle(textColor)
-                .frame(width: 40, alignment: .trailing)
-                .monospacedDigit()
+            // Show playlist count + total if available, otherwise just total
+            if let playlistCount = playlistCount {
+                HStack(spacing: 4) {
+                    Text("\(playlistCount)")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(color)
+                        .monospacedDigit()
+                    Text("/")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("\(value)")
+                        .font(.caption2)
+                        .fontWeight(isSelected ? .bold : .semibold)
+                        .foregroundStyle(textColor)
+                        .monospacedDigit()
+                }
+                .frame(width: 70, alignment: .trailing)
+            } else {
+                Text("\(value)")
+                    .font(.caption2)
+                    .fontWeight(isSelected ? .bold : .semibold)
+                    .foregroundStyle(textColor)
+                    .frame(width: 40, alignment: .trailing)
+                    .monospacedDigit()
+            }
         }
         .padding(.horizontal, 16)
         .frame(height: 14)
@@ -1814,6 +2453,7 @@ private struct PlaylistSidebarView: View {
     let onSelect: ([DAWPlaylist], EventModifiers) -> Void
     let onDelete: (DAWPlaylist) -> Void
     let onEditMetadata: () -> Void  // Callback when Edit Metadata is clicked
+    let onImport: () -> Void  // Callback when + button is clicked
     @ObservedObject var playlistManager: DAWPlaylistManager
     @EnvironmentObject private var prefs: AppPreferences
     @Environment(\.colorScheme) private var colorScheme
@@ -1823,6 +2463,7 @@ private struct PlaylistSidebarView: View {
     @FocusState private var isFocused: Bool
     @State private var playlistsToDelete: [DAWPlaylist] = []
     @State private var showDeleteConfirmation = false
+    @State private var dropTargetPlaylistID: UUID? = nil  // Track which playlist is being targeted
 
     private var backgroundColor: Color {
         prefs.appearance == .space ? Color.black : Color(nsColor: .windowBackgroundColor)
@@ -1830,6 +2471,40 @@ private struct PlaylistSidebarView: View {
 
     private var secondaryTextColor: Color {
         colorScheme == .light ? Color.black.opacity(0.55) : .secondary
+    }
+
+    private var sortedPlaylists: [DAWPlaylist] {
+        // First, filter by star ratings if any selected
+        var filtered = playlists
+        if !playlistManager.selectedPlaylistStarRatings.isEmpty {
+            filtered = filtered.filter { playlist in
+                guard let rating = playlist.rating else { return false }
+                return playlistManager.selectedPlaylistStarRatings.contains(rating)
+            }
+        }
+
+        // Filter by DAW types if any selected
+        if !playlistManager.selectedDAWTypes.isEmpty {
+            filtered = filtered.filter { playlist in
+                guard let dawType = playlist.dawType else { return false }
+                return playlistManager.selectedDAWTypes.contains(dawType)
+            }
+        }
+
+        // Filter by missing plugins if enabled
+        if playlistManager.showOnlyMissingPlaylists {
+            filtered = filtered.filter { playlist in
+                playlist.entries.contains { entry in !entry.isInstalled }
+            }
+        }
+
+        // Then, apply sorting
+        switch playlistManager.playlistSortOption {
+        case .name:
+            return filtered.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .dateImported:
+            return filtered.sorted { $0.dateImported > $1.dateImported }
+        }
     }
 
     var body: some View {
@@ -1896,21 +2571,226 @@ private struct PlaylistSidebarView: View {
     private var headerView: some View {
         HStack(spacing: 12) {
             Image(systemName: "music.note.list")
-                .font(.title2)
+                .font(.system(size: 14))
                 .foregroundColor(.accentColor)
 
-            Text("DAW Playlists")
-                .font(.headline)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("DAW Playlists")
+                    .font(.system(size: 12, weight: .medium))
+
+                if playlists.count > 0 {
+                    Text("(\(playlists.count))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(secondaryTextColor)
+                }
+
+                // + Button moved next to count
+                Button(action: onImport) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12))
+                        .foregroundColor(.accentColor)
+                }
+                .buttonStyle(.plain)
+                .help("Create Custom Playlist")
+            }
 
             Spacer()
 
-            if playlists.count > 0 {
-                Text("(\(playlists.count))")
-                    .font(.caption)
-                    .foregroundColor(secondaryTextColor)
+            // Sort/Filter Menu
+            Menu {
+                Section(header: Text("Sort By")) {
+                    if playlistManager.playlistSortOption == .dateImported {
+                        Button(action: { playlistManager.playlistSortOption = .dateImported }) {
+                            Text("Date Imported")
+                        }
+                        .keyboardShortcut(KeyEquivalent("✓"), modifiers: [])
+                    } else {
+                        Button(action: { playlistManager.playlistSortOption = .dateImported }) {
+                            Text("Date Imported")
+                        }
+                    }
+
+                    if playlistManager.playlistSortOption == .name {
+                        Button(action: { playlistManager.playlistSortOption = .name }) {
+                            Text("Name")
+                        }
+                        .keyboardShortcut(KeyEquivalent("✓"), modifiers: [])
+                    } else {
+                        Button(action: { playlistManager.playlistSortOption = .name }) {
+                            Text("Name")
+                        }
+                    }
+                }
+
+                Section(header: Text("Filter By")) {
+                    if playlistManager.showOnlyMissingPlaylists {
+                        Button(action: { playlistManager.showOnlyMissingPlaylists.toggle() }) {
+                            Text("Missing")
+                        }
+                        .keyboardShortcut(KeyEquivalent("✓"), modifiers: [])
+                    } else {
+                        Button(action: { playlistManager.showOnlyMissingPlaylists.toggle() }) {
+                            Text("Missing")
+                        }
+                    }
+                    // DAW Type submenu
+                    Menu {
+                        ForEach(DAWType.allCases, id: \.self) { dawType in
+                            Button(action: {
+                                if playlistManager.selectedDAWTypes.contains(dawType) {
+                                    playlistManager.selectedDAWTypes.remove(dawType)
+                                } else {
+                                    playlistManager.selectedDAWTypes.insert(dawType)
+                                }
+                            }) {
+                                HStack {
+                                    Text(dawType.rawValue)
+                                    Spacer()
+                                    if playlistManager.selectedDAWTypes.contains(dawType) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("DAW Type")
+                            Spacer()
+                        }
+                    }
+
+                    // Rating submenu
+                    Menu {
+                        Button(action: {
+                            if playlistManager.selectedPlaylistStarRatings.contains(5) {
+                                playlistManager.selectedPlaylistStarRatings.remove(5)
+                            } else {
+                                playlistManager.selectedPlaylistStarRatings.insert(5)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("⭐️⭐️⭐️⭐️⭐️")
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                Spacer()
+                                if playlistManager.selectedPlaylistStarRatings.contains(5) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            if playlistManager.selectedPlaylistStarRatings.contains(4) {
+                                playlistManager.selectedPlaylistStarRatings.remove(4)
+                            } else {
+                                playlistManager.selectedPlaylistStarRatings.insert(4)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("⭐️⭐️⭐️⭐️")
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                Spacer()
+                                if playlistManager.selectedPlaylistStarRatings.contains(4) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            if playlistManager.selectedPlaylistStarRatings.contains(3) {
+                                playlistManager.selectedPlaylistStarRatings.remove(3)
+                            } else {
+                                playlistManager.selectedPlaylistStarRatings.insert(3)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("⭐️⭐️⭐️")
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                Spacer()
+                                if playlistManager.selectedPlaylistStarRatings.contains(3) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            if playlistManager.selectedPlaylistStarRatings.contains(2) {
+                                playlistManager.selectedPlaylistStarRatings.remove(2)
+                            } else {
+                                playlistManager.selectedPlaylistStarRatings.insert(2)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("⭐️⭐️")
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                Spacer()
+                                if playlistManager.selectedPlaylistStarRatings.contains(2) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            if playlistManager.selectedPlaylistStarRatings.contains(1) {
+                                playlistManager.selectedPlaylistStarRatings.remove(1)
+                            } else {
+                                playlistManager.selectedPlaylistStarRatings.insert(1)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("⭐️")
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                Spacer()
+                                if playlistManager.selectedPlaylistStarRatings.contains(1) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.yellow)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Rating")
+                            Spacer()
+                        }
+                    }
+                }
+
+                // Clear All section
+                Section {
+                    Button(action: {
+                        playlistManager.playlistSortOption = .dateImported
+                        playlistManager.selectedPlaylistStarRatings.removeAll()
+                        playlistManager.selectedDAWTypes.removeAll()
+                        playlistManager.showOnlyMissingPlaylists = false
+                    }) {
+                        Text("Clear All")
+                    }
+                    .keyboardShortcut(KeyEquivalent("x"), modifiers: [])
+                    .foregroundStyle(.white)
+                }
+            } label: {
+                Image(systemName: "line.3.horizontal.circle")
+                    .font(.system(size: 20))
             }
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .help("Sort and Filter Playlists")
         }
-        .padding(16)
+        .padding(15)
     }
 
     @ViewBuilder
@@ -1949,7 +2829,7 @@ private struct PlaylistSidebarView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(Array(playlists.enumerated()), id: \.element.id) { index, playlist in
+                    ForEach(Array(sortedPlaylists.enumerated()), id: \.element.id) { index, playlist in
                         playlistButton(index: index, playlist: playlist)
                     }
                 }
@@ -1966,7 +2846,7 @@ private struct PlaylistSidebarView: View {
             .onAppear {
                 // Select the first active playlist if any
                 if let firstActive = activePlaylists.first,
-                   let index = playlists.firstIndex(where: { $0.id == firstActive.id }) {
+                   let index = sortedPlaylists.firstIndex(where: { $0.id == firstActive.id }) {
                     selectedIndex = index
                 }
                 isFocused = true
@@ -1988,7 +2868,7 @@ private struct PlaylistSidebarView: View {
                     // Shift-click: select range from lastClickedIndex to current index
                     let start = min(lastClickedIndex, index)
                     let end = max(lastClickedIndex, index)
-                    let rangeSelection = Array(playlists[start...end])
+                    let rangeSelection = Array(sortedPlaylists[start...end])
                     onSelect(rangeSelection, eventMods)
                     selectedIndex = index
                 } else if modifiers.contains(.command) {
@@ -2013,6 +2893,7 @@ private struct PlaylistSidebarView: View {
             PlaylistRowView(
                 playlist: playlist,
                 isActive: activePlaylists.contains(where: { $0.id == playlist.id }),
+                isDropTarget: dropTargetPlaylistID == playlist.id,
                 onDelete: {
                     // If this playlist is part of a multi-selection, delete all selected
                     // Otherwise, just delete this one
@@ -2022,6 +2903,9 @@ private struct PlaylistSidebarView: View {
                         playlistsToDelete = [playlist]
                     }
                     showDeleteConfirmation = true
+                },
+                onRatingChange: { newRating in
+                    updatePlaylistRating(playlist, rating: newRating)
                 }
             )
         }
@@ -2061,6 +2945,31 @@ private struct PlaylistSidebarView: View {
             }
         }
         .id(index)
+        #if os(macOS)
+        .onDrop(of: [UTType(exportedAs: "com.vibeaudio.pluginreporter.plugin")], isTargeted: Binding(
+            get: { dropTargetPlaylistID == playlist.id },
+            set: { isTargeted in
+                print("🎯 Drop target changed for \(playlist.name): \(isTargeted)")
+                // Only show drop target for custom playlists
+                if isTargeted && playlist.playlistType == .custom {
+                    dropTargetPlaylistID = playlist.id
+                } else if !isTargeted && dropTargetPlaylistID == playlist.id {
+                    dropTargetPlaylistID = nil
+                }
+            }
+        )) { providers in
+            print("🎁 Drop received on \(playlist.name) with \(providers.count) provider(s)")
+
+            // Only allow drops on custom playlists
+            guard playlist.playlistType == .custom else {
+                print("⚠️ Cannot drop on DAW playlists (read-only)")
+                return false
+            }
+
+            handlePluginDrop(providers: providers, to: playlist)
+            return true
+        }
+        #endif
     }
 
     private func handleKeyboardNavigation(direction: MoveCommandDirection, proxy: ScrollViewProxy) {
@@ -2099,13 +3008,89 @@ private struct PlaylistSidebarView: View {
                 onSelect(rangeSelection, .shift)
             } else {
                 // Normal arrow: single selection
-                onSelect([playlists[newIndex]], [])
+                onSelect([sortedPlaylists[newIndex]], [])
                 lastClickedIndex = newIndex
             }
 
             // Scroll to keep selection visible (no animation to reduce flicker)
             proxy.scrollTo(newIndex, anchor: .center)
         }
+    }
+
+    #if os(macOS)
+    private func handlePluginDrop(providers: [NSItemProvider], to playlist: DAWPlaylist) {
+        for provider in providers {
+            provider.loadDataRepresentation(forTypeIdentifier: "com.vibeaudio.pluginreporter.plugin") { data, error in
+                guard let data = data else {
+                    print("⚠️ Failed to load drag data: \(error?.localizedDescription ?? "unknown error")")
+                    return
+                }
+
+                guard let pluginData = try? JSONDecoder().decode(PluginDragData.self, from: data) else {
+                    print("⚠️ Failed to decode plugin data")
+                    return
+                }
+
+                // Process all plugins in the drag
+                DispatchQueue.main.async {
+                    var addedCount = 0
+                    for pluginInfo in pluginData.plugins {
+                        // Create a PluginItem from the drag data
+                        let plugin = PluginItem(
+                            name: pluginInfo.name,
+                            publisher: pluginInfo.publisher,
+                            type: pluginInfo.type,
+                            path: pluginInfo.path
+                        )
+
+                        self.playlistManager.addPlugin(plugin, to: playlist)
+                        addedCount += 1
+                    }
+
+                    if addedCount > 1 {
+                        print("✅ Added \(addedCount) plugins to \(playlist.name)")
+                    } else if addedCount == 1 {
+                        print("✅ Added \(pluginData.plugins[0].name) to \(playlist.name)")
+                    }
+                }
+            }
+        }
+    }
+    #endif
+
+    private func updatePlaylistRating(_ playlist: DAWPlaylist, rating: Int) {
+        // Create updated playlist with new rating
+        let updated: DAWPlaylist
+        if playlist.playlistType == .custom {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: playlist.name,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: playlist.tempo,
+                sampleRate: playlist.sampleRate,
+                version: playlist.version,
+                key: playlist.key,
+                rating: rating
+            )
+        } else {
+            updated = DAWPlaylist(
+                id: playlist.id,
+                name: playlist.name,
+                sourceFile: playlist.sourceFile!,
+                dawType: playlist.dawType!,
+                dateImported: playlist.dateImported,
+                entries: playlist.entries,
+                tempo: playlist.tempo,
+                sampleRate: playlist.sampleRate,
+                version: playlist.version,
+                key: playlist.key,
+                rating: rating
+            )
+        }
+
+        // Update in manager
+        playlistManager.updatePlaylist(updated)
     }
 }
 #endif
@@ -2116,15 +3101,25 @@ private struct PlaylistSidebarView: View {
 private struct PlaylistRowView: View {
     let playlist: DAWPlaylist
     let isActive: Bool
+    let isDropTarget: Bool  // New parameter for drop target state
     @State private var isHovered = false
     var onDelete: (() -> Void)? = nil
+    var onRatingChange: ((Int) -> Void)? = nil
     @EnvironmentObject private var prefs: AppPreferences
 
     private var rowBackground: Color {
+        // Drop target gets special highlighting
+        if isDropTarget {
+            return Color.accentColor.opacity(0.3)
+        }
+
+        // Active highlight color based on playlist type
+        let activeColor = playlist.playlistType == .custom ? Color.yellow : Color.green
+
         if prefs.appearance == .space {
             // Space mode: dark grey background
             if isActive {
-                return Color.green.opacity(0.2)
+                return activeColor.opacity(0.2)
             } else if isHovered {
                 return Color.white.opacity(0.15)
             } else {
@@ -2133,7 +3128,7 @@ private struct PlaylistRowView: View {
         } else {
             // Other modes: existing behavior
             if isActive {
-                return Color.green.opacity(0.2)
+                return activeColor.opacity(0.2)
             } else if isHovered {
                 return Color.secondary.opacity(0.2)
             } else {
@@ -2146,16 +3141,33 @@ private struct PlaylistRowView: View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Image(systemName: isActive ? "checkmark.circle.fill" : "music.note.list")
-                        .foregroundColor(isActive ? .green : .accentColor)
-                        .font(.title3)
+                    ZStack(alignment: .bottomTrailing) {
+                        // Main icon - different for custom vs DAW playlists
+                        let mainIcon = playlist.playlistType == .custom ? "folder.fill" : "music.note.list"
+                        let iconColor: Color = playlist.playlistType == .custom ? .yellow : .green
+
+                        Image(systemName: isActive ? "checkmark.circle.fill" : mainIcon)
+                            .foregroundColor(iconColor)
+                            .font(.title3)
+
+                        // Show "+" badge when this is a drop target
+                        if isDropTarget {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.caption)
+                                .background(Color(nsColor: .windowBackgroundColor))
+                                .clipShape(Circle())
+                                .offset(x: 4, y: 4)
+                        }
+                    }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(playlist.name)
                             .font(.headline)
                             .lineLimit(1)
 
-                        Text(playlist.dawType.rawValue)
+                        // Show version if available, otherwise fall back to dawType or "Custom"
+                        Text(playlist.version ?? (playlist.dawType?.rawValue ?? "Custom"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -2184,6 +3196,21 @@ private struct PlaylistRowView: View {
                     Spacer()
                 }
 
+                // 5-Star Rating Display (always visible and clickable)
+                HStack(spacing: 2) {
+                    ForEach(1...5, id: \.self) { star in
+                        Image(systemName: (playlist.rating ?? 0) >= star ? "star.fill" : "star")
+                            .font(.caption2)
+                            .foregroundColor((playlist.rating ?? 0) >= star ? .yellow : .gray.opacity(0.3))
+                            .onTapGesture {
+                                // If clicking the current rating, unset it (set to 0)
+                                // Otherwise, set to the clicked star
+                                let newRating = (playlist.rating == star) ? 0 : star
+                                onRatingChange?(newRating)
+                            }
+                    }
+                }
+
                 HStack {
                     Text("\(playlist.dateImported.formatted(date: .abbreviated, time: .standard))")
                         .font(.caption2)
@@ -2204,7 +3231,10 @@ private struct PlaylistRowView: View {
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isActive ? Color.green : Color.clear, lineWidth: 2)
+                    .stroke(
+                        playlist.playlistType == .custom ? Color.yellow : Color.green,
+                        lineWidth: isActive ? 2 : 1
+                    )
             )
             .onHover { hovering in
                 isHovered = hovering

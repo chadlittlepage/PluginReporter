@@ -70,5 +70,20 @@
         <key>UIImageRespectsSafeAreaInsets</key>
         <false/>
     </dict>
+
+    <!-- Exported UTType for drag and drop -->
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.vibeaudio.pluginreporter.plugin</string>
+            <key>UTTypeDescription</key>
+            <string>Plugin Reporter Plugin Data</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

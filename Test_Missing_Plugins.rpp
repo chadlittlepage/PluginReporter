@@ -1,0 +1,47 @@
+<REAPER_PROJECT 0.1 "7.0" 1234567890
+  TEMPO 120 4 4
+  SAMPLERATE 48000 0 0
+  <TRACK {12345678-1234-1234-1234-123456789001}
+    NAME "Lead Vocals"
+    <VST "VST: FancyCompressor (FakeAudio)" FancyCompressor.vst 0 "" 1234567890
+    >
+    <VST "VST: UltraReverb (NonExistent Audio)" UltraReverb.vst 0 "" 1234567891
+    >
+    <VST3 "VST3: MagicEQ (Imaginary DSP)" MagicEQ.vst3 0 "" 1234567892
+    >
+  >
+  <TRACK {12345678-1234-1234-1234-123456789002}
+    NAME "Drums"
+    <VST "VST: DrumEnhancer (Phantom Plugins)" DrumEnhancer.vst 0 "" 1234567893
+    >
+    <AU "AU: TransientDesigner (Mythical Audio)" TransientDesigner.component 0 "" 1234567894
+    >
+    <VST3 "VST3: RoomSimulator (Virtual Labs)" RoomSimulator.vst3 0 "" 1234567895
+    >
+  >
+  <TRACK {12345678-1234-1234-1234-123456789003}
+    NAME "Bass"
+    <VST "VST: SubBooster (Bass Masters Inc)" SubBooster.vst 0 "" 1234567896
+    >
+    <VST3 "VST3: HarmonicEnhancer (Spectral Audio)" HarmonicEnhancer.vst3 0 "" 1234567897
+    >
+    <VST "VST: VintageAmp (RetroPlugins)" VintageAmp.vst 0 "" 1234567898
+    >
+  >
+  <TRACK {12345678-1234-1234-1234-123456789004}
+    NAME "Synth Pad"
+    <VST3 "VST3: CloudReverb (Atmosphere Plugins)" CloudReverb.vst3 0 "" 1234567899
+    >
+    <AU "AU: ChorusMax (Stereo Wizards)" ChorusMax.component 0 "" 1234567900
+    >
+  >
+  <TRACK {12345678-1234-1234-1234-123456789005}
+    NAME "Guitar"
+    <VST "VST: PedalBoard (Guitar Hero Audio)" PedalBoard.vst 0 "" 1234567901
+    >
+    <AAX "AAX: StudioCompressor (ProMix Audio)" StudioCompressor.aaxplugin 0 "" 1234567902
+    >
+    <VST3 "VST3: CabinetSimulator (Amp Labs)" CabinetSimulator.vst3 0 "" 1234567903
+    >
+  >
+>
