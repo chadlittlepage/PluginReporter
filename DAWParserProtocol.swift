@@ -190,3 +190,92 @@ enum ParserError: LocalizedError {
         }
     }
 }
+
+// MARK: - Shared Metadata Extraction Utilities
+
+/// Protocol extension providing common metadata extraction methods
+/// Eliminates duplicate extraction code across 8+ parser implementations
+extension DAWParser {
+
+    /// Extract tempo/BPM from a dictionary with common key variations
+    /// - Parameters:
+    ///   - dict: Dictionary containing potential tempo data
+    ///   - keys: Array of keys to check (defaults to common tempo keys)
+    /// - Returns: Tempo as Double, or nil if not found
+    static func extractTempo(from dict: [String: Any], keys: [String] = ["Tempo", "BPM", "tempo", "bpm"]) -> Double? {
+        for key in keys {
+            if let value = dict[key] as? Double {
+                return value
+            }
+            if let value = dict[key] as? Int {
+                return Double(value)
+            }
+            if let value = dict[key] as? String, let parsed = Double(value) {
+                return parsed
+            }
+        }
+        return nil
+    }
+
+    /// Extract sample rate from a dictionary with common key variations
+    /// - Parameters:
+    ///   - dict: Dictionary containing potential sample rate data
+    ///   - keys: Array of keys to check (defaults to common sample rate keys)
+    /// - Returns: Sample rate as Int, or nil if not found
+    static func extractSampleRate(from dict: [String: Any], keys: [String] = ["SampleRate", "SamplingRate", "sampleRate", "sample_rate"]) -> Int? {
+        for key in keys {
+            if let value = dict[key] as? Int {
+                return value
+            }
+            if let value = dict[key] as? Double {
+                return Int(value)
+            }
+            if let value = dict[key] as? String, let parsed = Int(value) {
+                return parsed
+            }
+        }
+        return nil
+    }
+
+    /// Extract version string from a dictionary or string with common patterns
+    /// - Parameters:
+    ///   - dict: Dictionary containing potential version data
+    ///   - keys: Array of keys to check (defaults to common version keys)
+    /// - Returns: Version string, or nil if not found
+    static func extractVersion(from dict: [String: Any], keys: [String] = ["Version", "version", "AppVersion", "ProgramVersion"]) -> String? {
+        for key in keys {
+            if let value = dict[key] as? String {
+                return value
+            }
+            if let value = dict[key] as? Int {
+                return String(value)
+            }
+            if let value = dict[key] as? Double {
+                return String(format: "%.1f", value)
+            }
+        }
+        return nil
+    }
+
+    /// Extract version from a string using regex pattern
+    /// - Parameters:
+    ///   - string: String containing version information
+    ///   - pattern: Regex pattern to match version (defaults to digits and dots)
+    /// - Returns: Extracted version string, or nil if not found
+    static func extractVersionFromString(_ string: String, pattern: String = #"(\d+\.?\d*\.?\d*)"#) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return nil
+        }
+
+        let range = NSRange(string.startIndex..., in: string)
+        guard let match = regex.firstMatch(in: string, options: [], range: range) else {
+            return nil
+        }
+
+        if let versionRange = Range(match.range(at: 1), in: string) {
+            return String(string[versionRange])
+        }
+
+        return nil
+    }
+}
