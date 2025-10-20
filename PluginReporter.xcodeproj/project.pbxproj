@@ -97,10 +97,10 @@
 		402869742E91FEC500A3C7DA /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869712E91FEC500A3C7DA /* AppLogger.swift */; };
 		402869752E91F48100A3C7DA /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6BFFEB39C84B46908F3B41 /* Formatters.swift */; };
 		402869762E91F48100A3C7DA /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E4D2E82422C0027CFC0 /* Diagnostics.swift */; };
-		402869D12E92313900A3C7DA /* ../iOS/ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */; };
-		402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */; };
-		402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */; };
-		402869D72E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */; };
+		402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ShareSheet.swift */; };
+		402869D32E92314600A3C7DA /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* UIComponents.swift */; };
+		402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* PluginRowViews.swift */; };
+		402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* PluginDetailViews.swift */; };
 		402869D92E92349D00A3C7DA /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D82E92349D00A3C7DA /* ExportView.swift */; };
 		402869DC2E937F6100A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DB2E937F6100A3C7DA /* Sentry */; };
 		402869DE2E937F8600A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DD2E937F8600A3C7DA /* Sentry */; };
@@ -249,6 +249,7 @@
 		C85103D112C02A45C5EE567D /* DAWParserProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAEA2EA31131001268F0 /* DAWParserProtocol.swift */; };
 		CB3533663488721510780F4C /* CubaseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B1A5C2BB1E8B9E8D45D205F /* CubaseParser.swift */; };
 		CED319C66486251E51E62468 /* BitwigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55FC6CFBE391DB115C87285 /* BitwigParser.swift */; };
+		CF40E06E56476F89787A2502 /* AppleDAWParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242058164046F894E9A0C7AA /* AppleDAWParser.swift */; };
 		CFB8E1B57F383C69ABF5F969 /* RenoiseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1091F97A9B1B0DD5DDCB2F93 /* RenoiseParser.swift */; };
 		D2D43E24623BD52F26FE3527 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44541A8CC9FFA09AC9531E0 /* PluginReporterApp.swift */; };
 		D37036FF50FB9BD297574D2B /* DAWPlaylistManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCADE2EA2B4CE001268F0 /* DAWPlaylistManager.swift */; };
@@ -280,6 +281,7 @@
 		16370BA570000E073F851D30 /* GarageBandParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GarageBandParser.swift; sourceTree = "<group>"; };
 		193EC14DF3D54EFA8D086782 /* PluginReporterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginReporterApp.swift; path = ../PluginReporterApp.swift; sourceTree = "<group>"; };
 		1B1A5C2BB1E8B9E8D45D205F /* CubaseParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CubaseParser.swift; sourceTree = "<group>"; };
+		242058164046F894E9A0C7AA /* AppleDAWParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleDAWParser.swift; sourceTree = "<group>"; };
 		2A070175566FE6EF73796674 /* MixbusParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MixbusParser.swift; sourceTree = "<group>"; };
 		35D3B07CFA6C44118CD9EE3A /* CSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CSVExporter.swift; path = ../CSVExporter.swift; sourceTree = "<group>"; };
 		35FB1537CA05484289950E24 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SearchEngine.swift; path = ../SearchEngine.swift; sourceTree = "<group>"; };
@@ -316,10 +318,10 @@
 		402869692E91FD5900A3C7DA /* ColorUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorUtilities.swift; sourceTree = "<group>"; };
 		4028696D2E91FE2800A3C7DA /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		402869712E91FEC500A3C7DA /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
-		402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
-		402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
-		402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
-		402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
+		402869D02E92313900A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
+		402869D22E92314600A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
+		402869D42E92315200A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
+		402869D62E92315D00A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
 		402869D82E92349D00A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		403F45772E8F87490068FF3B /* Plugin Reporter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "Plugin Reporter.entitlements"; path = "../Plugin Reporter.entitlements"; sourceTree = "<group>"; };
 		4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformTable.swift; path = ../PlatformTable.swift; sourceTree = "<group>"; };
@@ -489,10 +491,10 @@
 			isa = PBXGroup;
 			children = (
 				402869D82E92349D00A3C7DA /* ExportView.swift */,
-				402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */,
-				402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */,
-				402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */,
-				402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */,
+				402869D62E92315D00A3C7DA /* PluginDetailViews.swift */,
+				402869D42E92315200A3C7DA /* PluginRowViews.swift */,
+				402869D22E92314600A3C7DA /* UIComponents.swift */,
+				402869D02E92313900A3C7DA /* ShareSheet.swift */,
 				4028694C2E91F3A600A3C7DA /* ContentView.swift */,
 				4028694E2E91F3A600A3C7DA /* PluginListView.swift */,
 				4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */,
@@ -543,6 +545,7 @@
 				1091F97A9B1B0DD5DDCB2F93 /* RenoiseParser.swift */,
 				3EDEF4B5CC49BF1612D406CC /* StudioOneParser.swift */,
 				0785F4F120F17485D31FBD99 /* TracktionParser.swift */,
+				242058164046F894E9A0C7AA /* AppleDAWParser.swift */,
 			);
 			name = "DAW Parsers";
 			sourceTree = "<group>";
@@ -833,6 +836,7 @@
 				5B6260D41C6A661EEE5FD121 /* StudioOneParser.swift in Sources */,
 				1C0BAE670CF8559364CF3848 /* TracktionParser.swift in Sources */,
 				F6EC81A399E630A62BC1FA76 /* CreateCustomPlaylistView.swift in Sources */,
+				CF40E06E56476F89787A2502 /* AppleDAWParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -856,7 +860,7 @@
 				400FF6C32E9F199D0008553F /* BugReportView.swift in Sources */,
 				400FF6C42E9F199D0008553F /* FeatureRequestView.swift in Sources */,
 				40B89D932EA36C63002F5162 /* PluginItem.swift in Sources */,
-				402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */,
+				402869D32E92314600A3C7DA /* UIComponents.swift in Sources */,
 				400FF6B12E9F17D70008553F /* DashboardReportPreviewView.swift in Sources */,
 				400FF6B22E9F17D70008553F /* DashboardHTTPClient.swift in Sources */,
 				400FF6B42E9F17D70008553F /* DashboardScheduler.swift in Sources */,
@@ -869,11 +873,11 @@
 				402869732E91FEC500A3C7DA /* AppLogger.swift in Sources */,
 				40B89D952EA36C63002F5162 /* Humanize.swift in Sources */,
 				40B89D962EA36C63002F5162 /* KeychainHelper.swift in Sources */,
-				402869D72E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift in Sources */,
+				402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */,
 				40B89D972EA36C63002F5162 /* ColorUtilities.swift in Sources */,
 				402869552E91F3A600A3C7DA /* PluginListView.swift in Sources */,
-				402869D12E92313900A3C7DA /* ../iOS/ShareSheet.swift in Sources */,
-				402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */,
+				402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */,
+				402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */,
 				3D090349E5114E2AAE5A9D32 /* SharedStorage.swift in Sources */,
 				405CCAE72EA3095E001268F0 /* PlaylistMetadataPanel.swift in Sources */,
 				402869D92E92349D00A3C7DA /* ExportView.swift in Sources */,
