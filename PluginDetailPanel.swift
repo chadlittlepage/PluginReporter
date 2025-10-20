@@ -32,6 +32,9 @@ struct PluginDetailPanel: View {
     // Flag to prevent saving during initialization
     @State private var isInitializing = false
 
+    // Track the current plugin to prevent unnecessary re-initialization
+    @State private var currentPluginID: UUID?
+
     private let panelWidth: CGFloat = 350
 
     private var backgroundColor: Color {
@@ -123,11 +126,17 @@ struct PluginDetailPanel: View {
                 }
                 .onAppear {
                     // Initialize editable fields when panel appears
-                    initializeFields(for: plugin)
+                    if currentPluginID != plugin.id {
+                        currentPluginID = plugin.id
+                        initializeFields(for: plugin)
+                    }
                 }
-                .onChange(of: plugin.id) { _ in
-                    // Refresh fields when plugin selection changes
-                    initializeFields(for: plugin)
+                .onChange(of: plugin.id) { newID in
+                    // Only refresh fields when plugin selection actually changes
+                    if currentPluginID != newID {
+                        currentPluginID = newID
+                        initializeFields(for: plugin)
+                    }
                 }
             }
             .frame(width: panelWidth)
