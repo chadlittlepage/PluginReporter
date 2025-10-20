@@ -120,13 +120,11 @@ struct PluginDetailPanel: View {
                 }
                 .onAppear {
                     // Initialize editable fields when panel appears
-                    editedName = plugin.name
-                    editedPublisher = metadataManager.getDisplayPublisher(for: plugin)
-                    editedVersion = metadataManager.getDisplayVersion(for: plugin)
-                    editedStyle = metadataManager.getDisplayStyle(for: plugin)
-                    editedType = plugin.type
-                    editedArchitecture = plugin.architectures
-                    editedTrack = plugin.trackName ?? ""
+                    initializeFields(for: plugin)
+                }
+                .onChange(of: plugin.id) { _ in
+                    // Refresh fields when plugin selection changes
+                    initializeFields(for: plugin)
                 }
             }
             .frame(width: panelWidth)
@@ -668,6 +666,18 @@ struct PluginDetailPanel: View {
             UIApplication.shared.open(url)
             #endif
         }
+    }
+
+    // MARK: - Helper Functions
+
+    private func initializeFields(for plugin: PluginItem) {
+        editedName = plugin.name
+        editedPublisher = metadataManager.getDisplayPublisher(for: plugin)
+        editedVersion = metadataManager.getDisplayVersion(for: plugin)
+        editedStyle = metadataManager.getDisplayStyle(for: plugin)
+        editedType = plugin.type
+        editedArchitecture = plugin.architectures
+        editedTrack = plugin.trackName ?? ""
     }
 
     // MARK: - Save Functions
