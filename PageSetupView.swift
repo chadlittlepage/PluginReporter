@@ -527,9 +527,10 @@ struct PageSetupView: View {
     }
 
     private func buildPreviewTable(capacity: Int, topMargin: CGFloat, bottomMargin: CGFloat) -> String {
-        // Get managers for rating and notes (SAME as actual export)
+        // Get managers for rating, notes, and metadata (SAME as actual export)
         let ratingsManager = RatingsManager.shared
         let notesManager = NotesManager.shared
+        let metadataManager = MetadataManager.shared
 
         // Define column information structure (IDENTICAL to buildPrintTableText)
         struct ColumnInfo {
@@ -552,16 +553,16 @@ struct PageSetupView: View {
             columns.append(ColumnInfo(header: "Name", maxDesired: 35, minimum: 8) { item, _, _ in item.name })
         }
         if preferences.pdfShowPublisher {
-            columns.append(ColumnInfo(header: "Publisher", maxDesired: 20, minimum: 6) { item, _, _ in item.publisher })
+            columns.append(ColumnInfo(header: "Publisher", maxDesired: 20, minimum: 6) { item, _, _ in metadataManager.getDisplayPublisher(for: item) })
         }
         if preferences.pdfShowType {
             columns.append(ColumnInfo(header: "Type", maxDesired: 5, minimum: 3) { item, _, _ in item.type })
         }
         if preferences.pdfShowStyle {
-            columns.append(ColumnInfo(header: "Style", maxDesired: 15, minimum: 6) { item, _, _ in item.style })
+            columns.append(ColumnInfo(header: "Style", maxDesired: 15, minimum: 6) { item, _, _ in metadataManager.getDisplayStyle(for: item) })
         }
         if preferences.pdfShowVersion {
-            columns.append(ColumnInfo(header: "Version", maxDesired: 12, minimum: 5) { item, _, _ in item.version })
+            columns.append(ColumnInfo(header: "Version", maxDesired: 12, minimum: 5) { item, _, _ in metadataManager.getDisplayVersion(for: item) })
         }
         if preferences.pdfShowArch {
             columns.append(ColumnInfo(header: "Arch", maxDesired: 16, minimum: 8) { item, _, _ in item.architectures })
