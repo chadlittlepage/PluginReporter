@@ -182,31 +182,28 @@ struct PluginDetailPanel: View {
             }
 
             // Publisher
-            editableField(
+            editableMetadataField(
                 label: "PUBLISHER",
-                text: $editedPublisher,
+                plugin: plugin,
+                field: .publisher,
                 placeholder: "Publisher/Developer name"
-            ) {
-                savePublisher(for: plugin)
-            }
+            )
 
             // Version
-            editableField(
+            editableMetadataField(
                 label: "VERSION",
-                text: $editedVersion,
+                plugin: plugin,
+                field: .version,
                 placeholder: "Version number"
-            ) {
-                saveVersion(for: plugin)
-            }
+            )
 
             // Style
-            editableField(
+            editableMetadataField(
                 label: "STYLE/CATEGORY",
-                text: $editedStyle,
+                plugin: plugin,
+                field: .style,
                 placeholder: "e.g., EQ, Compressor, Reverb"
-            ) {
-                saveStyle(for: plugin)
-            }
+            )
 
             // Type (read-only, showing badge)
             VStack(alignment: .leading, spacing: 4) {
@@ -313,6 +310,65 @@ struct PluginDetailPanel: View {
         }
     }
 
+    enum MetadataFieldType {
+        case publisher, version, style
+    }
+
+    @ViewBuilder
+    private func editableMetadataField(label: String, plugin: PluginItem, field: MetadataFieldType, placeholder: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundColor(secondaryTextColor)
+
+            // Create a binding that directly reads/writes to MetadataManager
+            let binding = Binding<String>(
+                get: {
+                    switch field {
+                    case .publisher:
+                        return metadataManager.getDisplayPublisher(for: plugin)
+                    case .version:
+                        return metadataManager.getDisplayVersion(for: plugin)
+                    case .style:
+                        return metadataManager.getDisplayStyle(for: plugin)
+                    }
+                },
+                set: { newValue in
+                    let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+
+                    var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
+
+                    switch field {
+                    case .publisher:
+                        override.publisher = trimmed
+                    case .version:
+                        override.version = trimmed
+                    case .style:
+                        override.style = trimmed
+                    }
+
+                    metadataManager.setOverride(for: plugin.path, override: override)
+                    print("✅ Saved \(field): '\(trimmed)' for \(plugin.name)")
+                }
+            )
+
+            TextField(placeholder, text: binding)
+                .textFieldStyle(.plain)
+                .padding(8)
+                #if os(macOS)
+                .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor))
+                #else
+                .background(Color(.systemBackground))
+                #endif
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+        }
+    }
+
     @ViewBuilder
     private func editableField(label: String, text: Binding<String>, placeholder: String, onCommit: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -372,7 +428,7 @@ struct PluginDetailPanel: View {
                     .font(.headline)
                     .lineLimit(2)
 
-                Text(editedPublisher.isEmpty ? metadataManager.getDisplayPublisher(for: plugin) : editedPublisher)
+                Text(metadataManager.getDisplayPublisher(for: plugin))
                     .font(.subheadline)
                     .foregroundColor(secondaryTextColor)
             }
@@ -391,8 +447,8 @@ struct PluginDetailPanel: View {
                 .font(.headline)
                 .foregroundColor(.primary)
 
-            infoRow(label: "DEVELOPER:", value: editedPublisher.isEmpty ? metadataManager.getDisplayPublisher(for: plugin) : editedPublisher)
-            infoRow(label: "VERSION:", value: editedVersion.isEmpty ? metadataManager.getDisplayVersion(for: plugin) : editedVersion)
+            infoRow(label: "DEVELOPER:", value: metadataManager.getDisplayPublisher(for: plugin))
+            infoRow(label: "VERSION:", value: metadataManager.getDisplayVersion(for: plugin))
 
             // Types
             HStack(alignment: .top, spacing: 8) {
