@@ -194,6 +194,7 @@
 		4B9A3E2311E02E32C2A13C7D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400FF6B92E9F193F0008553F /* KeychainHelper.swift */; };
 		4C6C7535A381F4837F057B3F /* MetadataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999692EA177DB0092EAE2 /* MetadataManager.swift */; };
 		53036FB24444446F9BD84959 /* JSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B71EC0B56FD4C8280A430AE /* JSONExporter.swift */; };
+		59B757C33AE084549130BB93 /* FormatCounts+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FD9658FE4725F4D31AC5B0A /* FormatCounts+Extensions.swift */; };
 		59DBB7CF25AB8BD112956E48 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E4B2E81CE3A0027CFC0 /* Preferences.swift */; };
 		5B6260D41C6A661EEE5FD121 /* StudioOneParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EDEF4B5CC49BF1612D406CC /* StudioOneParser.swift */; };
 		5B660B352D5D2772975EEBC9 /* FLStudioParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A55598481F964580507EC0DB /* FLStudioParser.swift */; };
@@ -283,6 +284,7 @@
 		1B1A5C2BB1E8B9E8D45D205F /* CubaseParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CubaseParser.swift; sourceTree = "<group>"; };
 		242058164046F894E9A0C7AA /* AppleDAWParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleDAWParser.swift; sourceTree = "<group>"; };
 		2A070175566FE6EF73796674 /* MixbusParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MixbusParser.swift; sourceTree = "<group>"; };
+		2FD9658FE4725F4D31AC5B0A /* FormatCounts+Extensions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "FormatCounts+Extensions.swift"; sourceTree = "<group>"; };
 		35D3B07CFA6C44118CD9EE3A /* CSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CSVExporter.swift; path = ../CSVExporter.swift; sourceTree = "<group>"; };
 		35FB1537CA05484289950E24 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SearchEngine.swift; path = ../SearchEngine.swift; sourceTree = "<group>"; };
 		3D090348E5114E2AAE5A9D31 /* SharedStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStorage.swift; sourceTree = "<group>"; };
@@ -526,6 +528,14 @@
 			path = iPhone;
 			sourceTree = "<group>";
 		};
+		62442F037A76E95D590BF950 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				2FD9658FE4725F4D31AC5B0A /* FormatCounts+Extensions.swift */,
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
 		CD7572032CD7975D44F876F1 /* DAW Parsers */ = {
 			isa = PBXGroup;
 			children = (
@@ -600,6 +610,7 @@
 				9ADB835265E92B2170C03950 /* SettingsView.swift */,
 				CD7572032CD7975D44F876F1 /* DAW Parsers */,
 				4F38E4A1CC578C51C8C514FB /* CreateCustomPlaylistView.swift */,
+				62442F037A76E95D590BF950 /* Models */,
 			);
 			sourceTree = "<group>";
 		};
@@ -837,6 +848,7 @@
 				1C0BAE670CF8559364CF3848 /* TracktionParser.swift in Sources */,
 				F6EC81A399E630A62BC1FA76 /* CreateCustomPlaylistView.swift in Sources */,
 				CF40E06E56476F89787A2502 /* AppleDAWParser.swift in Sources */,
+				59B757C33AE084549130BB93 /* FormatCounts+Extensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1451,32 +1451,9 @@ struct ContentView: View {
         #endif
     }
 
-    // Ultra-fast counting helper
+    // Ultra-fast counting helper (now uses shared utility)
     private func quickCount(rows: [AppPluginItem]) -> FormatCounts {
-        var c = FormatCounts()
-        for row in rows {
-            switch row.type {
-            case "AU":   c.au += 1
-            case "VST":  c.vst += 1
-            case "VST3": c.vst3 += 1
-            case "AAX":  c.aax += 1
-            case "CLAP": c.clap += 1
-            case "LV2":  c.lv2 += 1
-            default:
-                switch row.type.uppercased() {
-                case "AU":   c.au += 1
-                case "VST":  c.vst += 1
-                case "VST3": c.vst3 += 1
-                case "AAX":  c.aax += 1
-                case "CLAP": c.clap += 1
-                case "LV2":  c.lv2 += 1
-                default: break
-                }
-            }
-            if row.obsolete { c.obsolete += 1 }
-            if row.missing { c.missing += 1 }
-        }
-        return c
+        return countFormats(for: rows)
     }
 
     // MARK: - Menu Bar Notification Handlers
@@ -1753,98 +1730,25 @@ private func summaryBars(rows: [ScannerPluginItem]) -> some View {
     .transaction { $0.animation = nil } // NO animation - INSTANT updates!
 }
 
-private struct FormatCounts: Equatable, Hashable {
-    var au: Int = 0
-    var vst: Int = 0
-    var vst3: Int = 0
-    var aax: Int = 0
-    var clap: Int = 0
-    var lv2: Int = 0
-    var obsolete: Int = 0
-    var missing: Int = 0
-}
-
+// FormatCounts now defined in FormatCounts+Extensions.swift
+// Keep local helpers for iOS compatibility
 private func formatCountsFromList(for rows: [AppPluginItem]) -> FormatCounts {
-    // Same counting logic but for PluginItem instead of ScannerPluginItem
-    var c = FormatCounts()
-
-    // Early exit for empty arrays to avoid unnecessary work
-    guard !rows.isEmpty else { return c }
-
-    // Pre-allocate expected capacity hint for compiler optimization
-    var typeMap: [String: Int] = [:]
-    typeMap.reserveCapacity(6)
-
-    // Process in a single pass for better performance
-    for row in rows {
-        // Use direct string comparison without lowercasing for common cases
-        let type = row.type
-        switch type {
-        case "AU":   c.au += 1
-        case "VST":  c.vst += 1
-        case "VST3": c.vst3 += 1
-        case "AAX":  c.aax += 1
-        case "CLAP": c.clap += 1
-        case "LV2":  c.lv2 += 1
-        default:
-            // Fallback to case-insensitive for edge cases
-            switch type.lowercased() {
-            case "au":   c.au += 1
-            case "vst":  c.vst += 1
-            case "vst3": c.vst3 += 1
-            case "aax":  c.aax += 1
-            case "clap": c.clap += 1
-            case "lv2":  c.lv2 += 1
-            default: break
-            }
-        }
-
-        // Check obsolete flag efficiently
-        if row.obsolete { c.obsolete += 1 }
-
-        // Check missing flag efficiently
-        if row.missing { c.missing += 1 }
+    var counts = FormatCounts()
+    for item in rows {
+        counts.increment(for: item.type)
+        if item.obsolete { counts.obsolete += 1 }
+        if item.missing { counts.missing += 1 }
     }
-
-    return c
+    return counts
 }
 
 private func formatCounts(for rows: [ScannerPluginItem]) -> FormatCounts {
-    // Use a more efficient counting approach
-    var c = FormatCounts()
-
-    // Early exit for empty arrays to avoid unnecessary work
-    guard !rows.isEmpty else { return c }
-
-    // Process in a single pass for better performance
-    for row in rows {
-        // Use direct string comparison without lowercasing for common cases
-        let type = row.type
-        switch type {
-        case "AU":   c.au += 1
-        case "VST":  c.vst += 1
-        case "VST3": c.vst3 += 1
-        case "AAX":  c.aax += 1
-        case "CLAP": c.clap += 1
-        case "LV2":  c.lv2 += 1
-        default:
-            // Fallback to case-insensitive for edge cases
-            switch type.lowercased() {
-            case "au":   c.au += 1
-            case "vst":  c.vst += 1
-            case "vst3": c.vst3 += 1
-            case "aax":  c.aax += 1
-            case "clap": c.clap += 1
-            case "lv2":  c.lv2 += 1
-            default: break
-            }
-        }
-
-        // Check obsolete flag efficiently
-        if row.obsolete { c.obsolete += 1 }
+    var counts = FormatCounts()
+    for item in rows {
+        counts.increment(for: item.type)
+        if item.obsolete { counts.obsolete += 1 }
     }
-
-    return c
+    return counts
 }
 
 private struct BarRow: View {
