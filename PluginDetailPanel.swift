@@ -29,6 +29,9 @@ struct PluginDetailPanel: View {
     @State private var editedArchitecture = ""
     @State private var editedTrack = ""
 
+    // Flag to prevent saving during initialization
+    @State private var isInitializing = false
+
     private let panelWidth: CGFloat = 350
 
     private var backgroundColor: Color {
@@ -322,11 +325,15 @@ struct PluginDetailPanel: View {
                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                 )
                 .onSubmit {
-                    onCommit()
+                    if !isInitializing {
+                        onCommit()
+                    }
                 }
                 .onChange(of: text.wrappedValue) { _ in
-                    // Auto-save on change
-                    onCommit()
+                    // Auto-save on change (but not during initialization)
+                    if !isInitializing {
+                        onCommit()
+                    }
                 }
         }
     }
@@ -671,6 +678,7 @@ struct PluginDetailPanel: View {
     // MARK: - Helper Functions
 
     private func initializeFields(for plugin: PluginItem) {
+        isInitializing = true
         editedName = plugin.name
         editedPublisher = metadataManager.getDisplayPublisher(for: plugin)
         editedVersion = metadataManager.getDisplayVersion(for: plugin)
@@ -678,6 +686,10 @@ struct PluginDetailPanel: View {
         editedType = plugin.type
         editedArchitecture = plugin.architectures
         editedTrack = plugin.trackName ?? ""
+        // Delay resetting the flag to ensure all onChange handlers have fired
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isInitializing = false
+        }
     }
 
     // MARK: - Save Functions
