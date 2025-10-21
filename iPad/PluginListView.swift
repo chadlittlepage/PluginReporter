@@ -721,6 +721,9 @@ struct PluginListView: View {
                     }
                 }
             }
+            .transaction { transaction in
+                transaction.animation = nil // Disable all List/Form animations
+            }
         }
     }
 

@@ -8,16 +8,18 @@
 
 import Foundation
 
-@MainActor
-final class LicenseTypeHelper {
+enum LicenseTypeHelper {
 
-    // MARK: - Cache
+    // MARK: - Cache (thread-safe with serial queue)
 
+    private static let cacheQueue = DispatchQueue(label: "com.pluginreporter.licensetype.cache")
     private static var cache: [UUID: String] = [:]
 
     /// Clear the license type cache (call when licenses are updated)
     static func clearCache() {
-        cache.removeAll()
+        cacheQueue.sync {
+            cache.removeAll()
+        }
     }
 
     // MARK: - License Type Detection
@@ -53,14 +55,16 @@ final class LicenseTypeHelper {
         return ""
     }
 
-    /// Get cached license type for a plugin
+    /// Get cached license type for a plugin (thread-safe)
     /// PERFORMANCE: Use this for sorting and rendering - 10x faster than getLicenseType
     static func getCachedLicenseType(for plugin: PluginItem) -> String {
-        if let cached = cache[plugin.id] {
-            return cached
+        return cacheQueue.sync {
+            if let cached = cache[plugin.id] {
+                return cached
+            }
+            let type = getLicenseType(for: plugin)
+            cache[plugin.id] = type
+            return type
         }
-        let type = getLicenseType(for: plugin)
-        cache[plugin.id] = type
-        return type
     }
 }

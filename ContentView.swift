@@ -36,6 +36,7 @@ struct ContentView: View {
     @EnvironmentObject private var zoomState: ZoomState
     @StateObject private var appState = AppState()
     @State private var searchText: String = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
     @State private var isExporting = false
     @State private var selectedRow: AppPluginItem.ID? = nil
     @FocusState private var searchFocused: Bool
@@ -238,8 +239,13 @@ struct ContentView: View {
     }
 
     private func handleSearchTextChange(_ newValue: String) {
-        // Search is completely independent from filters
-        updateDisplayedPlugins()
+        // Debounce search to improve typing performance
+        searchDebounceTask?.cancel()
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms debounce
+            guard !Task.isCancelled else { return }
+            updateDisplayedPlugins()
+        }
     }
 
     private var appBG: Color {
@@ -372,7 +378,7 @@ struct ContentView: View {
                     Label("Export", systemImage: "square.and.arrow.up")
                         .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(SpaceModeButtonStyle())
+                .menuStyle(.borderlessButton)
                 Spacer()
             }
         }
@@ -400,7 +406,7 @@ struct ContentView: View {
                     showOverlaySidebar.toggle()
                 }
             }
-            .buttonStyle(SpaceModeButtonStyle())
+            .buttonStyle(.bordered)
 
             ZStack(alignment: .trailing) {
                 TextField("Search", text: $searchText)
@@ -480,8 +486,8 @@ struct ContentView: View {
             .buttonStyle(SpaceModeButtonStyle())
 
             Button(action: toggleDetailPanel) {
-                Image(systemName: showDetailPanel ? "sidebar.right" : "sidebar.right")
-                    .foregroundColor(showDetailPanel ? .accentColor : .primary)
+                Image(systemName: "sidebar.right")
+                    .foregroundColor((showDetailPanel && showPlaylistSidebar && activePlaylistFilters.count == 1) ? .accentColor : .white)
             }
             .buttonStyle(.bordered)
             .help(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
@@ -594,8 +600,14 @@ struct ContentView: View {
             }
             #endif
             .onAppear {
-                updateDisplayedPlugins()
+                // Defer heavy processing to let UI appear instantly
                 setupNotificationListeners()
+
+                // Update plugins after a tiny delay for instant UI
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                    updateDisplayedPlugins()
+                }
             }
             #if os(macOS)
             .onDrop(of: [.fileURL], isTargeted: nil) { providers in
@@ -1177,8 +1189,11 @@ struct ContentView: View {
                             appState.selected = []
                             detailPanelRefreshTrigger.toggle()
                             showDetailPanel = true
-                            // Update displayed plugins for the new playlist
-                            updateDisplayedPlugins()
+                            // Defer expensive filtering for instant UI response (especially during arrow key navigation)
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                                updateDisplayedPlugins()
+                            }
                         }
                     } else if modifiers.contains(.shift) {
                         // Shift: set range selection (already computed by view)
@@ -1187,7 +1202,11 @@ struct ContentView: View {
                         appState.selected = []
                         detailPanelRefreshTrigger.toggle()
                         showDetailPanel = true
-                        updateDisplayedPlugins()
+                        // Defer for instant response
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                            updateDisplayedPlugins()
+                        }
                     } else if modifiers.contains(.command) {
                         // CMD: toggle individual playlist
                         if let playlist = playlists.first {
@@ -1204,7 +1223,11 @@ struct ContentView: View {
                             detailPanelRefreshTrigger.toggle()
                             showDetailPanel = true
                         }
-                        updateDisplayedPlugins()
+                        // Defer for instant response
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                            updateDisplayedPlugins()
+                        }
                     }
                 },
                 onDelete: { playlist in

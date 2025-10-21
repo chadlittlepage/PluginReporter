@@ -30,13 +30,14 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Appearance", selection: $appearance) {
+                    Picker("Appearance", selection: $appearance.animation(nil)) {
                         Text("System").tag("system")
                         Text("Light").tag("light")
                         Text("Dark").tag("dark")
                         Text("Space").tag("space")
                     }
                     .pickerStyle(.segmented)
+                    .animation(nil, value: appearance)
                 } header: {
                     Text("Display")
                 }
@@ -149,8 +150,12 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(customBackgroundColor)
+            .scrollDismissesKeyboard(.never) // Never dismiss keyboard on scroll
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .transaction { transaction in
+                transaction.animation = nil // Disable all Form animations
+            }
             .fileImporter(
                 isPresented: $showFilePicker,
                 allowedContentTypes: [.json],

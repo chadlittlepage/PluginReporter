@@ -85,6 +85,9 @@ struct ExportView: View {
             .background(customBackgroundColor)
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)
+            .transaction { transaction in
+                transaction.animation = nil // Disable all Form animations
+            }
             .sheet(isPresented: $viewModel.showShareSheet) {
                 if let url = viewModel.exportURL {
                     ShareSheet(items: [url])

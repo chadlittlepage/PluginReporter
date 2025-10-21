@@ -437,12 +437,20 @@ struct AISettingsView: View {
                         .onChange(of: manager.apiKey) { newValue in
                             manager.saveAPIKey(newValue)
                         }
+                        .transaction { transaction in
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
+                        }
                 } else {
                     SecureField("sk-...", text: $manager.apiKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                         .onChange(of: manager.apiKey) { newValue in
                             manager.saveAPIKey(newValue)
+                        }
+                        .transaction { transaction in
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
                         }
                 }
 
@@ -453,6 +461,8 @@ struct AISettingsView: View {
                 }
                 .buttonStyle(.borderless)
             }
+            .animation(nil, value: manager.apiKey)
+            .animation(nil, value: showingKey)
 
             HStack(spacing: 4) {
                 Image(systemName: "info.circle")

@@ -106,9 +106,9 @@ struct PluginDetailPanel: View {
                                 .padding(.vertical, 6)
                                 .padding(.horizontal, 12)
                                 #if os(macOS)
-                                .background(selectedTab == tab ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+                                .background(selectedTab == tab ? Color(red: 16/255, green: 73/255, blue: 135/255) : Color(nsColor: .controlBackgroundColor))
                                 #else
-                                .background(selectedTab == tab ? Color.accentColor : Color(.systemGray6))
+                                .background(selectedTab == tab ? Color(red: 16/255, green: 73/255, blue: 135/255) : Color(.systemGray6))
                                 #endif
                                 .foregroundColor(selectedTab == tab ? .white : .primary)
                                 .cornerRadius(6)
@@ -129,63 +129,66 @@ struct PluginDetailPanel: View {
                 divider
 
                 // Content based on selected tab
-                if selectedTab == .metadata {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Editable Metadata Section
-                            editableMetadataSection(plugin: plugin)
+                Group {
+                    if selectedTab == .metadata {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 20) {
+                                // Editable Metadata Section
+                                editableMetadataSection(plugin: plugin)
 
-                            divider
+                                divider
 
-                            // Info Section (Read-Only)
-                            infoSection(plugin: plugin)
+                                // Info Section (Read-Only)
+                                infoSection(plugin: plugin)
 
-                            divider
+                                divider
 
-                            // Tags Section
-                            tagsSection(plugin: plugin)
+                                // Tags Section
+                                tagsSection(plugin: plugin)
 
-                            divider
+                                divider
 
-                            // Suggested Tags Section
-                            suggestedTagsSection(plugin: plugin)
+                                // Suggested Tags Section
+                                suggestedTagsSection(plugin: plugin)
 
-                            divider
+                                divider
 
-                            // Rating Section
-                            ratingSection(plugin: plugin)
+                                // Rating Section
+                                ratingSection(plugin: plugin)
 
-                            divider
+                                divider
 
-                            // Notes Section
-                            notesSection(plugin: plugin)
+                                // Notes Section
+                                notesSection(plugin: plugin)
+                            }
+                            .padding(16)
                         }
-                        .padding(16)
-                    }
-                    .onAppear {
-                        // Initialize editable fields when panel appears
-                        if currentPluginID != plugin.id {
-                            currentPluginID = plugin.id
-                            initializeFields(for: plugin)
+                        .onAppear {
+                            // Initialize editable fields when panel appears
+                            if currentPluginID != plugin.id {
+                                currentPluginID = plugin.id
+                                initializeFields(for: plugin)
+                            }
                         }
-                    }
-                    .onChange(of: plugin.id) { newID in
-                        // Only refresh fields when plugin selection actually changes
-                        if currentPluginID != newID {
-                            currentPluginID = newID
-                            initializeFields(for: plugin)
+                        .onChange(of: plugin.id) { newID in
+                            // Only refresh fields when plugin selection actually changes
+                            if currentPluginID != newID {
+                                currentPluginID = newID
+                                initializeFields(for: plugin)
+                            }
                         }
+                    } else {
+                        // License tab (macOS only)
+                        #if os(macOS)
+                        PluginLicensePanel(plugin: plugin)
+                        #else
+                        Text("License management not available on iOS")
+                            .foregroundColor(.secondary)
+                            .padding()
+                        #endif
                     }
-                } else {
-                    // License tab (macOS only)
-                    #if os(macOS)
-                    PluginLicensePanel(plugin: plugin)
-                    #else
-                    Text("License management not available on iOS")
-                        .foregroundColor(.secondary)
-                        .padding()
-                    #endif
                 }
+                .id(plugin.id)  // Force recreation when plugin changes
             }
             .frame(width: panelWidth)
             .background(backgroundColor)
@@ -719,19 +722,17 @@ struct PluginDetailPanel: View {
     }
 
     private func generateWebsiteURL(for publisher: String) -> String {
-        let clean = publisher.lowercased()
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: "-", with: "")
-            .replacingOccurrences(of: ",", with: "")
-            .replacingOccurrences(of: "inc", with: "")
-            .replacingOccurrences(of: "llc", with: "")
-            .replacingOccurrences(of: "gmbh", with: "")
+        // Try vendor database first for accurate URLs
+        if let vendorURL = VendorURLs.getWebsiteURL(for: publisher) {
+            return vendorURL
+        }
 
-        return "\(clean).com"
+        // Fallback to simple generation
+        return VendorURLs.generateFallbackURL(for: publisher)
     }
 
     private func openPublisherWebsite(plugin: PluginItem) {
-        let urlString = "https://\(generateWebsiteURL(for: plugin.publisher))"
+        let urlString = generateWebsiteURL(for: plugin.publisher)
         if let url = URL(string: urlString) {
             #if os(macOS)
             NSWorkspace.shared.open(url)

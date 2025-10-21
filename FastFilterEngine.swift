@@ -87,12 +87,20 @@ struct FastFilterEngine {
                 // Regular search: Pre-compute lowercase query ONCE
                 let queryLower = trimmed.lowercased()
                 result = result.filter { plugin in
-                    plugin.name.lowercased().contains(queryLower) ||
-                    plugin.publisher.lowercased().contains(queryLower) ||
-                    plugin.style.lowercased().contains(queryLower) ||
-                    plugin.architectures.lowercased().contains(queryLower) ||
-                    plugin.version.lowercased().contains(queryLower) ||
-                    plugin.runtimeRequirement.lowercased().contains(queryLower)
+                    let basicMatch = plugin.name.lowercased().contains(queryLower) ||
+                        plugin.publisher.lowercased().contains(queryLower) ||
+                        plugin.style.lowercased().contains(queryLower) ||
+                        plugin.architectures.lowercased().contains(queryLower) ||
+                        plugin.version.lowercased().contains(queryLower) ||
+                        plugin.runtimeRequirement.lowercased().contains(queryLower)
+
+                    #if os(macOS)
+                    // License search only available on macOS
+                    let licenseMatch = LicenseTypeHelper.getCachedLicenseType(for: plugin).lowercased().contains(queryLower)
+                    return basicMatch || licenseMatch
+                    #else
+                    return basicMatch
+                    #endif
                 }
             }
         }

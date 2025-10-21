@@ -658,21 +658,31 @@ struct PluginReporterApp: App {
     @State private var appliedColorScheme: ColorScheme? = nil
 
     init() {
-        // Initialize Sentry for crash reporting (only if configured)
-        // Read DSN directly from Info.plist to avoid dependency on SentryConfig file
-        if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
-           !dsn.isEmpty,
-           !dsn.contains("YOUR_") {
-            SentrySDK.start { options in
-                options.dsn = dsn
-                options.debug = false
-                options.tracesSampleRate = 1.0
-                options.environment = "production"
-                options.enableAutoSessionTracking = true
+        // Defer Sentry initialization to avoid blocking startup
+        Task.detached(priority: .utility) {
+            // Wait a moment for app to fully launch
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+            // Initialize Sentry for crash reporting (only if configured)
+            // Read DSN directly from Info.plist to avoid dependency on SentryConfig file
+            if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
+               !dsn.isEmpty,
+               !dsn.contains("YOUR_") {
+                SentrySDK.start { options in
+                    options.dsn = dsn
+                    options.debug = false
+                    options.tracesSampleRate = 1.0
+                    options.environment = "production"
+                    options.enableAutoSessionTracking = true
+                }
+                await MainActor.run {
+                    AppLogger.info("Sentry crash reporting initialized")
+                }
+            } else {
+                await MainActor.run {
+                    AppLogger.info("Sentry not configured - running without crash reporting")
+                }
             }
-            AppLogger.info("Sentry crash reporting initialized")
-        } else {
-            AppLogger.info("Sentry not configured - running without crash reporting")
         }
     }
 

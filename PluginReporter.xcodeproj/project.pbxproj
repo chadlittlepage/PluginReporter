@@ -15,13 +15,12 @@
 		01C319076B9986CA2D3FEF59 /* RenoiseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1091F97A9B1B0DD5DDCB2F93 /* RenoiseParser.swift */; };
 		0587C4713F60E9BBD73763EB /* CSVExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D3B07CFA6C44118CD9EE3A /* CSVExporter.swift */; };
 		06993933A9B0A1103259AFD0 /* DAWImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC6B35A2355C7D9BCCCB80B /* DAWImportView.swift */; };
-		0ABA3653548C5BE65555011B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02322EA076D31CD1739E99A /* SettingsView.swift */; };
 		0B832E7F00331DCF4271199B /* APIKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BBDB413E73126AC4E004EC /* APIKeyManager.swift */; };
 		0CD96AFBC86DBA4FECE73D1C /* CubaseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B1A5C2BB1E8B9E8D45D205F /* CubaseParser.swift */; };
 		102BC4DE602E6419417307BC /* BulkEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAD42EA24CB5001268F0 /* BulkEditPanel.swift */; };
+		114094BBD1D9638A8746A055 /* VendorURLs.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51F9DBB87AA548A89353668 /* VendorURLs.swift */; };
 		134AEA1E81EC46089C1EDAD5 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193EC14DF3D54EFA8D086782 /* PluginReporterApp.swift */; };
 		136737637DA8EC397CEAA75A /* ArdourParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F913586BA3241E9A8331C155 /* ArdourParser.swift */; };
-		13C05BFC239987240C6465BA /* AISuggestionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09452E21374588BAAC319D /* AISuggestionsView.swift */; };
 		141E33E4AD5FF896D4018D3A /* ColorUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869692E91FD5900A3C7DA /* ColorUtilities.swift */; };
 		14715095A45AC7D88BC5C7DF /* BitwigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55FC6CFBE391DB115C87285 /* BitwigParser.swift */; };
 		1780515EEA3ABCF25DDB0E73 /* TracktionParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0785F4F120F17485D31FBD99 /* TracktionParser.swift */; };
@@ -29,11 +28,9 @@
 		1845281762C53CED12C91C29 /* PluginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E452E81BDF10027CFC0 /* PluginItem.swift */; };
 		1A1925AF9D02188D4A4FCC65 /* LogicProParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A5B4D86F45775F89556827 /* LogicProParser.swift */; };
 		1C0BAE670CF8559364CF3848 /* TracktionParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0785F4F120F17485D31FBD99 /* TracktionParser.swift */; };
-		1C86BD64F8630FD2DE49E175 /* AISuggestionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09452E21374588BAAC319D /* AISuggestionsView.swift */; };
 		1DE86A0BD333466C4CEF055F /* APIKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BBDB413E73126AC4E004EC /* APIKeyManager.swift */; };
 		1EC9C926C96842159EF60912 /* PDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9FE2FC213434A8AA9A14CC0 /* PDFExporter.swift */; };
 		2421F432A1ACDA734740CFD8 /* FairlightParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7580FC13D50389F79DF96631 /* FairlightParser.swift */; };
-		2C611E2D68B6D3AB61F085D6 /* DAWParserProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC8B40C71872FE757787D0C /* DAWParserProtocol.swift */; };
 		2CE29707E130742317BBF2AB /* MainStageParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453F0DAD0DE057EC10B874D5 /* MainStageParser.swift */; };
 		2F957E0ECA349D0DABA238A2 /* LogicProParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A5B4D86F45775F89556827 /* LogicProParser.swift */; };
 		30403B91F7310B4FA9E949AF /* PrivacyDisclosureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2B198AEB9BC462B9B05530C /* PrivacyDisclosureView.swift */; };
@@ -84,12 +81,14 @@
 		400FF6C72E9F19F70008553F /* UserFeedbackClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400FF6C52E9F19F70008553F /* UserFeedbackClient.swift */; };
 		400FF6C82E9F19F70008553F /* UserFeedbackClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400FF6C52E9F19F70008553F /* UserFeedbackClient.swift */; };
 		400FF6CB2E9FCEEC0008553F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 400FF6CA2E9FCEEC0008553F /* Assets.xcassets */; };
-		400FF6CC2E9FCEEC0008553F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 400FF6CA2E9FCEEC0008553F /* Assets.xcassets */; };
 		400FF6CD2E9FCEEC0008553F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 400FF6CA2E9FCEEC0008553F /* Assets.xcassets */; };
 		401F19262EA6DF2E00617719 /* ArchiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19252EA6DF2E00617719 /* ArchiveManager.swift */; };
 		401F19282EA6E55A00617719 /* FilterUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19272EA6E55A00617719 /* FilterUtils.swift */; };
 		401F192A2EA6E96700617719 /* PluginReporter.help in Resources */ = {isa = PBXBuildFile; fileRef = 401F19292EA6E96700617719 /* PluginReporter.help */; };
 		401F192D2EA6EF4200617719 /* PluginLicense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F192B2EA6EF4200617719 /* PluginLicense.swift */; };
+		401F19EA13974189C4125A68 /* LicenseTypeHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19C92B1C4C50136CF7F4 /* LicenseTypeHelper.swift */; };
+		401F198490D77F2CE6810ED9 /* LicenseTypeHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19C92B1C4C50136CF7F4 /* LicenseTypeHelper.swift */; };
+		401F19F8C14CF5DEBEFD931D /* LicenseTypeHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19C92B1C4C50136CF7F4 /* LicenseTypeHelper.swift */; };
 		401F192E2EA6EF4200617719 /* PluginLicensePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F192C2EA6EF4200617719 /* PluginLicensePanel.swift */; };
 		401F19352EA6F73A00617719 /* iLokImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19342EA6F73A00617719 /* iLokImportView.swift */; };
 		401F19362EA6F73A00617719 /* iLokImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401F19332EA6F73A00617719 /* iLokImporter.swift */; };
@@ -105,10 +104,10 @@
 		402869742E91FEC500A3C7DA /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869712E91FEC500A3C7DA /* AppLogger.swift */; };
 		402869752E91F48100A3C7DA /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6BFFEB39C84B46908F3B41 /* Formatters.swift */; };
 		402869762E91F48100A3C7DA /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E4D2E82422C0027CFC0 /* Diagnostics.swift */; };
-		402869D12E92313900A3C7DA /* ../iOS/ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */; };
-		402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */; };
-		402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */; };
-		402869D72E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */; };
+		402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D02E92313900A3C7DA /* ShareSheet.swift */; };
+		402869D32E92314600A3C7DA /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D22E92314600A3C7DA /* UIComponents.swift */; };
+		402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D42E92315200A3C7DA /* PluginRowViews.swift */; };
+		402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D62E92315D00A3C7DA /* PluginDetailViews.swift */; };
 		402869D92E92349D00A3C7DA /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402869D82E92349D00A3C7DA /* ExportView.swift */; };
 		402869DC2E937F6100A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DB2E937F6100A3C7DA /* Sentry */; };
 		402869DE2E937F8600A3C7DA /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 402869DD2E937F8600A3C7DA /* Sentry */; };
@@ -198,7 +197,6 @@
 		40F28E522E82ECF00027CFC0 /* JSONExporter+Shim.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E512E82ECEE0027CFC0 /* JSONExporter+Shim.swift */; };
 		40F28E892E8398660027CFC0 /* PluginItem+Columns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F28E882E8398650027CFC0 /* PluginItem+Columns.swift */; };
 		443E6249390DF5035CDBBC8C /* BitwigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55FC6CFBE391DB115C87285 /* BitwigParser.swift */; };
-		46A5B18F022846F9A3FF2535 /* AISuggestionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09452E21374588BAAC319D /* AISuggestionsView.swift */; };
 		4B9A3E2311E02E32C2A13C7D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400FF6B92E9F193F0008553F /* KeychainHelper.swift */; };
 		4C6C7535A381F4837F057B3F /* MetadataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B999692EA177DB0092EAE2 /* MetadataManager.swift */; };
 		53036FB24444446F9BD84959 /* JSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B71EC0B56FD4C8280A430AE /* JSONExporter.swift */; };
@@ -210,9 +208,7 @@
 		5FE5FBDF5B518AD9038D8BCE /* DAWParserProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAEA2EA31131001268F0 /* DAWParserProtocol.swift */; };
 		6063E3B92861BBBE5290FC97 /* GarageBandParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16370BA570000E073F851D30 /* GarageBandParser.swift */; };
 		60692AF845487E81269D5B13 /* ArdourParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F913586BA3241E9A8331C155 /* ArdourParser.swift */; };
-		60C799E427F68B5AC8030794 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACABAA1030DA5DEC88AA127 /* ContentView.swift */; };
 		62DF08ABFE4D84494D43152F /* RatingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4065E3EF2EA0493600A0FCAA /* RatingsManager.swift */; };
-		647B53EF41E4126061D1C7C8 /* DAWParserProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC8B40C71872FE757787D0C /* DAWParserProtocol.swift */; };
 		682957B25AF748C994107A5A /* PrivacyDisclosureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2B198AEB9BC462B9B05530C /* PrivacyDisclosureView.swift */; };
 		69D5CFB32E7FF9457D864973 /* ReaperParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E76A3663AC456BB29C915CAC /* ReaperParser.swift */; };
 		73490BF3D53EBDAC44F20252 /* MainStageParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453F0DAD0DE057EC10B874D5 /* MainStageParser.swift */; };
@@ -234,6 +230,7 @@
 		A07EF354619E4EE08F4DF6A4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63A0211648774249BBF29B12 /* Assets.xcassets */; };
 		A0DA0652C41D2F209BEE710F /* FairlightParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7580FC13D50389F79DF96631 /* FairlightParser.swift */; };
 		A468856830069C975FE1309F /* ProToolsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45A6CFD538DB1BFBCBD2373E /* ProToolsParser.swift */; };
+		A54A3B52E601E9477C592D22 /* VendorURLs.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51F9DBB87AA548A89353668 /* VendorURLs.swift */; };
 		A5623AB8C2CBE27B3DF2B88F /* ArdourParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F913586BA3241E9A8331C155 /* ArdourParser.swift */; };
 		A610923FE6537FD3E7AFB2D7 /* FLStudioParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A55598481F964580507EC0DB /* FLStudioParser.swift */; };
 		A6CC9E340A3A240C34BE23BF /* BulkEditPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCAD42EA24CB5001268F0 /* BulkEditPanel.swift */; };
@@ -263,7 +260,7 @@
 		D2D43E24623BD52F26FE3527 /* PluginReporterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44541A8CC9FFA09AC9531E0 /* PluginReporterApp.swift */; };
 		D37036FF50FB9BD297574D2B /* DAWPlaylistManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CCADE2EA2B4CE001268F0 /* DAWPlaylistManager.swift */; };
 		D4A6A3DBEC5188F05E9143CA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADB835265E92B2170C03950 /* SettingsView.swift */; };
-		DBA65457827DF996EBAB2301 /* DAWParserProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC8B40C71872FE757787D0C /* DAWParserProtocol.swift */; };
+		D9057151FEF09B273767A655 /* VendorURLs.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51F9DBB87AA548A89353668 /* VendorURLs.swift */; };
 		DDB815E2ECE6217B9A9E3B36 /* ReasonParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E201E3566CE0C62B222D551B /* ReasonParser.swift */; };
 		DF5CC0131F3D6CA2641A4922 /* CubaseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B1A5C2BB1E8B9E8D45D205F /* CubaseParser.swift */; };
 		E2CB7CAA870D009A68180C1E /* ProToolsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45A6CFD538DB1BFBCBD2373E /* ProToolsParser.swift */; };
@@ -314,6 +311,7 @@
 		401F19272EA6E55A00617719 /* FilterUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterUtils.swift; sourceTree = "<group>"; };
 		401F19292EA6E96700617719 /* PluginReporter.help */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = PluginReporter.help; path = Help/PluginReporter.help; sourceTree = "<group>"; };
 		401F192B2EA6EF4200617719 /* PluginLicense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginLicense.swift; sourceTree = "<group>"; };
+		401F19C92B1C4C50136CF7F4 /* LicenseTypeHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseTypeHelper.swift; sourceTree = "<group>"; };
 		401F192C2EA6EF4200617719 /* PluginLicensePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginLicensePanel.swift; sourceTree = "<group>"; };
 		401F19332EA6F73A00617719 /* iLokImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iLokImporter.swift; sourceTree = "<group>"; };
 		401F19342EA6F73A00617719 /* iLokImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iLokImportView.swift; sourceTree = "<group>"; };
@@ -335,10 +333,10 @@
 		402869692E91FD5900A3C7DA /* ColorUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorUtilities.swift; sourceTree = "<group>"; };
 		4028696D2E91FE2800A3C7DA /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		402869712E91FEC500A3C7DA /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
-		402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
-		402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
-		402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
-		402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
+		402869D02E92313900A3C7DA /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/ShareSheet.swift; sourceTree = "<group>"; };
+		402869D22E92314600A3C7DA /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/UIComponents.swift; sourceTree = "<group>"; };
+		402869D42E92315200A3C7DA /* PluginRowViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginRowViews.swift; sourceTree = "<group>"; };
+		402869D62E92315D00A3C7DA /* PluginDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../iOS/PluginDetailViews.swift; sourceTree = "<group>"; };
 		402869D82E92349D00A3C7DA /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		403F45772E8F87490068FF3B /* Plugin Reporter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "Plugin Reporter.entitlements"; path = "../Plugin Reporter.entitlements"; sourceTree = "<group>"; };
 		4044CABC2E862B6F00EF13E7 /* PlatformTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlatformTable.swift; path = ../PlatformTable.swift; sourceTree = "<group>"; };
@@ -404,6 +402,7 @@
 		CCD97154AAB640F3B34EDB86 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = ../Info.plist; sourceTree = "<group>"; };
 		CF4A55FCE326E87FA3F5EEFA /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContentView.swift; path = iPhoness/ContentView.swift; sourceTree = "<group>"; };
 		D2B198AEB9BC462B9B05530C /* PrivacyDisclosureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PrivacyDisclosureView.swift; path = ../PrivacyDisclosureView.swift; sourceTree = "<group>"; };
+		D51F9DBB87AA548A89353668 /* VendorURLs.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VendorURLs.swift; sourceTree = "<group>"; };
 		E05BE399EF7992737355B665 /* DigitalPerformerParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DigitalPerformerParser.swift; sourceTree = "<group>"; };
 		E201E3566CE0C62B222D551B /* ReasonParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReasonParser.swift; sourceTree = "<group>"; };
 		E55FC6CFBE391DB115C87285 /* BitwigParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BitwigParser.swift; sourceTree = "<group>"; };
@@ -509,10 +508,10 @@
 			isa = PBXGroup;
 			children = (
 				402869D82E92349D00A3C7DA /* ExportView.swift */,
-				402869D62E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift */,
-				402869D42E92315200A3C7DA /* ../iOS/PluginRowViews.swift */,
-				402869D22E92314600A3C7DA /* ../iOS/UIComponents.swift */,
-				402869D02E92313900A3C7DA /* ../iOS/ShareSheet.swift */,
+				402869D62E92315D00A3C7DA /* PluginDetailViews.swift */,
+				402869D42E92315200A3C7DA /* PluginRowViews.swift */,
+				402869D22E92314600A3C7DA /* UIComponents.swift */,
+				402869D02E92313900A3C7DA /* ShareSheet.swift */,
 				4028694C2E91F3A600A3C7DA /* ContentView.swift */,
 				4028694E2E91F3A600A3C7DA /* PluginListView.swift */,
 				4028694F2E91F3A600A3C7DA /* PluginReporterApp.swift */,
@@ -635,6 +634,7 @@
 				4F38E4A1CC578C51C8C514FB /* CreateCustomPlaylistView.swift */,
 				62442F037A76E95D590BF950 /* Models */,
 				6DC6B35A2355C7D9BCCCB80B /* DAWImportView.swift */,
+				D51F9DBB87AA548A89353668 /* VendorURLs.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -774,7 +774,6 @@
 				401F192A2EA6E96700617719 /* PluginReporter.help in Resources */,
 				A07EF354619E4EE08F4DF6A4 /* Assets.xcassets in Resources */,
 				400FF6732E9EB8550008553F /* PluginReporter.icon in Resources */,
-				400FF6CC2E9FCEEC0008553F /* Assets.xcassets in Resources */,
 				C7B27A1F074B4E77BDA15F82 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -792,6 +791,7 @@
 				400FF6B52E9F17D70008553F /* DashboardReportPreviewView.swift in Sources */,
 				400FF6B62E9F17D70008553F /* DashboardHTTPClient.swift in Sources */,
 				401F192D2EA6EF4200617719 /* PluginLicense.swift in Sources */,
+				401F19EA13974189C4125A68 /* LicenseTypeHelper.swift in Sources */,
 				401F192E2EA6EF4200617719 /* PluginLicensePanel.swift in Sources */,
 				400FF6B72E9F17D70008553F /* DashboardSettingsView.swift in Sources */,
 				400FF6B82E9F17D70008553F /* DashboardScheduler.swift in Sources */,
@@ -854,14 +854,12 @@
 				405CCAE52EA300B7001268F0 /* AbletonLiveParser.swift in Sources */,
 				40B999742EA17BB60092EAE2 /* MergeSuggestionsSheet.swift in Sources */,
 				401F19262EA6DF2E00617719 /* ArchiveManager.swift in Sources */,
-				46A5B18F022846F9A3FF2535 /* AISuggestionsView.swift in Sources */,
 				4028696F2E91FE2800A3C7DA /* Constants.swift in Sources */,
 				682957B25AF748C994107A5A /* PrivacyDisclosureView.swift in Sources */,
 				402869742E91FEC500A3C7DA /* AppLogger.swift in Sources */,
 				3D090347E5114E2AAE5A9D30 /* SharedStorage.swift in Sources */,
 				443E6249390DF5035CDBBC8C /* BitwigParser.swift in Sources */,
 				0B832E7F00331DCF4271199B /* APIKeyManager.swift in Sources */,
-				DBA65457827DF996EBAB2301 /* DAWParserProtocol.swift in Sources */,
 				60692AF845487E81269D5B13 /* ArdourParser.swift in Sources */,
 				CB3533663488721510780F4C /* CubaseParser.swift in Sources */,
 				B00E86EAA98E2F6966D0DBD5 /* DigitalPerformerParser.swift in Sources */,
@@ -881,6 +879,7 @@
 				CF40E06E56476F89787A2502 /* AppleDAWParser.swift in Sources */,
 				59B757C33AE084549130BB93 /* FormatCounts+Extensions.swift in Sources */,
 				06993933A9B0A1103259AFD0 /* DAWImportView.swift in Sources */,
+				D9057151FEF09B273767A655 /* VendorURLs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -904,7 +903,7 @@
 				400FF6C32E9F199D0008553F /* BugReportView.swift in Sources */,
 				400FF6C42E9F199D0008553F /* FeatureRequestView.swift in Sources */,
 				40B89D932EA36C63002F5162 /* PluginItem.swift in Sources */,
-				402869D32E92314600A3C7DA /* ../iOS/UIComponents.swift in Sources */,
+				402869D32E92314600A3C7DA /* UIComponents.swift in Sources */,
 				400FF6B12E9F17D70008553F /* DashboardReportPreviewView.swift in Sources */,
 				400FF6B22E9F17D70008553F /* DashboardHTTPClient.swift in Sources */,
 				400FF6B42E9F17D70008553F /* DashboardScheduler.swift in Sources */,
@@ -917,11 +916,11 @@
 				402869732E91FEC500A3C7DA /* AppLogger.swift in Sources */,
 				40B89D952EA36C63002F5162 /* Humanize.swift in Sources */,
 				40B89D962EA36C63002F5162 /* KeychainHelper.swift in Sources */,
-				402869D72E92315D00A3C7DA /* ../iOS/PluginDetailViews.swift in Sources */,
+				402869D72E92315D00A3C7DA /* PluginDetailViews.swift in Sources */,
 				40B89D972EA36C63002F5162 /* ColorUtilities.swift in Sources */,
 				402869552E91F3A600A3C7DA /* PluginListView.swift in Sources */,
-				402869D12E92313900A3C7DA /* ../iOS/ShareSheet.swift in Sources */,
-				402869D52E92315200A3C7DA /* ../iOS/PluginRowViews.swift in Sources */,
+				402869D12E92313900A3C7DA /* ShareSheet.swift in Sources */,
+				402869D52E92315200A3C7DA /* PluginRowViews.swift in Sources */,
 				3D090349E5114E2AAE5A9D32 /* SharedStorage.swift in Sources */,
 				405CCAE72EA3095E001268F0 /* PlaylistMetadataPanel.swift in Sources */,
 				402869D92E92349D00A3C7DA /* ExportView.swift in Sources */,
@@ -948,14 +947,10 @@
 				AD9827B8A8512ED6AC024DA1 /* FormatsCloud.swift in Sources */,
 				3971A028784BC630EB696B24 /* FormatTagCloud.swift in Sources */,
 				3ADC8181C777120BF530C27B /* NotesManager.swift in Sources */,
-				13C05BFC239987240C6465BA /* AISuggestionsView.swift in Sources */,
 				EA903D35339CE0BD4B3FCC56 /* PrivacyDisclosureView.swift in Sources */,
 				825754FEE85375354EDF42A6 /* PluginReporterApp.swift in Sources */,
 				814F17EAFD6E7B386E26ABDB /* ContentView.swift in Sources */,
 				8C7AB4BD611B7BB2E64EF502 /* SettingsView.swift in Sources */,
-				60C799E427F68B5AC8030794 /* ContentView.swift in Sources */,
-				0ABA3653548C5BE65555011B /* SettingsView.swift in Sources */,
-				647B53EF41E4126061D1C7C8 /* DAWParserProtocol.swift in Sources */,
 				136737637DA8EC397CEAA75A /* ArdourParser.swift in Sources */,
 				0CD96AFBC86DBA4FECE73D1C /* CubaseParser.swift in Sources */,
 				BEC7351860643A0A18BAFCE2 /* DigitalPerformerParser.swift in Sources */,
@@ -971,6 +966,7 @@
 				01C319076B9986CA2D3FEF59 /* RenoiseParser.swift in Sources */,
 				333AC3F85A6B2B5673FFF44B /* StudioOneParser.swift in Sources */,
 				1780515EEA3ABCF25DDB0E73 /* TracktionParser.swift in Sources */,
+				A54A3B52E601E9477C592D22 /* VendorURLs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1038,12 +1034,10 @@
 				8E04303ADA7546FB28397D72 /* FormatsCloud.swift in Sources */,
 				F76235EC756762D8DDB28FDF /* FormatTagCloud.swift in Sources */,
 				971773CAC3DFB2FD3C6ADDEE /* NotesManager.swift in Sources */,
-				1C86BD64F8630FD2DE49E175 /* AISuggestionsView.swift in Sources */,
 				30403B91F7310B4FA9E949AF /* PrivacyDisclosureView.swift in Sources */,
 				D2D43E24623BD52F26FE3527 /* PluginReporterApp.swift in Sources */,
 				313ED6141A5669E90CB7B0AB /* ContentView.swift in Sources */,
 				D4A6A3DBEC5188F05E9143CA /* SettingsView.swift in Sources */,
-				2C611E2D68B6D3AB61F085D6 /* DAWParserProtocol.swift in Sources */,
 				A5623AB8C2CBE27B3DF2B88F /* ArdourParser.swift in Sources */,
 				DF5CC0131F3D6CA2641A4922 /* CubaseParser.swift in Sources */,
 				33FE239926CD651E443AEBD2 /* DigitalPerformerParser.swift in Sources */,
@@ -1059,6 +1053,7 @@
 				CFB8E1B57F383C69ABF5F969 /* RenoiseParser.swift in Sources */,
 				3AE639BF0249216EE2177533 /* StudioOneParser.swift in Sources */,
 				AF5D84B70792FC588BBC37DA /* TracktionParser.swift in Sources */,
+				114094BBD1D9638A8746A055 /* VendorURLs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

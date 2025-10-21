@@ -29,33 +29,74 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
+        GeometryReader { geometry in
+            TabView(selection: $selectedTab) {
+                Group {
+                    if selectedTab == 0 {
+                        PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height) // Fixed size from parent
+                .ignoresSafeArea(.keyboard) // Don't resize for keyboard
                 .tabItem {
                     Label("Plugins", systemImage: "music.note.list")
                 }
                 .tag(0)
 
-            SettingsView(onImport: loadPluginsFromFile)
+                Group {
+                    if selectedTab == 1 {
+                        SettingsView(onImport: loadPluginsFromFile)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height) // Fixed size from parent
+                .ignoresSafeArea(.keyboard) // Don't resize for keyboard
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
                 .tag(1)
 
-            ExportView(plugins: filteredPlugins)
+                Group {
+                    if selectedTab == 2 {
+                        ExportView(plugins: filteredPlugins)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height) // Fixed size from parent
+                .ignoresSafeArea(.keyboard) // Don't resize for keyboard
                 .tabItem {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
                 .tag(2)
+            }
+            .tabViewStyle(.automatic) // Use system default WITHOUT page animation
+            .frame(width: geometry.size.width, height: geometry.size.height) // Lock TabView size
+            .ignoresSafeArea(.keyboard, edges: .bottom) // Ignore keyboard throughout
+            .transaction { transaction in
+                transaction.animation = nil // Kill ALL animations
+                transaction.disablesAnimations = true // FORCE disable
+            }
+            .preferredColorScheme(colorScheme)
+            .animation(.linear(duration: 0), value: appearance) // Instant transition
+            .animation(.linear(duration: 0), value: selectedTab) // Instant tab change
+            .onChange(of: selectedTab) { _ in
+                // Suppress only the bounce/resize animation
+                UIView.animate(withDuration: 0) {
+                    // Instant layout change
+                }
+            }
         }
-        .preferredColorScheme(colorScheme)
-        .task {
-            // Auto-load plugins on launch
-            guard !hasLoadedOnce else { return }
-            hasLoadedOnce = true
-            await loadPluginsSilentlyAsync()
-        }
+        .ignoresSafeArea() // GeometryReader ignores all safe areas
         .onAppear {
+            // INSTANT LOAD - Load plugins immediately without async delay
+            if !hasLoadedOnce {
+                hasLoadedOnce = true
+                loadPluginsSilently()
+            }
             // Request full screen on iPad
             #if os(iOS)
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {

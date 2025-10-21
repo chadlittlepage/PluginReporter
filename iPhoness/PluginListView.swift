@@ -727,6 +727,9 @@ struct PluginListView: View {
                 computeFilteredAndSorted()
                 filteredPluginsForExport = filteredAndSortedPlugins
             }
+            .transaction { transaction in
+                transaction.animation = nil // Disable all List/Form animations
+            }
         }
     }
 

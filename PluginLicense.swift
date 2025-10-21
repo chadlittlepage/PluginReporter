@@ -51,7 +51,6 @@ struct PluginLicense: Codable, Identifiable {
 }
 
 /// Manager for plugin licenses with secure credential storage
-@MainActor
 class LicenseManager: ObservableObject {
     static let shared = LicenseManager()
 
@@ -238,62 +237,3 @@ class LicenseManager: ObservableObject {
 }
 
 // MARK: - License Type Helper
-
-/// PERFORMANCE: Single source of truth for license type detection
-/// Eliminates 9 duplicate implementations across the codebase
-@MainActor
-final class LicenseTypeHelper {
-
-    // MARK: - Cache
-
-    private static var cache: [UUID: String] = [:]
-
-    /// Clear the license type cache (call when licenses are updated)
-    static func clearCache() {
-        cache.removeAll()
-    }
-
-    // MARK: - License Type Detection
-
-    /// Get the license type for a plugin (iLok, Serial, or empty)
-    /// This is the SINGLE SOURCE OF TRUTH - eliminates 9 duplicate implementations
-    static func getLicenseType(for plugin: PluginItem) -> String {
-        let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
-            .replacingOccurrences(of: " ", with: "_")
-
-        guard let license = LicenseManager.shared.getLicense(for: pluginID) else {
-            return ""
-        }
-
-        // Check if it mentions iLok anywhere (imported from iLok)
-        if let notes = license.notes?.lowercased(), notes.contains("ilok") {
-            return "iLok"
-        }
-        if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
-            return "iLok"
-        }
-
-        // Check if it has a serial number or license key
-        if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
-            return "Serial"
-        }
-
-        // If we have a license entry but no specific data, still show something was imported
-        if license.notes?.isEmpty == false {
-            return "iLok"  // Default to iLok if we have notes but no serial
-        }
-
-        return ""
-    }
-
-    /// Get cached license type for a plugin
-    /// PERFORMANCE: Use this for sorting and rendering - 10x faster than getLicenseType
-    static func getCachedLicenseType(for plugin: PluginItem) -> String {
-        if let cached = cache[plugin.id] {
-            return cached
-        }
-        let type = getLicenseType(for: plugin)
-        cache[plugin.id] = type
-        return type
-    }
-}

@@ -20,6 +20,10 @@ struct PluginLicensePanel: View {
     @State private var copiedItem = ""
     @State private var showDeleteConfirmation = false
 
+    // Cache parsed iLok data to avoid re-parsing on every view update
+    @State private var cachedILokData: [String: String] = [:]
+    @State private var isILok: Bool = false
+
     private var pluginID: String {
         LicenseManager.makePluginID(name: plugin.name, publisher: plugin.publisher)
     }
@@ -54,73 +58,66 @@ struct PluginLicensePanel: View {
             if let license = isEditing ? editedLicense : license {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        // Quick Info Section (iLok data in compact format)
-                        if !isEditing {
-                            let isILok = license.notes?.contains("Imported from iLok License Manager") ?? false
+                        // Quick Info Section (iLok data in compact format) - using CACHED data
+                        if !isEditing && isILok {
+                            // Show iLok-specific info using cached parsed data
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("iLOK LICENSE INFO")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
 
-                            if isILok {
-                                // Parse all iLok data from notes
-                                let iLokData = parseILokNotes(license.notes ?? "")
+                                licenseInfoRow(label: "PRODUCT NAME:", value: license.pluginName)
 
-                                // Show iLok-specific info
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("iLOK LICENSE INFO")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-
-                                    licenseInfoRow(label: "PRODUCT NAME:", value: license.pluginName)
-
-                                    if let validLocations = iLokData["Valid Locations"] {
-                                        licenseInfoRow(label: "VALID LOCATIONS:", value: validLocations)
-                                    }
-
-                                    if let activations = iLokData["Activations"] {
-                                        licenseInfoRow(label: "ACTIVATIONS:", value: activations)
-                                    }
-
-                                    if let licenseStatus = iLokData["License Status"] {
-                                        licenseInfoRow(label: "LICENSE STATUS:", value: licenseStatus)
-                                    }
-
-                                    if let type = iLokData["Type"] {
-                                        licenseInfoRow(label: "TYPE:", value: type)
-                                    }
-
-                                    if let activationLocation = iLokData["Activation Location"], !activationLocation.isEmpty {
-                                        licenseInfoRow(label: "ACTIVATION LOCATION:", value: activationLocation)
-                                    }
-
-                                    if let subtype = iLokData["Subtype"] {
-                                        licenseInfoRow(label: "SUBTYPE:", value: subtype)
-                                    }
-
-                                    if let depositDate = iLokData["Deposit Date"] {
-                                        licenseInfoRow(label: "DEPOSIT DATE:", value: depositDate)
-                                    }
-
-                                    if let licensePeriod = iLokData["License Period"], !licensePeriod.isEmpty {
-                                        licenseInfoRow(label: "LICENSE PERIOD:", value: licensePeriod)
-                                    }
-
-                                    if let launchCount = iLokData["Launch Count"], !launchCount.isEmpty {
-                                        licenseInfoRow(label: "LAUNCH COUNT:", value: launchCount)
-                                    }
-
-                                    if let owner = iLokData["Owner"] {
-                                        licenseInfoRow(label: "OWNER:", value: owner)
-                                    }
-
-                                    if let publisherLicenseID = iLokData["Publisher License ID"], !publisherLicenseID.isEmpty {
-                                        licenseInfoRow(label: "PUBLISHER LICENSE ID:", value: publisherLicenseID)
-                                    }
+                                if let validLocations = cachedILokData["Valid Locations"] {
+                                    licenseInfoRow(label: "VALID LOCATIONS:", value: validLocations)
                                 }
 
-                                Divider()
+                                if let activations = cachedILokData["Activations"] {
+                                    licenseInfoRow(label: "ACTIVATIONS:", value: activations)
+                                }
+
+                                if let licenseStatus = cachedILokData["License Status"] {
+                                    licenseInfoRow(label: "LICENSE STATUS:", value: licenseStatus)
+                                }
+
+                                if let type = cachedILokData["Type"] {
+                                    licenseInfoRow(label: "TYPE:", value: type)
+                                }
+
+                                if let activationLocation = cachedILokData["Activation Location"], !activationLocation.isEmpty {
+                                    licenseInfoRow(label: "ACTIVATION LOCATION:", value: activationLocation)
+                                }
+
+                                if let subtype = cachedILokData["Subtype"] {
+                                    licenseInfoRow(label: "SUBTYPE:", value: subtype)
+                                }
+
+                                if let depositDate = cachedILokData["Deposit Date"] {
+                                    licenseInfoRow(label: "DEPOSIT DATE:", value: depositDate)
+                                }
+
+                                if let licensePeriod = cachedILokData["License Period"], !licensePeriod.isEmpty {
+                                    licenseInfoRow(label: "LICENSE PERIOD:", value: licensePeriod)
+                                }
+
+                                if let launchCount = cachedILokData["Launch Count"], !launchCount.isEmpty {
+                                    licenseInfoRow(label: "LAUNCH COUNT:", value: launchCount)
+                                }
+
+                                if let owner = cachedILokData["Owner"] {
+                                    licenseInfoRow(label: "OWNER:", value: owner)
+                                }
+
+                                if let publisherLicenseID = cachedILokData["Publisher License ID"], !publisherLicenseID.isEmpty {
+                                    licenseInfoRow(label: "PUBLISHER LICENSE ID:", value: publisherLicenseID)
+                                }
                             }
+
+                            Divider()
                         }
 
-                        // Serial Number Section
-                        if isEditing, editedLicense != nil {
+                        // Serial Number Section - only show if editing or has data
+                        if isEditing {
                             licenseSection(
                                 title: "Serial Number",
                                 icon: "number",
@@ -132,67 +129,136 @@ struct PluginLicensePanel: View {
                                 canCopy: true,
                                 isEditing: true
                             )
-                        } else {
+                        } else if license.serialNumber != nil {
                             licenseSection(
                                 title: "Serial Number",
                                 icon: "number",
-                                value: .constant(license.serialNumber ?? "Not set"),
+                                value: .constant(license.serialNumber ?? ""),
                                 placeholder: "",
-                                canCopy: license.serialNumber != nil,
+                                canCopy: true,
                                 isEditing: false
                             )
                         }
 
-                        Divider()
+                        // Account Credentials Section - only show if editing or has data
+                        if isEditing || license.accountEmail != nil || !password.isEmpty {
+                            if isEditing || license.serialNumber != nil {
+                                Divider()
+                            }
 
-                        // Account Credentials Section
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Account Credentials", systemImage: "person.fill")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            // Email
-                            HStack {
-                                Image(systemName: "envelope")
+                            VStack(alignment: .leading, spacing: 12) {
+                                Label("Account Credentials", systemImage: "person.fill")
+                                    .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                    .frame(width: 20)
+
+                                // Email - only show if editing or has data
+                                if isEditing || license.accountEmail != nil {
+                                    HStack {
+                                        Image(systemName: "envelope")
+                                            .foregroundColor(.secondary)
+                                            .frame(width: 20)
+
+                                        if isEditing {
+                                            TextField("Account email", text: Binding(
+                                                get: { editedLicense?.accountEmail ?? "" },
+                                                set: { editedLicense?.accountEmail = $0.isEmpty ? nil : $0 }
+                                            ))
+                                            .textFieldStyle(.roundedBorder)
+                                        } else if let email = license.accountEmail {
+                                            Text(email)
+                                                .foregroundColor(.primary)
+
+                                            Spacer()
+                                            Button(action: { copyToClipboard(email) }) {
+                                                Image(systemName: "doc.on.doc")
+                                            }
+                                            .buttonStyle(.borderless)
+                                        }
+                                    }
+                                }
+
+                                // Password - only show if editing or has data
+                                if isEditing || !password.isEmpty {
+                                    HStack {
+                                        Image(systemName: "lock")
+                                            .foregroundColor(.secondary)
+                                            .frame(width: 20)
+
+                                        if isEditing {
+                                            SecureField("Password", text: $password)
+                                                .textFieldStyle(.roundedBorder)
+                                        } else {
+                                            Text("••••••••")
+                                                .foregroundColor(.primary)
+
+                                            Spacer()
+                                            Button(action: { copyToClipboard(password, item: "Password") }) {
+                                                Image(systemName: "doc.on.doc")
+                                            }
+                                            .buttonStyle(.borderless)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Activation Tracking - only show if editing or has data
+                        if isEditing || license.activationsUsed != nil || license.activationCode != nil {
+                            if isEditing || license.accountEmail != nil || !password.isEmpty || license.serialNumber != nil {
+                                Divider()
+                            }
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                Label("Activation Tracking", systemImage: "desktopcomputer")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
+                                if isEditing || license.activationsUsed != nil {
+                                    HStack {
+                                        Text("Activations Used:")
+                                            .foregroundColor(.secondary)
+
+                                        if isEditing {
+                                            TextField("0", value: Binding(
+                                                get: { editedLicense?.activationsUsed ?? 0 },
+                                                set: { editedLicense?.activationsUsed = $0 }
+                                            ), format: .number)
+                                            .textFieldStyle(.roundedBorder)
+                                            .frame(width: 60)
+
+                                            Text("of")
+
+                                            TextField("0", value: Binding(
+                                                get: { editedLicense?.maxActivations ?? 0 },
+                                                set: { editedLicense?.maxActivations = $0 }
+                                            ), format: .number)
+                                            .textFieldStyle(.roundedBorder)
+                                            .frame(width: 60)
+                                        } else if let used = license.activationsUsed, let max = license.maxActivations {
+                                            Text("\(used) of \(max)")
+                                                .fontWeight(.medium)
+
+                                            if used >= max {
+                                                Image(systemName: "exclamationmark.triangle.fill")
+                                                    .foregroundColor(.orange)
+                                            }
+                                        }
+                                    }
+                                }
 
                                 if isEditing {
-                                    TextField("Account email", text: Binding(
-                                        get: { editedLicense?.accountEmail ?? "" },
-                                        set: { editedLicense?.accountEmail = $0.isEmpty ? nil : $0 }
+                                    TextField("Activation code (optional)", text: Binding(
+                                        get: { editedLicense?.activationCode ?? "" },
+                                        set: { editedLicense?.activationCode = $0.isEmpty ? nil : $0 }
                                     ))
                                     .textFieldStyle(.roundedBorder)
-                                } else {
-                                    Text(license.accountEmail ?? "Not set")
-                                        .foregroundColor(license.accountEmail == nil ? .secondary : .primary)
-
-                                    if license.accountEmail != nil {
+                                } else if let code = license.activationCode {
+                                    HStack {
+                                        Text("Activation Code:")
+                                            .foregroundColor(.secondary)
+                                        Text(code)
                                         Spacer()
-                                        Button(action: { copyToClipboard(license.accountEmail!) }) {
-                                            Image(systemName: "doc.on.doc")
-                                        }
-                                        .buttonStyle(.borderless)
-                                    }
-                                }
-                            }
-
-                            // Password
-                            HStack {
-                                Image(systemName: "lock")
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 20)
-
-                                if isEditing {
-                                    SecureField("Password", text: $password)
-                                        .textFieldStyle(.roundedBorder)
-                                } else {
-                                    Text(password.isEmpty ? "Not set" : "••••••••")
-                                        .foregroundColor(password.isEmpty ? .secondary : .primary)
-
-                                    if !password.isEmpty {
-                                        Spacer()
-                                        Button(action: { copyToClipboard(password, item: "Password") }) {
+                                        Button(action: { copyToClipboard(code, item: "Activation Code") }) {
                                             Image(systemName: "doc.on.doc")
                                         }
                                         .buttonStyle(.borderless)
@@ -201,150 +267,91 @@ struct PluginLicensePanel: View {
                             }
                         }
 
-                        Divider()
+                        // Purchase Information - only show if editing or has data
+                        if isEditing || license.purchaseDate != nil || license.invoiceNumber != nil {
+                            if isEditing || license.activationsUsed != nil || license.activationCode != nil || license.accountEmail != nil || !password.isEmpty || license.serialNumber != nil {
+                                Divider()
+                            }
 
-                        // Activation Tracking
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Activation Tracking", systemImage: "desktopcomputer")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                Text("Activations Used:")
+                            VStack(alignment: .leading, spacing: 12) {
+                                Label("Purchase Information", systemImage: "cart.fill")
+                                    .font(.subheadline)
                                     .foregroundColor(.secondary)
 
-                                if isEditing {
-                                    TextField("0", value: Binding(
-                                        get: { editedLicense?.activationsUsed ?? 0 },
-                                        set: { editedLicense?.activationsUsed = $0 }
-                                    ), format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
+                                if isEditing || license.purchaseDate != nil {
+                                    HStack {
+                                        Text("Purchase Date:")
+                                            .foregroundColor(.secondary)
 
-                                    Text("of")
-
-                                    TextField("0", value: Binding(
-                                        get: { editedLicense?.maxActivations ?? 0 },
-                                        set: { editedLicense?.maxActivations = $0 }
-                                    ), format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
-                                } else {
-                                    if let used = license.activationsUsed, let max = license.maxActivations {
-                                        Text("\(used) of \(max)")
-                                            .fontWeight(.medium)
-
-                                        if used >= max {
-                                            Image(systemName: "exclamationmark.triangle.fill")
-                                                .foregroundColor(.orange)
+                                        if isEditing {
+                                            DatePicker("", selection: Binding(
+                                                get: { editedLicense?.purchaseDate ?? Date() },
+                                                set: { editedLicense?.purchaseDate = $0 }
+                                            ), displayedComponents: .date)
+                                            .labelsHidden()
+                                        } else if let date = license.purchaseDate {
+                                            Text(date, style: .date)
                                         }
-                                    } else {
-                                        Text("Not tracked")
-                                            .foregroundColor(.secondary)
                                     }
                                 }
-                            }
-
-                            if isEditing {
-                                TextField("Activation code (optional)", text: Binding(
-                                    get: { editedLicense?.activationCode ?? "" },
-                                    set: { editedLicense?.activationCode = $0.isEmpty ? nil : $0 }
-                                ))
-                                .textFieldStyle(.roundedBorder)
-                            } else if let code = license.activationCode {
-                                HStack {
-                                    Text("Activation Code:")
-                                        .foregroundColor(.secondary)
-                                    Text(code)
-                                    Spacer()
-                                    Button(action: { copyToClipboard(code, item: "Activation Code") }) {
-                                        Image(systemName: "doc.on.doc")
-                                    }
-                                    .buttonStyle(.borderless)
-                                }
-                            }
-                        }
-
-                        Divider()
-
-                        // Purchase Information
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Purchase Information", systemImage: "cart.fill")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                Text("Purchase Date:")
-                                    .foregroundColor(.secondary)
 
                                 if isEditing {
-                                    DatePicker("", selection: Binding(
-                                        get: { editedLicense?.purchaseDate ?? Date() },
-                                        set: { editedLicense?.purchaseDate = $0 }
-                                    ), displayedComponents: .date)
-                                    .labelsHidden()
-                                } else {
-                                    if let date = license.purchaseDate {
-                                        Text(date, style: .date)
-                                    } else {
-                                        Text("Not set")
+                                    TextField("Invoice number (optional)", text: Binding(
+                                        get: { editedLicense?.invoiceNumber ?? "" },
+                                        set: { editedLicense?.invoiceNumber = $0.isEmpty ? nil : $0 }
+                                    ))
+                                    .textFieldStyle(.roundedBorder)
+                                } else if let invoice = license.invoiceNumber {
+                                    HStack {
+                                        Text("Invoice:")
                                             .foregroundColor(.secondary)
+                                        Text(invoice)
                                     }
-                                }
-                            }
-
-                            if isEditing {
-                                TextField("Invoice number (optional)", text: Binding(
-                                    get: { editedLicense?.invoiceNumber ?? "" },
-                                    set: { editedLicense?.invoiceNumber = $0.isEmpty ? nil : $0 }
-                                ))
-                                .textFieldStyle(.roundedBorder)
-                            } else if let invoice = license.invoiceNumber {
-                                HStack {
-                                    Text("Invoice:")
-                                        .foregroundColor(.secondary)
-                                    Text(invoice)
                                 }
                             }
                         }
 
-                        Divider()
-
-                        // Links
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("Vendor Links", systemImage: "link")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            if let url = license.manufacturerURL, let link = URL(string: url) {
-                                Link(destination: link) {
-                                    HStack {
-                                        Image(systemName: "globe")
-                                        Text("Manufacturer Website")
-                                        Spacer()
-                                        Image(systemName: "arrow.up.right")
-                                    }
-                                }
+                        // Links - only show if has any links
+                        if license.manufacturerURL != nil || license.accountPortalURL != nil || license.supportURL != nil {
+                            if isEditing || license.purchaseDate != nil || license.invoiceNumber != nil || license.activationsUsed != nil || license.activationCode != nil || license.accountEmail != nil || !password.isEmpty || license.serialNumber != nil {
+                                Divider()
                             }
 
-                            if let url = license.accountPortalURL, let link = URL(string: url) {
-                                Link(destination: link) {
-                                    HStack {
-                                        Image(systemName: "person.crop.circle")
-                                        Text("Account Portal")
-                                        Spacer()
-                                        Image(systemName: "arrow.up.right")
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label("Vendor Links", systemImage: "link")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
+                                if let url = license.manufacturerURL, let link = URL(string: url) {
+                                    Link(destination: link) {
+                                        HStack {
+                                            Image(systemName: "globe")
+                                            Text("Manufacturer Website")
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right")
+                                        }
                                     }
                                 }
-                            }
 
-                            if let url = license.supportURL, let link = URL(string: url) {
-                                Link(destination: link) {
-                                    HStack {
-                                        Image(systemName: "questionmark.circle")
-                                        Text("Support")
-                                        Spacer()
-                                        Image(systemName: "arrow.up.right")
+                                if let url = license.accountPortalURL, let link = URL(string: url) {
+                                    Link(destination: link) {
+                                        HStack {
+                                            Image(systemName: "person.crop.circle")
+                                            Text("Account Portal")
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right")
+                                        }
+                                    }
+                                }
+
+                                if let url = license.supportURL, let link = URL(string: url) {
+                                    Link(destination: link) {
+                                        HStack {
+                                            Image(systemName: "questionmark.circle")
+                                            Text("Support")
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right")
+                                        }
                                     }
                                 }
                             }
@@ -503,10 +510,21 @@ struct PluginLicensePanel: View {
     // MARK: - Actions
 
     private func loadLicense() {
-        license = licenseManager.getLicense(for: pluginID)
-        if let license = license {
-            password = licenseManager.getPassword(for: pluginID) ?? ""
-        }
+        let currentPluginID = pluginID
+
+        // Load license data
+        let newLicense = licenseManager.getLicense(for: currentPluginID)
+        let newPassword = licenseManager.getPassword(for: currentPluginID) ?? ""
+
+        // Parse iLok data if needed
+        let newIsILok = newLicense?.notes?.contains("Imported from iLok License Manager") ?? false
+        let newCachedData = newIsILok ? parseILokNotes(newLicense?.notes ?? "") : [:]
+
+        // Update all state at once
+        license = newLicense
+        password = newPassword
+        isILok = newIsILok
+        cachedILokData = newCachedData
     }
 
     private func createNewLicense() {
