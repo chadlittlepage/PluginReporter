@@ -11,6 +11,7 @@ import Combine
 @MainActor
 class APIKeyManager: ObservableObject {
     @Published var apiKey: String = ""
+    @Published var validationError: String?
 
     init() {
         self.apiKey = loadAPIKey()
@@ -38,10 +39,19 @@ class APIKeyManager: ObservableObject {
     }
 
     func saveAPIKey(_ value: String) {
+        // Clear any previous validation errors
+        validationError = nil
+
         if value.isEmpty {
             // Delete from Keychain
             deleteAPIKey()
             self.apiKey = ""
+            return
+        }
+
+        // Validate API key format before saving
+        guard isValidOpenAIKey(value) else {
+            validationError = validateOpenAIKey(value) // Get specific error message
             return
         }
 
@@ -67,6 +77,56 @@ class APIKeyManager: ObservableObject {
         }
 
         self.apiKey = value
+    }
+
+    // MARK: - API Key Validation
+
+    /// Validates OpenAI API key format
+    /// - Parameter key: The API key to validate
+    /// - Returns: Error message if invalid, nil if valid
+    private func validateOpenAIKey(_ key: String) -> String? {
+        // Trim whitespace
+        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Check if empty
+        if trimmedKey.isEmpty {
+            return nil // Empty is allowed (will delete key)
+        }
+
+        // Check prefix (OpenAI keys start with "sk-" or "sk-proj-")
+        guard trimmedKey.hasPrefix("sk-") || trimmedKey.hasPrefix("sk-proj-") else {
+            return "Invalid format: OpenAI API keys must start with 'sk-' or 'sk-proj-'"
+        }
+
+        // Check minimum length (OpenAI keys are typically 48-56 characters)
+        guard trimmedKey.count >= 40 else {
+            return "Invalid length: OpenAI API keys must be at least 40 characters"
+        }
+
+        // Check maximum length (prevent extremely long strings)
+        guard trimmedKey.count <= 200 else {
+            return "Invalid length: Key is too long (max 200 characters)"
+        }
+
+        // Check for valid characters (alphanumeric, hyphens, underscores)
+        let validCharacterSet = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        guard trimmedKey.unicodeScalars.allSatisfy({ validCharacterSet.contains($0) }) else {
+            return "Invalid characters: API key can only contain letters, numbers, hyphens, and underscores"
+        }
+
+        // Check for common placeholder values
+        let placeholders = ["sk-...", "sk-your-key-here", "sk-1234567890", "sk-placeholder"]
+        if placeholders.contains(trimmedKey) {
+            return "Placeholder detected: Please enter your actual OpenAI API key"
+        }
+
+        // All checks passed
+        return nil
+    }
+
+    /// Quick validation check (returns boolean)
+    private func isValidOpenAIKey(_ key: String) -> Bool {
+        return validateOpenAIKey(key) == nil
     }
 
     private func deleteAPIKey() {

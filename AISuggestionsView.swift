@@ -464,6 +464,19 @@ struct AISettingsView: View {
             .animation(nil, value: manager.apiKey)
             .animation(nil, value: showingKey)
 
+            // Validation error message
+            if let error = manager.validationError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .padding(.vertical, 4)
+            }
+
             HStack(spacing: 4) {
                 Image(systemName: "info.circle")
                     .font(.caption)
