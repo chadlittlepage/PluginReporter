@@ -58,6 +58,12 @@
     <key>SUPPORT_URL</key>
     <string>$(SUPPORT_URL)</string>
 
+    <!-- Help Book -->
+    <key>CFBundleHelpBookFolder</key>
+    <string>PluginReporter.help</string>
+    <key>CFBundleHelpBookName</key>
+    <string>Plugin Reporter Help</string>
+
     <!-- Support URLs -->
     <key>NSPrivacyPolicyURL</key>
     <string>$(PRIVACY_POLICY_URL)</string>
@@ -82,6 +88,318 @@
             <key>UTTypeConformsTo</key>
             <array>
                 <string>public.data</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Document Types - DAW Project Files -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <!-- Ableton Live -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Ableton Live Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>als</string>
+            </array>
+        </dict>
+
+        <!-- Pro Tools -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Pro Tools Session</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>ptx</string>
+                <string>txt</string>
+            </array>
+        </dict>
+
+        <!-- Bitwig -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Bitwig Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>bwproject</string>
+            </array>
+        </dict>
+
+        <!-- Logic Pro -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Logic Pro Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.apple.package</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>logicx</string>
+            </array>
+        </dict>
+
+        <!-- GarageBand -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>GarageBand Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.apple.package</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>band</string>
+            </array>
+        </dict>
+
+        <!-- MainStage -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>MainStage Concert</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.apple.package</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>concert</string>
+            </array>
+        </dict>
+
+        <!-- Reason -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Reason Song</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>reason</string>
+            </array>
+        </dict>
+
+        <!-- Reaper -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Reaper Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>rpp</string>
+            </array>
+        </dict>
+
+        <!-- Cubase/Nuendo -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Cubase/Nuendo Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>cpr</string>
+                <string>npr</string>
+            </array>
+        </dict>
+
+        <!-- Digital Performer -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Digital Performer Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>motu</string>
+            </array>
+        </dict>
+
+        <!-- Studio One -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Studio One Song</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>song</string>
+            </array>
+        </dict>
+
+        <!-- FL Studio -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>FL Studio Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>flp</string>
+            </array>
+        </dict>
+
+        <!-- Tracktion Waveform -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Tracktion Waveform Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>tracktionedit</string>
+            </array>
+        </dict>
+
+        <!-- Ardour -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Ardour Session</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>ardour</string>
+            </array>
+        </dict>
+
+        <!-- Renoise -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Renoise Song</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>xrns</string>
+            </array>
+        </dict>
+
+        <!-- Fairlight (DaVinci Resolve) -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>DaVinci Resolve Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>drp</string>
+            </array>
+        </dict>
+
+        <!-- Mixbus/Harrison -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Mixbus Session</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>mixbus</string>
             </array>
         </dict>
     </array>

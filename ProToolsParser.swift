@@ -32,21 +32,49 @@ class ProToolsParser: DAWParser {
             throw ParserError.invalidFileType
         }
 
-        // Route to appropriate parser based on extension
+        // Route to appropriate parser based on extension and content
         if ext == "txt" {
             // Use text parser for exported session info
             return try ProToolsTextParser.parseProject(url: url)
         } else {
-            // Parse binary PTX file
-            return try parseBinaryPTX(url: url)
+            // Check if PTX is XML or binary (read once, pass through)
+            let data = try Data(contentsOf: url)
+
+            // Check if it starts with XML declaration
+            if let prefix = String(data: data.prefix(100), encoding: .utf8),
+               prefix.contains("<?xml") {
+                // This is an XML PTX file (test format)
+                return try parseXMLPTX(url: url, data: data)
+            } else {
+                // Parse binary PTX file (pass data to avoid re-reading)
+                return try parseBinaryPTX(url: url, data: data)
+            }
         }
+    }
+
+    // MARK: - XML PTX Parsing (Test Format)
+
+    private static func parseXMLPTX(url: URL, data: Data) throws -> ParsedProject {
+        // Parse XML
+        let parser = ProToolsXMLParser()
+        try parser.parse(data: data)
+
+        return ParsedProject(
+            name: url.deletingPathExtension().lastPathComponent,
+            sourceFile: url,
+            dawType: .proTools,
+            tracks: parser.tracks,
+            tempo: parser.tempo,
+            sampleRate: parser.sampleRate,
+            version: parser.version,
+            key: nil
+        )
     }
 
     // MARK: - Binary PTX Parsing
 
-    private static func parseBinaryPTX(url: URL) throws -> ParsedProject {
-        // Read the binary PTX file
-        let data = try Data(contentsOf: url)
+    private static func parseBinaryPTX(url: URL, data: Data) throws -> ParsedProject {
+        // Data already passed in - no duplicate file read!
 
         // Validate file is not empty
         guard !data.isEmpty else {
@@ -260,6 +288,153 @@ class ProToolsParser: DAWParser {
         }
 
         return nil
+    }
+}
+
+// MARK: - XML Parser
+
+private class ProToolsXMLParser: NSObject, XMLParserDelegate {
+
+    var tempo: Double?
+    var sampleRate: Int?
+    var version: String?
+    var tracks: [ParsedTrack] = []
+
+    private var currentTrackName: String?
+    private var currentTrackIndex = 0
+    private var currentPlugins: [ParsedPlugin] = []
+    private var currentDeviceIndex = 0
+
+    // XML parsing state
+    private var elementStack: [String] = []
+    private var currentAttributes: [String: String] = [:]
+
+    // Plugin parsing state
+    private var currentPluginName = ""
+    private var currentManufacturer = ""
+    private var currentPluginFormat: PluginFormat = .AAX
+
+    func parse(data: Data) throws {
+        let xmlParser = XMLParser(data: data)
+        xmlParser.delegate = self
+
+        guard xmlParser.parse() else {
+            throw ParserError.xmlParsingFailed
+        }
+
+        print("\n📊 PRO TOOLS XML PARSING COMPLETE")
+        print("   Total tracks: \(tracks.count)")
+        print("   Total plugins: \(tracks.flatMap { $0.plugins }.count)")
+        print("   Version: \(version ?? "not found")")
+        print("---\n")
+    }
+
+    // MARK: - XMLParserDelegate
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?,
+                attributes attributeDict: [String : String] = [:]) {
+
+        elementStack.append(elementName)
+        currentAttributes = attributeDict
+
+        // Session metadata
+        if elementName == "Session" {
+            if let versionString = attributeDict["version"] {
+                version = "Pro Tools \(versionString)"
+            }
+        }
+
+        // Track detection
+        if elementName == "Track" {
+            currentTrackName = attributeDict["name"] ?? "Track \(currentTrackIndex + 1)"
+            currentPlugins = []
+            currentDeviceIndex = 0
+            print("🎵 Found track: \(currentTrackName ?? "Unnamed")")
+        }
+
+        // Plugin detection
+        if elementName == "Plugin" {
+            currentPluginName = attributeDict["name"] ?? ""
+            currentManufacturer = attributeDict["manufacturer"] ?? "Unknown"
+
+            // Determine format from type attribute
+            if let type = attributeDict["type"] {
+                currentPluginFormat = parsePluginType(type)
+            } else {
+                currentPluginFormat = .AAX  // Default for Pro Tools
+            }
+
+            // Add plugin immediately
+            if !currentPluginName.isEmpty {
+                let plugin = ParsedPlugin(
+                    name: currentPluginName,
+                    manufacturer: currentManufacturer,
+                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
+                    trackIndex: currentTrackIndex,
+                    deviceIndex: currentDeviceIndex,
+                    format: currentPluginFormat
+                )
+                currentPlugins.append(plugin)
+                currentDeviceIndex += 1
+                print("   ✅ Added plugin: \(currentPluginName) (\(currentPluginFormat))")
+
+                // Reset
+                currentPluginName = ""
+                currentManufacturer = ""
+            }
+        }
+    }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?) {
+
+        // End of track
+        if elementName == "Track" {
+            // Always add track, even if it has no plugins
+            let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
+            let track = ParsedTrack(
+                name: trackName,
+                index: currentTrackIndex,
+                plugins: currentPlugins
+            )
+            tracks.append(track)
+
+            if currentPlugins.isEmpty {
+                print("🎵 Added track '\(trackName)' (no plugins)")
+            } else {
+                print("🎵 Added track '\(trackName)' with \(currentPlugins.count) plugins")
+            }
+
+            currentTrackIndex += 1
+            currentTrackName = nil
+            currentPlugins = []
+            currentDeviceIndex = 0
+        }
+
+        elementStack.removeLast()
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        // Not needed for this simple XML format
+    }
+
+    // MARK: - Helper Methods
+
+    private func parsePluginType(_ typeString: String) -> PluginFormat {
+        let lower = typeString.lowercased()
+
+        if lower.contains("aax") {
+            return .AAX
+        } else if lower.contains("vst3") {
+            return .VST3
+        } else if lower.contains("vst") {
+            return .VST
+        } else if lower.contains("au") || lower.contains("audiounit") {
+            return .AU
+        } else {
+            return .AAX  // Default for Pro Tools
+        }
     }
 }
 

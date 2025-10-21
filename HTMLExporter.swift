@@ -17,12 +17,20 @@ enum HTMLExporter {
         </style>
         """
         let header =
-        "<tr><th>Name</th><th>Publisher</th><th>Version</th><th>Type</th><th>Style</th><th>Architectures</th><th>Date</th><th>Size</th><th>Path</th><th>Requirement</th><th>Obsolete</th></tr>"
+        "<tr><th>Name</th><th>Publisher</th><th>Version</th><th>License</th><th>Type</th><th>Style</th><th>Architectures</th><th>Date</th><th>Size</th><th>Path</th><th>Requirement</th><th>Obsolete</th></tr>"
         let rowsHTML = rows.map { r in
-            "<tr>" + [
+            // Get license type (macOS only, LicenseManager not available on iOS)
+            #if os(macOS)
+            let licenseType = LicenseTypeHelper.getCachedLicenseType(for: r)
+            #else
+            let licenseType = ""
+            #endif
+
+            return "<tr>" + [
                 r.name,
                 metadataManager.getDisplayPublisher(for: r),
                 metadataManager.getDisplayVersion(for: r),
+                licenseType,
                 r.type,
                 metadataManager.getDisplayStyle(for: r),
                 r.architectures,

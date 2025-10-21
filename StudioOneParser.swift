@@ -9,6 +9,7 @@
 import Foundation
 import Compression
 
+#if os(macOS)
 /// Parser for Studio One (PreSonus) project files
 class StudioOneParser: DAWParser {
 
@@ -45,53 +46,69 @@ class StudioOneParser: DAWParser {
     // MARK: - ZIP Extraction
 
     private static func extractMainXML(from url: URL) throws -> Data {
-        // Read the ZIP file
-        let zipData = try Data(contentsOf: url)
+        // Studio One .song files are ZIP archives containing song.xml
+        // We need to extract the XML file using the unzip command
 
-        // Studio One .song files contain a "song.xml" or similar main file
-        // We'll try to find and extract it
+        print("📦 Extracting Studio One .song file: \(url.lastPathComponent)")
 
-        // For now, we'll use a simpler approach: extract readable XML from the ZIP
-        // This works because Studio One stores XML in a relatively accessible way
+        // Create temporary directory for extraction
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
 
-        guard let xmlData = findXMLInZip(zipData) else {
-            throw ParserError.invalidProjectData("Could not find XML data in Studio One project")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
         }
 
-        return xmlData
+        // Unzip the .song file
+        try unzipSongFile(from: url, to: tempDir)
+
+        // Look for the main XML file (typically "song.xml" or "Song.xml")
+        let possibleXMLNames = ["song.xml", "Song.xml", "project.xml", "Project.xml"]
+
+        for xmlName in possibleXMLNames {
+            let xmlPath = tempDir.appendingPathComponent(xmlName)
+            if FileManager.default.fileExists(atPath: xmlPath.path) {
+                print("✅ Found XML file: \(xmlName)")
+                return try Data(contentsOf: xmlPath)
+            }
+        }
+
+        // If specific file not found, search for any .xml file in the temp directory
+        let fileManager = FileManager.default
+        if let enumerator = fileManager.enumerator(at: tempDir, includingPropertiesForKeys: [.isRegularFileKey]) {
+            for case let fileURL as URL in enumerator {
+                if fileURL.pathExtension.lowercased() == "xml" {
+                    print("✅ Found XML file: \(fileURL.lastPathComponent)")
+                    return try Data(contentsOf: fileURL)
+                }
+            }
+        }
+
+        throw ParserError.invalidProjectData("Could not find XML data in Studio One project")
     }
 
-    private static func findXMLInZip(_ zipData: Data) -> Data? {
-        // Look for XML file signature in the ZIP data
-        // Studio One stores the main project XML inside the ZIP
+    private static func unzipSongFile(from sourceURL: URL, to destinationURL: URL) throws {
+        // Use unzip command to extract .song file
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        process.arguments = ["-q", "-o", sourceURL.path, "-d", destinationURL.path]
 
-        // Simple approach: scan for XML content
-        // ZIP files have a specific structure, but we can look for XML markers
+        let pipe = Pipe()
+        process.standardError = pipe
 
-        guard let dataString = String(data: zipData, encoding: .utf8) else {
-            // Try ISO Latin 1 encoding
-            guard let dataString = String(data: zipData, encoding: .isoLatin1) else {
-                return nil
-            }
+        try process.run()
+        process.waitUntilExit()
 
-            // Look for XML content
-            if let xmlStart = dataString.range(of: "<?xml"),
-               let xmlEnd = dataString.range(of: "</Song>") {
-                let xmlString = String(dataString[xmlStart.lowerBound...xmlEnd.upperBound])
-                return xmlString.data(using: .utf8)
-            }
-
-            return nil
+        if process.terminationStatus != 0 {
+            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            print("❌ Unzip error: \(errorMessage)")
+            throw ParserError.decompressionFailed
         }
 
-        // Look for XML content markers
-        if let xmlStart = dataString.range(of: "<?xml"),
-           let xmlEnd = dataString.range(of: "</Song>") {
-            let xmlString = String(dataString[xmlStart.lowerBound...xmlEnd.upperBound])
-            return xmlString.data(using: .utf8)
-        }
-
-        return nil
+        print("✅ Successfully extracted .song archive")
     }
 }
 
@@ -301,3 +318,4 @@ private class StudioOneXMLParser: NSObject, XMLParserDelegate {
         characterBuffer += string
     }
 }
+#endif

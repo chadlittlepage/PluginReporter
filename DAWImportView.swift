@@ -15,7 +15,8 @@ import AppKit
 struct DAWImportView: View {
 
     @EnvironmentObject var appState: AppState
-    @StateObject private var playlistManager = DAWPlaylistManager.shared
+    @EnvironmentObject var scanner: PluginScanner
+    @ObservedObject private var playlistManager = DAWPlaylistManager.shared
 
     @State private var showImportDialog = false
     @State private var showSuccess = false
@@ -68,7 +69,9 @@ struct DAWImportView: View {
 
             Spacer()
 
-            // Recent playlists
+            // Recent playlists - TEMPORARILY DISABLED TO PREVENT CRASH
+            // TODO: Re-enable after fixing data model issues
+            /*
             if !playlistManager.playlists.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Recent Imports")
@@ -76,7 +79,7 @@ struct DAWImportView: View {
 
                     ScrollView {
                         VStack(spacing: 8) {
-                            ForEach(playlistManager.playlistsByDate.prefix(5)) { playlist in
+                            ForEach(Array(playlistManager.playlistsByDate.prefix(5))) { playlist in
                                 PlaylistRow(playlist: playlist)
                             }
                         }
@@ -86,6 +89,7 @@ struct DAWImportView: View {
                 .frame(maxWidth: 500)
                 .padding(.horizontal)
             }
+            */
 
             Spacer()
         }
@@ -154,9 +158,10 @@ struct DAWImportView: View {
 
     private func importProject(url: URL) async {
         do {
+            let plugins = scanner.plugins.map(AppPluginItem.init)
             let playlist = try await playlistManager.importProject(
                 url: url,
-                installedPlugins: appState.all
+                installedPlugins: plugins
             )
 
             await MainActor.run {
@@ -180,7 +185,7 @@ private struct PlaylistRow: View {
     var body: some View {
         HStack(spacing: 12) {
             // Icon
-            Image(systemName: playlist.dawType == .abletonLive ? "waveform" : "music.note")
+            Image(systemName: dawIcon)
                 .font(.title3)
                 .foregroundColor(.accentColor)
                 .frame(width: 32)
@@ -201,9 +206,15 @@ private struct PlaylistRow: View {
                             .foregroundColor(.orange)
                     }
 
-                    Text(playlist.dateImported, style: .relative)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if #available(macOS 12.0, *) {
+                        Text(playlist.dateImported, style: .relative)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text(dateString)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
 
@@ -223,6 +234,41 @@ private struct PlaylistRow: View {
         .padding(12)
         .background(Color.secondary.opacity(0.1))
         .cornerRadius(8)
+    }
+
+    private var dateString: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: playlist.dateImported, relativeTo: Date())
+    }
+
+    // MARK: - Helpers
+
+    private var dawIcon: String {
+        guard let dawType = playlist.dawType else {
+            return "music.note"  // Default for custom playlists
+        }
+
+        switch dawType {
+        case .abletonLive: return "waveform"
+        case .logicPro: return "music.quarternote.3"
+        case .garageBand: return "guitars"
+        case .mainStage: return "play.circle"
+        case .studioOne: return "music.note.house.fill"
+        case .cubase: return "square.grid.3x3.square"
+        case .nuendo: return "square.grid.3x3.fill.square"
+        case .digitalPerformer: return "metronome.fill"
+        case .reaper: return "slider.horizontal.3"
+        case .reason: return "line.3.crossed.swirl.circle.fill"
+        case .proTools: return "waveform.path.ecg"
+        case .bitwig: return "circle.hexagongrid.fill"
+        case .flStudio: return "waveform.path.badge.plus"
+        case .tracktion: return "waveform.badge.magnifyingglass"
+        case .ardour: return "waveform.circle"
+        case .mixbus: return "slider.vertical.3"
+        case .renoise: return "square.grid.3x2"
+        case .fairlight: return "film"
+        }
     }
 }
 

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archive & Restore - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Archive & Restore</h1>
+        <p class="subtitle">Backup and protect your Plugin Reporter data</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Overview</h2>
+            <p>The Archive & Restore feature provides a complete backup solution for all your Plugin Reporter data. Create encrypted archives of your ratings, tags, notes, playlists, and preferences, and restore them on any Mac.</p>
+
+            <div class="tip">
+                <strong>Why Backup?</strong>
+                <ul>
+                    <li>Protect years of ratings and organizational work</li>
+                    <li>Move to a new computer seamlessly</li>
+                    <li>Recover from accidental deletions</li>
+                    <li>Share your plugin setup with collaborators</li>
+                    <li>Keep historical snapshots of your plugin library</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>What Gets Archived</h2>
+            <p>A Plugin Reporter archive contains:</p>
+
+            <table>
+                <tr>
+                    <th>Data Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>⭐ Ratings</td>
+                    <td>All star ratings you've assigned to plugins</td>
+                </tr>
+                <tr>
+                    <td>🏷️ Tags</td>
+                    <td>Custom tags and tag assignments</td>
+                </tr>
+                <tr>
+                    <td>📝 Notes</td>
+                    <td>Personal notes for each plugin</td>
+                </tr>
+                <tr>
+                    <td>🎵 Playlists</td>
+                    <td>All imported DAW projects and custom playlists</td>
+                </tr>
+                <tr>
+                    <td>📊 Metadata</td>
+                    <td>Custom plugin metadata and user edits</td>
+                </tr>
+                <tr>
+                    <td>⚙️ Preferences</td>
+                    <td>App settings and preferences</td>
+                </tr>
+            </table>
+
+            <div class="note">
+                <strong>Note:</strong> The archive does NOT include the actual plugin files themselves - only your organizational data and metadata. Plugin files must be reinstalled separately.
+            </div>
+        </section>
+
+        <section>
+            <h2>Creating an Archive</h2>
+
+            <h3>Step-by-Step</h3>
+            <ol class="step-list">
+                <li>Choose <strong>Plugin Reporter > Settings</strong> (or press <kbd>⌘,</kbd>)</li>
+                <li>Scroll to the <strong>Backup & Restore</strong> section</li>
+                <li>Click <strong>Export Archive</strong></li>
+                <li>Choose whether to encrypt with a password (highly recommended)</li>
+                <li>If encrypting, enter and confirm your password</li>
+                <li>Choose a save location</li>
+                <li>Click <strong>Export</strong></li>
+            </ol>
+
+            <div class="warning">
+                <strong>Important Password Information:</strong>
+                <ul>
+                    <li>If you encrypt your archive, <strong>you MUST remember the password</strong></li>
+                    <li>There is no password recovery - lost passwords = lost archive</li>
+                    <li>Use a strong, unique password</li>
+                    <li>Consider using a password manager</li>
+                    <li>Store the password separately from the archive file</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Encryption</h2>
+
+            <h3>Why Encrypt?</h3>
+            <p>Encryption protects your data if:</p>
+            <ul>
+                <li>You store the archive in cloud storage (Dropbox, iCloud Drive, etc.)</li>
+                <li>You share your computer or backups with others</li>
+                <li>The archive contains sensitive notes or project information</li>
+                <li>You want maximum security for your data</li>
+            </ul>
+
+            <h3>Encryption Technology</h3>
+            <p>Plugin Reporter uses industry-standard AES-256-GCM encryption:</p>
+            <ul>
+                <li><strong>AES-256</strong> - Advanced Encryption Standard with 256-bit keys</li>
+                <li><strong>GCM Mode</strong> - Galois/Counter Mode for authenticated encryption</li>
+                <li><strong>PBKDF2</strong> - Password-Based Key Derivation with 100,000 iterations</li>
+                <li><strong>SHA256</strong> - Secure hash algorithm for key generation</li>
+                <li><strong>Random Salt</strong> - Unique salt for each archive prevents rainbow table attacks</li>
+            </ul>
+
+            <div class="note">
+                <strong>Technical Note:</strong> This is the same encryption technology used by banks, governments, and security-conscious organizations worldwide. Your data is as secure as your password.
+            </div>
+
+            <h3>Unencrypted Archives</h3>
+            <p>You can also create unencrypted archives if:</p>
+            <ul>
+                <li>The data is not sensitive</li>
+                <li>You want to inspect the archive contents manually</li>
+                <li>You're storing the archive in a secure location</li>
+            </ul>
+            <p>Unencrypted archives are standard ZIP files that can be opened by any ZIP utility.</p>
+        </section>
+
+        <section>
+            <h2>Restoring from an Archive</h2>
+
+            <h3>Step-by-Step</h3>
+            <ol class="step-list">
+                <li>Choose <strong>Plugin Reporter > Settings</strong></li>
+                <li>Scroll to <strong>Backup & Restore</strong></li>
+                <li>Click <strong>Import Archive</strong></li>
+                <li>Select your <code>.pluginreporter</code> archive file</li>
+                <li>If encrypted, enter the password when prompted</li>
+                <li>Review the archive contents and metadata</li>
+                <li>Choose <strong>Replace All Data</strong> or <strong>Merge with Existing</strong></li>
+                <li>Confirm the import</li>
+                <li>Plugin Reporter will restart to load the restored data</li>
+            </ol>
+
+            <h3>Merge vs. Replace</h3>
+            <p>When restoring, you have two options:</p>
+
+            <table>
+                <tr>
+                    <th>Mode</th>
+                    <th>What Happens</th>
+                    <th>Best For</th>
+                </tr>
+                <tr>
+                    <td><strong>Replace All</strong></td>
+                    <td>Completely overwrites all current data with archive contents</td>
+                    <td>New computer setup, starting fresh, recovering from data loss</td>
+                </tr>
+                <tr>
+                    <td><strong>Merge</strong></td>
+                    <td>Combines archive data with current data (archive takes precedence for conflicts)</td>
+                    <td>Syncing between computers, selective restoration, adding historical data</td>
+                </tr>
+            </table>
+
+            <div class="warning">
+                <strong>Before Restoring:</strong> Consider creating a backup of your current data first! Once you replace your data, the previous state is lost unless you have another backup.
+            </div>
+        </section>
+
+        <section>
+            <h2>Archive Management</h2>
+
+            <h3>Naming Conventions</h3>
+            <p>Plugin Reporter automatically names archives with the date:</p>
+            <code>Plugin Reporter Backup 1/20/25.pluginreporter</code>
+
+            <p>Consider adding descriptive names for different purposes:</p>
+            <ul>
+                <li><code>Plugin Reporter - Studio Mac - 2025-01-20.pluginreporter</code></li>
+                <li><code>Plugin Reporter - Before Migration.pluginreporter</code></li>
+                <li><code>Plugin Reporter - Monthly Backup Jan 2025.pluginreporter</code></li>
+            </ul>
+
+            <h3>Storage Locations</h3>
+            <p>Recommended places to store archives:</p>
+
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h4>☁️ Cloud Storage</h4>
+                    <p>iCloud Drive, Dropbox, Google Drive (use encryption!)</p>
+                </div>
+                <div class="feature-item">
+                    <h4>💾 External Drive</h4>
+                    <p>USB drive, SSD, NAS</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🖥️ Time Machine</h4>
+                    <p>Included in macOS backups automatically</p>
+                </div>
+                <div class="feature-item">
+                    <h4>📧 Email</h4>
+                    <p>Email to yourself (encrypted archives only)</p>
+                </div>
+            </div>
+
+            <h3>Backup Schedule</h3>
+            <p>How often should you create archives?</p>
+            <ul>
+                <li><strong>Weekly</strong> - If you're actively rating and organizing plugins</li>
+                <li><strong>Monthly</strong> - For regular maintenance</li>
+                <li><strong>Before major changes</strong> - New computer, OS upgrade, bulk edits</li>
+                <li><strong>After importing many projects</strong> - Don't lose that work!</li>
+            </ul>
+
+            <div class="tip">
+                <strong>Pro Tip:</strong> Keep multiple archive versions with dates. Disk space is cheap, and you never know when you'll need to go back to an earlier state.
+            </div>
+        </section>
+
+        <section>
+            <h2>Use Cases</h2>
+
+            <h3>New Computer Setup</h3>
+            <p>Moving to a new Mac? Here's the workflow:</p>
+            <ol class="step-list">
+                <li>On old Mac: Create an encrypted archive</li>
+                <li>Transfer archive to new Mac (USB drive, cloud, AirDrop, etc.)</li>
+                <li>On new Mac: Install Plugin Reporter</li>
+                <li>Restore the archive (choose "Replace All")</li>
+                <li>All your ratings, tags, notes, and playlists are back!</li>
+            </ol>
+
+            <h3>Syncing Multiple Computers</h3>
+            <p>Keep your studio and laptop in sync:</p>
+            <ol class="step-list">
+                <li>On Studio Mac: Create an archive, save to cloud storage</li>
+                <li>On Laptop: Import the archive (choose "Merge")</li>
+                <li>Work on laptop, create new archive when done</li>
+                <li>Back on Studio Mac: Import laptop archive (choose "Merge")</li>
+            </ol>
+
+            <div class="note">
+                <strong>iCloud Sync:</strong> Plugin Reporter also supports automatic iCloud sync for ratings, tags, and notes. Enable in Settings > General > iCloud Sync. Archives provide an additional backup layer and are useful for full data portability.
+            </div>
+
+            <h3>Collaboration</h3>
+            <p>Share your plugin setup with collaborators:</p>
+            <ol class="step-list">
+                <li>Create an unencrypted archive (or share password securely)</li>
+                <li>Send archive to collaborator</li>
+                <li>They import (choose "Merge" to keep their own ratings)</li>
+                <li>Now you both have the same playlist and plugin organization</li>
+            </ol>
+
+            <h3>Disaster Recovery</h3>
+            <p>Accidentally deleted all your ratings?</p>
+            <ol class="step-list">
+                <li>Locate your most recent archive</li>
+                <li>Import it (choose "Replace All")</li>
+                <li>Plugin Reporter restarts with your data restored</li>
+                <li>Crisis averted! 🎉</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Archive File Format</h2>
+
+            <h3>File Structure</h3>
+            <p>Plugin Reporter archives (<code>.pluginreporter</code>) are ZIP files containing:</p>
+            <ul>
+                <li><code>manifest.json</code> - Archive metadata and inventory</li>
+                <li><code>data.json</code> - All ratings, tags, notes, playlists, and preferences</li>
+            </ul>
+
+            <p>If encrypted, the contents are:</p>
+            <ul>
+                <li><code>encrypted.bin</code> - AES-256 encrypted data bundle</li>
+                <li><code>salt</code> - Random salt for key derivation</li>
+            </ul>
+
+            <h3>Archive Validation</h3>
+            <p>Before importing, Plugin Reporter validates:</p>
+            <ul>
+                <li>File integrity (not corrupted)</li>
+                <li>Format version compatibility</li>
+                <li>Data structure validity</li>
+                <li>Password correctness (for encrypted archives)</li>
+            </ul>
+
+            <p>If validation fails, Plugin Reporter will display a detailed error message.</p>
+        </section>
+
+        <section>
+            <h2>Troubleshooting</h2>
+
+            <h3>Can't Open Archive</h3>
+            <p>If you can't import an archive:</p>
+            <ul>
+                <li>Verify the file extension is <code>.pluginreporter</code></li>
+                <li>Check that the file isn't corrupted (try unzipping manually)</li>
+                <li>Ensure you're using a compatible version of Plugin Reporter</li>
+                <li>If encrypted, verify the password is correct</li>
+            </ul>
+
+            <h3>Wrong Password</h3>
+            <p>If the password doesn't work:</p>
+            <ul>
+                <li>Check for typos and capitalization</li>
+                <li>Try pasting the password from your password manager</li>
+                <li>Verify you're using the correct archive file</li>
+                <li><strong>Important:</strong> There is no password recovery - if lost, the archive cannot be opened</li>
+            </ul>
+
+            <h3>Import Succeeds But Data Missing</h3>
+            <p>If the import completes but data is missing:</p>
+            <ul>
+                <li>Check if you chose "Merge" - your existing data is still there</li>
+                <li>Restart Plugin Reporter manually</li>
+                <li>Check Settings > General to verify data loaded correctly</li>
+                <li>Try "Replace All" mode instead of "Merge"</li>
+            </ul>
+
+            <h3>Archive Too Large</h3>
+            <p>Archives are typically very small (usually under 1 MB), but if you have thousands of playlists:</p>
+            <ul>
+                <li>Consider archiving selectively (feature coming soon)</li>
+                <li>Delete old/unused playlists before archiving</li>
+                <li>Large archives (even 10-20 MB) should work fine</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Best Practices</h2>
+
+            <div class="tip">
+                <h3>Archive Safety Checklist</h3>
+                <ul>
+                    <li>✅ Create archives regularly (weekly or monthly)</li>
+                    <li>✅ Always use encryption for archives stored in the cloud</li>
+                    <li>✅ Test your archives by importing on a test account</li>
+                    <li>✅ Store archives in multiple locations (3-2-1 backup rule)</li>
+                    <li>✅ Keep archive passwords in a password manager</li>
+                    <li>✅ Name archives with dates for easy identification</li>
+                    <li>✅ Create an archive before major app updates or OS upgrades</li>
+                    <li>✅ Don't delete old archives - disk space is cheap!</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Related Topics</h2>
+            <ul>
+                <li><a href="icloud.html">iCloud Sync</a></li>
+                <li><a href="exporting.html">Exporting Plugin Lists</a></li>
+                <li><a href="preferences.html">Managing Preferences</a></li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Home</a></p>
+        <p>&copy; 2025 Chad Littlepage. All rights reserved.</p>
+    </footer>
+</body>
+</html>

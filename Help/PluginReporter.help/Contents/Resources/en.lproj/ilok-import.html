@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importing from iLok - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Importing from iLok License Manager</h1>
+        <p class="subtitle">Bulk import your plugin licenses in seconds</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Overview</h2>
+            <p>Plugin Reporter can import license information directly from iLok License Manager's CSV export feature. This powerful integration allows you to:</p>
+            <ul>
+                <li>Import hundreds of licenses at once</li>
+                <li>Automatically match licenses to your installed plugins</li>
+                <li>Save hours of manual data entry</li>
+                <li>Keep your license vault synchronized with iLok</li>
+            </ul>
+
+            <div class="tip">
+                <h4>💡 One-Time Setup</h4>
+                <p>This is typically a one-time process. Once imported, you can update individual licenses as needed in the License Vault.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 1: Export from iLok License Manager</h2>
+            <p>First, you'll need to export your license data from iLok License Manager:</p>
+
+            <ol>
+                <li><strong>Open iLok License Manager</strong>
+                    <ul>
+                        <li>Launch the iLok License Manager application</li>
+                        <li>Make sure you're signed in to your iLok account</li>
+                    </ul>
+                </li>
+
+                <li><strong>View Your Licenses</strong>
+                    <ul>
+                        <li>Make sure you're viewing <em>your licenses</em> (not a specific iLok device)</li>
+                        <li>You should see all your licenses in the main window</li>
+                    </ul>
+                </li>
+
+                <li><strong>Customize Columns (Optional)</strong>
+                    <ul>
+                        <li>Right-click on the table header</li>
+                        <li>Check the columns you want to export</li>
+                        <li>Recommended: Product Name, Publisher, Serial Number, Location, Type</li>
+                    </ul>
+                </li>
+
+                <li><strong>Export to CSV</strong>
+                    <ul>
+                        <li>Look for the <strong>"Export CSV"</strong> button (toolbar or File menu)</li>
+                        <li>Click it and save the file</li>
+                        <li>Choose a memorable location (like Desktop or Downloads)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <div class="warning">
+                <h4>⚠️ Common Issue</h4>
+                <p>Make sure you're exporting the <em>license list</em>, not device information or account settings. The export should contain plugin/software names and publishers.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 2: Import to Plugin Reporter</h2>
+            <p>Now import the CSV file into Plugin Reporter:</p>
+
+            <ol>
+                <li><strong>Open Settings</strong>
+                    <ul>
+                        <li>Press <strong>⌘,</strong> or go to Plugin Reporter → Settings</li>
+                    </ul>
+                </li>
+
+                <li><strong>Navigate to License Import</strong>
+                    <ul>
+                        <li>Scroll down to the <strong>"License Import"</strong> section</li>
+                        <li>Click the <strong>"Import from iLok"</strong> button</li>
+                    </ul>
+                </li>
+
+                <li><strong>Follow the Import Wizard</strong>
+                    <ul>
+                        <li>Read the step-by-step instructions</li>
+                        <li>Click <strong>"Select CSV File"</strong></li>
+                        <li>Choose the file you exported from iLok License Manager</li>
+                    </ul>
+                </li>
+
+                <li><strong>Wait for Processing</strong>
+                    <ul>
+                        <li>Plugin Reporter will parse the CSV file</li>
+                        <li>It will match licenses to your installed plugins</li>
+                        <li>This usually takes a few seconds</li>
+                    </ul>
+                </li>
+
+                <li><strong>Review Results</strong>
+                    <ul>
+                        <li>You'll see a detailed import summary</li>
+                        <li>Total licenses found</li>
+                        <li>Successfully matched plugins</li>
+                        <li>Unmatched licenses (explained below)</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Understanding Import Results</h2>
+
+            <h3>Successfully Matched</h3>
+            <p>These licenses were automatically matched to plugins in your library:</p>
+            <ul>
+                <li>License data populated in the License Vault</li>
+                <li>Serial numbers, activation tracking, and notes added</li>
+                <li>Ready to use immediately</li>
+            </ul>
+
+            <h3>Unmatched Licenses</h3>
+            <p>Some licenses may not match to installed plugins. This is normal and happens when:</p>
+            <ul>
+                <li><strong>Plugin not installed</strong> - You own the license but haven't installed the plugin</li>
+                <li><strong>Name mismatch</strong> - iLok uses different product names than the installed plugin</li>
+                <li><strong>Bundle licenses</strong> - The license is for a bundle, but individual plugins are installed</li>
+                <li><strong>Different publisher names</strong> - Publisher name differs between iLok and plugin metadata</li>
+            </ul>
+
+            <div class="tip">
+                <h4>💡 What to Do with Unmatched Licenses</h4>
+                <p>Review the unmatched list and:</p>
+                <ul>
+                    <li>Manually add license info for installed plugins that didn't match</li>
+                    <li>Keep a note of licenses for plugins you might install later</li>
+                    <li>Re-import after installing new plugins</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>How Matching Works</h2>
+            <p>Plugin Reporter uses a smart 3-stage matching algorithm:</p>
+
+            <h3>Stage 1: Exact Match</h3>
+            <ul>
+                <li>Matches by Product Name + Publisher</li>
+                <li>Example: "FabFilter Pro-Q 3" + "FabFilter" ✓</li>
+                <li>Most accurate, highest priority</li>
+            </ul>
+
+            <h3>Stage 2: Name-Only Match</h3>
+            <ul>
+                <li>Matches by Product Name only (case-insensitive)</li>
+                <li>Example: "Pro-Q 3" → finds "FabFilter Pro-Q 3" ✓</li>
+                <li>Used when publisher name differs</li>
+            </ul>
+
+            <h3>Stage 3: Fuzzy Match</h3>
+            <ul>
+                <li>Matches by substring contains</li>
+                <li>Example: "Waves SSL" → finds "SSL G-Master Buss Compressor" ✓</li>
+                <li>Catches abbreviated or partial names</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>What Gets Imported</h2>
+
+            <table>
+                <tr>
+                    <th>iLok Field</th>
+                    <th>Maps To</th>
+                    <th>Notes</th>
+                </tr>
+                <tr>
+                    <td>Product Name</td>
+                    <td>Plugin Name</td>
+                    <td>Used for matching</td>
+                </tr>
+                <tr>
+                    <td>Publisher</td>
+                    <td>Publisher</td>
+                    <td>Used for matching</td>
+                </tr>
+                <tr>
+                    <td>Serial Number</td>
+                    <td>Serial Number</td>
+                    <td>Your license key</td>
+                </tr>
+                <tr>
+                    <td>Location</td>
+                    <td>Notes</td>
+                    <td>"Local Computer", "iLok", "iLok Cloud"</td>
+                </tr>
+                <tr>
+                    <td>License Type</td>
+                    <td>Notes</td>
+                    <td>"Full", "Subscription", etc.</td>
+                </tr>
+                <tr>
+                    <td>Quantity</td>
+                    <td>Activations Used</td>
+                    <td>How many seats are activated</td>
+                </tr>
+                <tr>
+                    <td>Version</td>
+                    <td>Notes</td>
+                    <td>License version number</td>
+                </tr>
+                <tr>
+                    <td>Expiration</td>
+                    <td>Notes</td>
+                    <td>For subscription licenses</td>
+                </tr>
+            </table>
+
+            <div class="tip">
+                <h4>📝 Auto-Generated Notes</h4>
+                <p>Plugin Reporter automatically creates notes like:</p>
+                <pre>Location: Local Computer
+Type: Full
+Imported from iLok License Manager</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>Data Merging</h2>
+            <p>If you've already added license information manually, Plugin Reporter intelligently merges the data:</p>
+
+            <h3>Preserved (Not Overwritten)</h3>
+            <ul>
+                <li>Existing serial numbers</li>
+                <li>Manually entered passwords</li>
+                <li>Purchase dates</li>
+                <li>Invoice numbers</li>
+                <li>Custom notes</li>
+                <li>Vendor URLs</li>
+            </ul>
+
+            <h3>Added (If Missing)</h3>
+            <ul>
+                <li>Serial numbers from iLok</li>
+                <li>Activation tracking</li>
+                <li>Location and type info</li>
+            </ul>
+
+            <h3>Appended</h3>
+            <ul>
+                <li>Notes - iLok import info is added to existing notes</li>
+            </ul>
+
+            <div class="tip">
+                <h4>✅ Safe to Re-Import</h4>
+                <p>You can safely re-import the same file multiple times. Your manual edits won't be lost!</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Troubleshooting</h2>
+
+            <h3>Import Failed: "No Product Name column found"</h3>
+            <p><strong>Cause:</strong> The CSV doesn't have a Product Name column or is in the wrong format.</p>
+            <p><strong>Solution:</strong></p>
+            <ul>
+                <li>Make sure you exported the <em>license list</em>, not device info</li>
+                <li>Try re-exporting from iLok with default columns</li>
+                <li>Check that the file is actually a CSV (not Excel or PDF)</li>
+            </ul>
+
+            <h3>Import Failed: "Invalid CSV format"</h3>
+            <p><strong>Cause:</strong> The file is empty or corrupted.</p>
+            <p><strong>Solution:</strong></p>
+            <ul>
+                <li>Open the CSV in a text editor to verify it has content</li>
+                <li>Re-export from iLok License Manager</li>
+                <li>Make sure the file wasn't modified after export</li>
+            </ul>
+
+            <h3>Many Licenses Show as "Unmatched"</h3>
+            <p><strong>Cause:</strong> Product names in iLok don't match installed plugin names.</p>
+            <p><strong>Solution:</strong></p>
+            <ul>
+                <li>This is normal - not all licenses will match</li>
+                <li>Review the unmatched list to identify false negatives</li>
+                <li>Manually add license info for important plugins</li>
+                <li>Install missing plugins, then re-import</li>
+            </ul>
+
+            <h3>Import Seems Slow</h3>
+            <p><strong>Cause:</strong> Large license libraries take longer to process.</p>
+            <p><strong>Expected Times:</strong></p>
+            <ul>
+                <li>100 licenses: ~1 second</li>
+                <li>500 licenses: ~3 seconds</li>
+                <li>1000+ licenses: ~5-10 seconds</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Re-Importing After Changes</h2>
+            <p>You can re-import at any time to update license data:</p>
+
+            <h3>When to Re-Import</h3>
+            <ul>
+                <li>After purchasing new plugins</li>
+                <li>After installing previously owned plugins</li>
+                <li>When license information changes in iLok</li>
+                <li>After updating to new plugin versions</li>
+            </ul>
+
+            <h3>What Happens on Re-Import</h3>
+            <ol>
+                <li>New licenses are imported</li>
+                <li>Existing data is preserved (merged, not replaced)</li>
+                <li>Updated activation counts are reflected</li>
+                <li>No duplicate entries are created</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Privacy & Security</h2>
+
+            <h3>What's Included</h3>
+            <ul>
+                <li>Serial numbers and license keys</li>
+                <li>Product names and publishers</li>
+                <li>Activation counts and locations</li>
+                <li>License types and versions</li>
+            </ul>
+
+            <h3>What's NOT Included</h3>
+            <ul>
+                <li>Passwords (not in iLok CSV exports)</li>
+                <li>iLok account credentials</li>
+                <li>Personal account information</li>
+                <li>Payment information</li>
+            </ul>
+
+            <h3>Data Storage</h3>
+            <ul>
+                <li>All imported data stored locally on your Mac</li>
+                <li>Optional iCloud sync via CloudSyncStorage</li>
+                <li>No third-party servers involved</li>
+                <li>Complete control over your data</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Tips for Best Results</h2>
+
+            <div class="tip">
+                <h4>✅ Do This</h4>
+                <ul>
+                    <li><strong>Include all columns</strong> when exporting from iLok</li>
+                    <li><strong>Keep CSV file</strong> for future re-imports</li>
+                    <li><strong>Review unmatched licenses</strong> to catch false negatives</li>
+                    <li><strong>Manual cleanup</strong> after import for perfect accuracy</li>
+                    <li><strong>Create backup</strong> after importing (Settings → Export Archive)</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ Avoid This</h4>
+                <ul>
+                    <li>Don't edit the CSV file before importing</li>
+                    <li>Don't export device-specific views (export <em>all</em> licenses)</li>
+                    <li>Don't import the same file repeatedly without purpose</li>
+                    <li>Don't delete the CSV after first import (keep for re-importing later)</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Related Topics</h2>
+            <ul>
+                <li><a href="license-vault.html">License Vault Overview</a> - Main license management features</li>
+                <li><a href="adding-licenses.html">Adding License Information</a> - Manual entry for unmatched licenses</li>
+                <li><a href="license-security.html">Security & Keychain</a> - How your data is protected</li>
+                <li><a href="archive.html">Archive & Restore</a> - Backup imported licenses</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Index</a></p>
+    </footer>
+</body>
+</html>

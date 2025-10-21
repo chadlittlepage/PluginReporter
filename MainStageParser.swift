@@ -8,6 +8,7 @@
 
 import Foundation
 
+#if os(macOS)
 /// Parser for MainStage concert files (Package-based, Logic Pro compatible)
 /// Uses shared AppleDAWParser for common logic with Logic Pro and GarageBand
 class MainStageParser: DAWParser {
@@ -27,3 +28,4 @@ class MainStageParser: DAWParser {
         )
     }
 }
+#endif

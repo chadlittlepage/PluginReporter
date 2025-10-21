@@ -11,10 +11,19 @@ public enum JSONExporter {
 
         let payload: [[String: Any]] = rows.map { i in
             let dateKey: Double = i.date?.timeIntervalSince1970 ?? 0
+
+            // Get license type (macOS only, LicenseManager not available on iOS)
+            #if os(macOS)
+            let licenseType = LicenseTypeHelper.getCachedLicenseType(for: i)
+            #else
+            let licenseType = ""
+            #endif
+
             return [
                 "Name": i.name,
                 "Publisher": metadataManager.getDisplayPublisher(for: i),
                 "Version": metadataManager.getDisplayVersion(for: i),
+                "License": licenseType,
                 "Type": i.type,
                 "Style": metadataManager.getDisplayStyle(for: i),
                 "Architectures": i.architectures,

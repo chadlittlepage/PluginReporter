@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.chadlittlepage.PluginReporter.help.v2</string>
+    <key>CFBundleName</key>
+    <string>Plugin Reporter Help</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.1</string>
+    <key>CFBundleSignature</key>
+    <string>hbwr</string>
+    <key>CFBundleVersion</key>
+    <string>2</string>
+    <key>HPDBookAccessPath</key>
+    <string>index.html</string>
+    <key>HPDBookIconPath</key>
+    <string>PluginReporter.help/Contents/Resources/icon.png</string>
+    <key>HPDBookIndexPath</key>
+    <string>PluginReporter.help/Contents/Resources/search.helpindex</string>
+    <key>HPDBookTitle</key>
+    <string>Plugin Reporter Help</string>
+    <key>HPDBookType</key>
+    <string>3</string>
+    <key>HPDBookKBProduct</key>
+    <string>plugin-reporter</string>
+</dict>
+</plist>

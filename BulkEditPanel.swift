@@ -25,6 +25,7 @@ struct BulkEditPanel: View {
     @State private var bulkStyle = ""
     @State private var showNotesEditor = false
     @State private var bulkNotes = ""
+    @State private var showResetConfirmation = false
 
     private let panelWidth: CGFloat = 350
 
@@ -81,6 +82,14 @@ struct BulkEditPanel: View {
                     .frame(width: 1),
                 alignment: .leading
             )
+            .alert("Reset to Original Metadata?", isPresented: $showResetConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Reset", role: .destructive) {
+                    resetAllToOriginal()
+                }
+            } message: {
+                Text("This will restore the original metadata (Publisher, Version, Style) for all \(plugins.count) selected plugins. You can undo this action using the Undo button.")
+            }
         }
     }
 
@@ -482,6 +491,39 @@ struct BulkEditPanel: View {
                 .foregroundColor(.primary)
 
             VStack(spacing: 8) {
+                // Reset to Original and Undo buttons (horizontal layout)
+                HStack(spacing: 8) {
+                    Button(action: {
+                        showResetConfirmation = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text("Reset to Original")
+                        }
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    .disabled(!hasAnyOverrides())
+
+                    Button(action: undoAllResets) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.uturn.backward")
+                            Text("Undo")
+                        }
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.accentColor)
+                    .disabled(!canUndoAny())
+                }
+
+                Divider()
+
                 Button(action: clearAllRatings) {
                     HStack {
                         Image(systemName: "star.slash")
@@ -668,5 +710,37 @@ struct BulkEditPanel: View {
         bulkVersion = ""
         bulkStyle = ""
         print("✏️ Applied bulk metadata to \(plugins.count) plugins")
+    }
+
+    // MARK: - Reset and Undo Actions
+
+    private func hasAnyOverrides() -> Bool {
+        return plugins.contains { plugin in
+            metadataManager.hasOverride(for: plugin.path)
+        }
+    }
+
+    private func canUndoAny() -> Bool {
+        return plugins.contains { plugin in
+            metadataManager.canUndo(for: plugin.path)
+        }
+    }
+
+    private func resetAllToOriginal() {
+        for plugin in plugins {
+            metadataManager.removeOverride(for: plugin.path)
+        }
+        print("↺ Reset metadata to original for \(plugins.count) plugins")
+    }
+
+    private func undoAllResets() {
+        var undoneCount = 0
+        for plugin in plugins {
+            if metadataManager.canUndo(for: plugin.path) {
+                metadataManager.undoRemoveOverride(for: plugin.path)
+                undoneCount += 1
+            }
+        }
+        print("↶ Undone reset for \(undoneCount) of \(plugins.count) plugins")
     }
 }

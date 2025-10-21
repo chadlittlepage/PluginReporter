@@ -66,6 +66,7 @@ struct ContentView: View {
     // MARK: Detail panel state
     @State private var showDetailPanel = false
     @State private var detailPanelRefreshTrigger = false  // Toggle to force refresh
+    @State private var detailPanelTab: DetailTab = .metadata  // Current tab in detail panel
 
     // MARK: DAW Playlist state
     #if os(macOS)
@@ -79,6 +80,35 @@ struct ContentView: View {
     @State private var existingPlaylistToReplace: DAWPlaylist?
     @State private var showJSONImportDialog = false
     @State private var pendingJSONImportURL: URL?
+
+    // Pre-created panel for INSTANT access
+    private let dawPanel: NSOpenPanel = {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        // ALL 18 DAW formats supported!
+        panel.allowedFileTypes = [
+            "als",          // Ableton Live
+            "song",         // Studio One
+            "rpp",          // Reaper
+            "bwproject",    // Bitwig
+            "txt", "ptx",   // Pro Tools
+            "cpr", "npr",   // Cubase/Nuendo
+            "reason", "rns",// Reason
+            "motu",         // Digital Performer
+            "xrns",         // Renoise
+            "flp",          // FL Studio
+            "tracktionedit",// Tracktion
+            "ardour",       // Ardour
+            "mixbus",       // Mixbus
+            "drp",          // Fairlight
+            "band",         // GarageBand
+            "logicx",       // Logic Pro
+            "concert"       // MainStage
+        ]
+        return panel
+    }()
     #endif
 
     private func toggleDetailPanel() {
@@ -128,71 +158,55 @@ struct ContentView: View {
         // Apply playlist filter if active
         #if os(macOS)
         if !activePlaylistFilters.isEmpty {
-            // Create a dictionary mapping (name, format) to track names and entries from ALL selected playlists
-            var playlistTrackMap: [String: [String]] = [:]
+            // Optimized single-pass playlist filtering using FilterUtils
+            // Build track map and collect all entries in one pass
             var allPlaylistEntries: [DAWPlaylistEntry] = []
-
             for activePlaylist in activePlaylistFilters {
-                for entry in activePlaylist.entries {
-                    allPlaylistEntries.append(entry)
-                    let key = "\(entry.pluginName.lowercased())_\(entry.pluginFormat.rawValue)"
-                    if playlistTrackMap[key] == nil {
-                        playlistTrackMap[key] = []
-                    }
-                    if !playlistTrackMap[key]!.contains(entry.trackName) {
-                        playlistTrackMap[key]?.append(entry.trackName)
-                    }
-                }
+                allPlaylistEntries.append(contentsOf: activePlaylist.entries)
             }
 
-            // Filter installed plugins and add track names
-            var installedPlugins = filtered.compactMap { plugin -> AppPluginItem? in
-                let key = "\(plugin.name.lowercased())_\(plugin.type)"
+            let playlistTrackMap = FilterUtils.buildPluginTrackMap(from: allPlaylistEntries)
+
+            // Single-pass: find installed plugins and build missing set simultaneously
+            var installedPlugins: [AppPluginItem] = []
+            var installedKeys = Set<String>()
+
+            for plugin in filtered {
+                let key = FilterUtils.makePluginKey(name: plugin.name, type: plugin.type)
                 if let trackNames = playlistTrackMap[key] {
-                    // Create a new PluginItem with the track names joined
                     var updatedPlugin = plugin
-                    updatedPlugin.trackName = trackNames.sorted().joined(separator: ", ")
+                    updatedPlugin.trackName = trackNames.joined(separator: ", ")
                     updatedPlugin.missing = false
-                    return updatedPlugin
-                }
-                return nil
-            }
-
-            // Find missing plugins (in playlist but not installed)
-            let installedKeys = Set(installedPlugins.map { "\($0.name.lowercased())_\($0.type)" })
-            let missingPlugins = allPlaylistEntries.compactMap { entry -> AppPluginItem? in
-                let key = "\(entry.pluginName.lowercased())_\(entry.pluginFormat.rawValue)"
-                guard !installedKeys.contains(key) else { return nil }
-
-                // Create a placeholder plugin item for the missing plugin
-                let trackNames = playlistTrackMap[key]?.sorted().joined(separator: ", ") ?? ""
-                return AppPluginItem(
-                    name: entry.pluginName,
-                    publisher: "",
-                    version: "",
-                    type: entry.pluginFormat.rawValue,
-                    style: "",
-                    architectures: "",
-                    date: nil,
-                    sizeBytes: 0,
-                    path: "",
-                    runtimeRequirement: "",
-                    obsolete: false,
-                    trackName: trackNames,
-                    missing: true
-                )
-            }
-
-            // Remove duplicates from missing plugins
-            var uniqueMissing: [AppPluginItem] = []
-            var seenKeys = Set<String>()
-            for plugin in missingPlugins {
-                let key = "\(plugin.name.lowercased())_\(plugin.type)"
-                if !seenKeys.contains(key) {
-                    seenKeys.insert(key)
-                    uniqueMissing.append(plugin)
+                    installedPlugins.append(updatedPlugin)
+                    installedKeys.insert(key)
                 }
             }
+
+            // Single-pass: create missing plugins with deduplication
+            let uniqueMissing = FilterUtils.deduplicatePlugins(
+                allPlaylistEntries.compactMap { entry -> AppPluginItem? in
+                    let key = FilterUtils.makePluginKey(name: entry.pluginName, format: entry.pluginFormat)
+                    guard !installedKeys.contains(key) else { return nil }
+
+                    let trackNames = playlistTrackMap[key]?.joined(separator: ", ") ?? ""
+                    return AppPluginItem(
+                        name: entry.pluginName,
+                        publisher: "",
+                        version: "",
+                        type: entry.pluginFormat.rawValue,
+                        style: "",
+                        architectures: "",
+                        date: nil,
+                        sizeBytes: 0,
+                        path: "",
+                        runtimeRequirement: "",
+                        obsolete: false,
+                        trackName: trackNames,
+                        missing: true
+                    )
+                },
+                keyExtractor: { FilterUtils.makePluginKey(name: $0.name, type: $0.type) }
+            )
 
             // Combine installed and missing plugins
             filtered = installedPlugins + uniqueMissing
@@ -289,16 +303,31 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
                 #endif
 
-                TextField("Search", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.18)))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(searchFocused ? Color.accentColor : (colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.25)), lineWidth: 1)
-                    )
-                    .focused($searchFocused)
+                ZStack(alignment: .trailing) {
+                    TextField("Search", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 10)
+                        .padding(.trailing, searchText.isEmpty ? 10 : 30) // Extra padding for clear button
+                        .padding(.vertical, 6)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.18)))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(searchFocused ? Color.accentColor : (colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.25)), lineWidth: 1)
+                        )
+                        .focused($searchFocused)
+
+                    // Clear button - only visible when text is present
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                                .padding(.trailing, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
 
                 Button("Scan") {
                     Task { @MainActor in
@@ -373,17 +402,32 @@ struct ContentView: View {
             }
             .buttonStyle(SpaceModeButtonStyle())
 
-            TextField("Search", text: $searchText)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.18)))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(searchFocused ? Color.accentColor : (colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.25)), lineWidth: 1)
-                )
-                .focused($searchFocused)
-                .frame(width: 300)
+            ZStack(alignment: .trailing) {
+                TextField("Search", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .padding(.trailing, searchText.isEmpty ? 10 : 30) // Extra padding for clear button
+                    .padding(.vertical, 6)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.18)))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(searchFocused ? Color.accentColor : (colorScheme == .light ? Color.black.opacity(0.5) : Color.white.opacity(0.25)), lineWidth: 1)
+                    )
+                    .focused($searchFocused)
+
+                // Clear button - only visible when text is present
+                if !searchText.isEmpty {
+                    Button(action: {
+                        searchText = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .padding(.trailing, 8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(width: 300)
 
             Button("Scan") {
                 Task { @MainActor in
@@ -571,6 +615,13 @@ struct ContentView: View {
                 let allPlugins = scanner.plugins.map(AppPluginItem.init)
                 totalPluginCounts = quickCount(rows: allPlugins)
             }
+            #if os(macOS)
+            .overlay {
+                if playlistManager.isImporting {
+                    dawImportProgressOverlay
+                }
+            }
+            #endif
     }
 
     @ViewBuilder
@@ -601,6 +652,49 @@ struct ContentView: View {
         )
     }
 
+    #if os(macOS)
+    @ViewBuilder
+    private var dawImportProgressOverlay: some View {
+        ZStack {
+            // Semi-transparent background
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+
+            // Progress card
+            VStack(spacing: 20) {
+                // Icon
+                Image(systemName: "music.note.list")
+                    .font(.system(size: 48))
+                    .foregroundColor(.white)
+
+                // Title
+                Text("Importing DAW Project")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+
+                // Progress bar
+                VStack(spacing: 8) {
+                    ProgressView(value: playlistManager.importProgress)
+                        .progressViewStyle(.linear)
+                        .frame(width: 300)
+                        .tint(.white)
+
+                    Text("\(Int(playlistManager.importProgress * 100))%")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            }
+            .padding(40)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(white: 0.15))
+                    .shadow(color: .black.opacity(0.3), radius: 20)
+            )
+        }
+    }
+    #endif
+
     private func handleSelectionChange() {
         if hSizeClass == .compact {
             showDetailSheet = (appState.selected.first != nil)
@@ -620,57 +714,57 @@ struct ContentView: View {
 
     #if os(macOS)
     private func importDAWProject() {
-        let panel = NSOpenPanel()
-        panel.title = "Select DAW Project"
-        panel.message = "Choose a DAW project file (.als for Ableton, .txt for Pro Tools, .bwproject for Bitwig)"
-        panel.allowedContentTypes = [
-            .init(filenameExtension: "als"),        // Ableton Live
-            .init(filenameExtension: "logic"),      // Logic Pro
-            .init(filenameExtension: "logicx"),     // Logic Pro X
-            .init(filenameExtension: "band"),       // GarageBand
-            .init(filenameExtension: "concert"),    // MainStage
-            .init(filenameExtension: "cpr"),        // Cubase
-            .init(filenameExtension: "npr"),        // Nuendo
-            .init(filenameExtension: "song"),       // Studio One
-            .init(filenameExtension: "rpp"),        // Reaper
-            .init(filenameExtension: "rpp-bak"),    // Reaper Backup
-            .init(filenameExtension: "reason"),     // Reason
-            .init(filenameExtension: "rns"),        // Reason
-            .init(filenameExtension: "txt"),        // Pro Tools Text Export
-            .init(filenameExtension: "ptx"),        // Pro Tools Session
-            .init(filenameExtension: "bwproject"),  // Bitwig
-            .init(filenameExtension: "flp"),        // FL Studio
-            .init(filenameExtension: "xrns"),       // Renoise
-            .init(filenameExtension: "motu"),       // Digital Performer
-            .init(filenameExtension: "drp"),        // Fairlight
-            .init(filenameExtension: "ardour"),     // Ardour
-            .init(filenameExtension: "mixbus"),     // Mixbus
-            .init(filenameExtension: "tracktionedit") // Tracktion
-        ].compactMap { $0 }
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
+        // Use pre-created panel - should be INSTANT!
+        let response = dawPanel.runModal()
+        if response == .OK {
+            let urls = dawPanel.urls
 
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-
-            // Check for duplicate playlist name on main thread
+            // Import all selected files IN PARALLEL for speed!
             Task { @MainActor in
-                let projectName = url.deletingPathExtension().lastPathComponent
-                AppLogger.debug("Checking for duplicate playlist: '\(projectName)'")
-                AppLogger.debug("Existing playlists: \(self.playlistManager.playlists.map { $0.name }.joined(separator: ", "))")
+                var importedPlaylists: [DAWPlaylist] = []
 
-                if let existingPlaylist = self.playlistManager.playlists.first(where: { $0.name == projectName }) {
-                    // Found duplicate - show warning dialog
-                    AppLogger.info("Found duplicate playlist '\(projectName)', showing warning")
-                    self.pendingImportURL = url
-                    self.existingPlaylistToReplace = existingPlaylist
-                    self.showDuplicatePlaylistWarning = true
-                } else {
-                    // No duplicate - proceed with import
-                    AppLogger.debug("No duplicate found, proceeding with import")
-                    self.performImport(url: url, replacingPlaylist: nil)
+                await withTaskGroup(of: DAWPlaylist?.self) { group in
+                    for url in urls {
+                        group.addTask {
+                            await self.performImportAsync(url: url)
+                        }
+                    }
+
+                    for await playlist in group {
+                        if let playlist = playlist {
+                            importedPlaylists.append(playlist)
+                        }
+                    }
+                }
+
+                // After all imports complete, batch-add them (ONE @Published update!)
+                if !importedPlaylists.isEmpty {
+                    playlistManager.addPlaylists(importedPlaylists)
+
+                    // Activate them and open playlist sidebar
+                    self.activePlaylistFilters = importedPlaylists
+                    self.showPlaylistSidebar = true
+                    self.updateDisplayedPlugins()
                 }
             }
+        }
+    }
+
+    private func performImportAsync(url: URL) async -> DAWPlaylist? {
+        do {
+            let installedPlugins = scanner.plugins.map(AppPluginItem.init)
+            let playlist = try await playlistManager.importProject(url: url, installedPlugins: installedPlugins)
+
+            await MainActor.run {
+                AppLogger.info("✅ Imported \(playlist.name)")
+            }
+
+            return playlist
+        } catch {
+            await MainActor.run {
+                AppLogger.error("❌ Failed to import \(url.lastPathComponent): \(error.localizedDescription)")
+            }
+            return nil
         }
     }
 
@@ -692,6 +786,9 @@ struct ContentView: View {
                 let playlist = try await self.playlistManager.importProject(url: url, installedPlugins: installedPlugins)
 
                 await MainActor.run {
+                    // Add the playlist to the manager (batch method works for single playlist too)
+                    self.playlistManager.addPlaylists([playlist])
+
                     // Open the playlist sidebar and select the newly imported playlist
                     self.showPlaylistSidebar = true
                     self.activePlaylistFilters = [playlist]
@@ -702,6 +799,14 @@ struct ContentView: View {
             } catch {
                 await MainActor.run {
                     AppLogger.error("Failed to import DAW project: \(error.localizedDescription)")
+
+                    // Show error alert to user
+                    let alert = NSAlert()
+                    alert.messageText = "DAW Import Failed"
+                    alert.informativeText = "Failed to import project: \(error.localizedDescription)"
+                    alert.alertStyle = .critical
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
                 }
             }
         }
@@ -854,36 +959,39 @@ struct ContentView: View {
             "tracktionedit", "ardour", "mixbus", "xrns", "drp"
         ]
 
-        guard let provider = providers.first else { return false }
+        guard !providers.isEmpty else { return false }
 
-        provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { (urlData, error) in
-            guard let data = urlData as? Data,
-                  let url = URL(dataRepresentation: data, relativeTo: nil) else {
-                return
-            }
+        // Process all providers (multiple files)
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { (urlData, error) in
+                guard let data = urlData as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else {
+                    return
+                }
 
-            let fileExtension = url.pathExtension.lowercased()
+                let fileExtension = url.pathExtension.lowercased()
 
-            // Check if it's a supported DAW file
-            guard supportedExtensions.contains(fileExtension) else {
-                print("❌ Unsupported file type: .\(fileExtension)")
-                return
-            }
+                // Check if it's a supported DAW file
+                guard supportedExtensions.contains(fileExtension) else {
+                    print("❌ Unsupported file type: .\(fileExtension)")
+                    return
+                }
 
-            print("📥 Dropped DAW file: \(url.lastPathComponent)")
+                print("📥 Dropped DAW file: \(url.lastPathComponent)")
 
-            // Check for duplicate playlist
-            DispatchQueue.main.async {
-                let projectName = url.deletingPathExtension().lastPathComponent
+                // Check for duplicate playlist
+                DispatchQueue.main.async {
+                    let projectName = url.deletingPathExtension().lastPathComponent
 
-                if let existing = self.playlistManager.playlists.first(where: { $0.name == projectName }) {
-                    // Show duplicate warning
-                    self.pendingImportURL = url
-                    self.existingPlaylistToReplace = existing
-                    self.showDuplicatePlaylistWarning = true
-                } else {
-                    // Import directly
-                    self.performImport(url: url, replacingPlaylist: nil)
+                    if let existing = self.playlistManager.playlists.first(where: { $0.name == projectName }) {
+                        // Show duplicate warning
+                        self.pendingImportURL = url
+                        self.existingPlaylistToReplace = existing
+                        self.showDuplicatePlaylistWarning = true
+                    } else {
+                        // Import directly
+                        self.performImport(url: url, replacingPlaylist: nil)
+                    }
                 }
             }
         }
@@ -1334,6 +1442,7 @@ struct ContentView: View {
                     selection: $appState.selected,
                     sortStatus: $sortStatus,
                     showDetailPanel: $showDetailPanel,
+                    detailPanelTab: $detailPanelTab,
                     onPluginsDeleted: {
                         Task { @MainActor in
                             scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
@@ -1361,7 +1470,8 @@ struct ContentView: View {
                 } else if appState.selected.count == 1 {
                     PluginDetailPanel(
                         plugin: appState.selected.first,
-                        isVisible: $showDetailPanel
+                        isVisible: $showDetailPanel,
+                        selectedTab: $detailPanelTab
                     )
                     .onAppear { print("📊 Detail Panel: Showing PluginDetailPanel for \(appState.selected.first?.name ?? "unknown")") }
                 } else if showPlaylistSidebar && activePlaylistFilters.count == 1 {
@@ -1373,7 +1483,8 @@ struct ContentView: View {
                 } else {
                     PluginDetailPanel(
                         plugin: nil,
-                        isVisible: $showDetailPanel
+                        isVisible: $showDetailPanel,
+                        selectedTab: $detailPanelTab
                     )
                     .onAppear { print("📊 Detail Panel: Showing empty PluginDetailPanel") }
                 }
@@ -1613,6 +1724,13 @@ struct ContentView: View {
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("EditMetadata"), object: nil, queue: .main) { [self] _ in
             guard !self.appState.selected.isEmpty else { return }
+            self.detailPanelTab = .metadata
+            self.showDetailPanel = true
+        }
+
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("ShowLicense"), object: nil, queue: .main) { [self] _ in
+            guard !self.appState.selected.isEmpty else { return }
+            self.detailPanelTab = .license
             self.showDetailPanel = true
         }
 
@@ -2301,6 +2419,8 @@ private struct PlaylistSidebarView: View {
                     // Remove from active filters
                     let idsToDelete = Set(playlistsToDelete.map { $0.id })
                     activePlaylists.removeAll { idsToDelete.contains($0.id) }
+                    // MUST update displayed plugins after removing filters!
+                    onSelect(activePlaylists, [])
                 } else if let playlist = playlistsToDelete.first {
                     onDelete(playlist)
                 }
@@ -2592,6 +2712,9 @@ private struct PlaylistSidebarView: View {
             .onMoveCommand { direction in
                 handleKeyboardNavigation(direction: direction, proxy: proxy)
             }
+            .onDeleteCommand {
+                handleDeleteKey()
+            }
             .onAppear {
                 // Select the first active playlist if any
                 if let firstActive = activePlaylists.first,
@@ -2739,6 +2862,14 @@ private struct PlaylistSidebarView: View {
         default:
             break
         }
+    }
+
+    private func handleDeleteKey() {
+        // Delete all active playlists when Delete key is pressed
+        guard !activePlaylists.isEmpty else { return }
+
+        playlistsToDelete = activePlaylists
+        showDeleteConfirmation = true
     }
 
     private func moveSelection(delta: Int, proxy: ScrollViewProxy, extendSelection: Bool) {

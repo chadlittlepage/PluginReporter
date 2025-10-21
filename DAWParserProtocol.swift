@@ -27,24 +27,24 @@ protocol DAWParser {
 // MARK: - Parsed Data Models
 
 /// Standardized project data structure returned by all DAW parsers
-struct ParsedProject {
-    let name: String
-    let sourceFile: URL
-    let dawType: DAWType
-    let tracks: [ParsedTrack]
+public struct ParsedProject {
+    public let name: String
+    public let sourceFile: URL
+    public let dawType: DAWType
+    public let tracks: [ParsedTrack]
 
     // Optional metadata fields
-    let tempo: Double?
-    let sampleRate: Int?
-    let version: String?
-    let key: String?
+    public let tempo: Double?
+    public let sampleRate: Int?
+    public let version: String?
+    public let key: String?
 
     /// All plugins from all tracks
-    var allPlugins: [ParsedPlugin] {
+    public var allPlugins: [ParsedPlugin] {
         tracks.flatMap { $0.plugins }
     }
 
-    init(
+    public init(
         name: String,
         sourceFile: URL,
         dawType: DAWType,
@@ -65,19 +65,19 @@ struct ParsedProject {
     }
 }
 
-struct ParsedTrack {
-    let name: String
-    let index: Int
-    let plugins: [ParsedPlugin]
+public struct ParsedTrack {
+    public let name: String
+    public let index: Int
+    public let plugins: [ParsedPlugin]
 }
 
-struct ParsedPlugin {
-    let name: String
-    let manufacturer: String
-    let trackName: String
-    let trackIndex: Int
-    let deviceIndex: Int
-    let format: PluginFormat
+public struct ParsedPlugin {
+    public let name: String
+    public let manufacturer: String
+    public let trackName: String
+    public let trackIndex: Int
+    public let deviceIndex: Int
+    public let format: PluginFormat
 }
 
 // MARK: - Parser Registry
@@ -93,24 +93,24 @@ class DAWParserRegistry {
         registerParser(AbletonLiveParserV2.self)
         registerParser(ProToolsParser.self)  // Supports both .ptx and .txt files
         registerParser(BitwigParser.self)
-        registerParser(LogicProParser.self)
-        registerParser(GarageBandParser.self)
         registerParser(ReasonParser.self)
         registerParser(ReaperParser.self)
         registerParser(CubaseParser.self)
         registerParser(NuendoParser.self)
         registerParser(DigitalPerformerParser.self)
-        registerParser(StudioOneParser.self)
         registerParser(FLStudioParser.self)
         registerParser(TracktionParser.self)
         registerParser(ArdourParser.self)
         registerParser(FairlightParser.self)
-        #if os(macOS)
-        registerParser(RenoiseParser.self)  // macOS only (uses Process for ZIP extraction)
-        #endif
-        registerParser(MainStageParser.self)
         registerParser(MixbusParser.self)
-        // 17-18 DAW parsers (Renoise requires macOS)
+        #if os(macOS)
+        registerParser(LogicProParser.self)  // macOS only (Logic Pro is Mac-only)
+        registerParser(GarageBandParser.self)  // macOS only (GarageBand is Mac-only)
+        registerParser(MainStageParser.self)  // macOS only (MainStage is Mac-only)
+        registerParser(StudioOneParser.self)  // macOS only (uses Process for unzip)
+        registerParser(RenoiseParser.self)  // macOS only (uses Process for ZIP extraction)
+        // 17 DAW parsers total (5 macOS-only)
+        #endif
     }
 
     /// Register a DAW parser

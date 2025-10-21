@@ -310,22 +310,25 @@ struct ExportManager {
     // MARK: CSV
     @MainActor
     private static func makeCSV(rows: [PluginItem], ratingsManager: RatingsManager, notesManager: NotesManager) -> String {
-        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
+        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, License, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
         let headers = [
-            "Rating","Name","Publisher","Type","Style","Version","Arch","Date","Size","Requirement","Obsolete","Missing","Track","Notes","Path"
+            "Rating","Name","Publisher","Type","Style","Version","License","Arch","Date","Size","Requirement","Obsolete","Missing","Track","Notes","Path"
         ]
+        let metadataManager = MetadataManager.shared
         let lines: [String] = [csvLine(headers)] + rows.map { r in
             let rating = ratingsManager.getRating(for: r.path)
             let ratingStr = rating > 0 ? String(repeating: "★", count: rating) : ""
             let note = notesManager.getNote(for: r.path)
+            let license = getLicenseType(for: r)
 
             return csvLine([
                 ratingStr,
                 r.name,
-                r.publisher,
+                metadataManager.getDisplayPublisher(for: r),
                 r.type,
-                r.style,
-                r.version,
+                metadataManager.getDisplayStyle(for: r),
+                metadataManager.getDisplayVersion(for: r),
+                license,
                 r.architectures,
                 r.dateString,
                 r.sizeString,
@@ -355,13 +358,14 @@ struct ExportManager {
     // MARK: JSON encoding row
     private struct JSONRow: Codable {
         let id: UUID
-        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
+        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, License, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
         let rating: Int
         let name: String
         let publisher: String
         let type: String
         let style: String
         let version: String
+        let license: String
         let architectures: String
         let date: String
         let size: String
@@ -374,13 +378,15 @@ struct ExportManager {
 
         @MainActor
         init(_ r: PluginItem, ratingsManager: RatingsManager, notesManager: NotesManager) {
+            let metadataManager = MetadataManager.shared
             id = r.id
             rating = ratingsManager.getRating(for: r.path)
             name = r.name
-            publisher = r.publisher
+            publisher = metadataManager.getDisplayPublisher(for: r)
             type = r.type
-            style = r.style
-            version = r.version
+            style = metadataManager.getDisplayStyle(for: r)
+            version = metadataManager.getDisplayVersion(for: r)
+            license = getLicenseType(for: r)
             architectures = r.architectures
             date = r.dateString
             size = r.sizeString
@@ -421,24 +427,27 @@ struct ExportManager {
         <table>
           <thead>
             <tr>
-              <th>Rating</th><th>Name</th><th>Publisher</th><th>Type</th><th>Style</th><th>Version</th><th>Arch</th><th>Date</th><th>Size</th><th>Requirement</th><th>Obsolete</th><th>Missing</th><th>Track</th><th>Notes</th><th>Path</th>
+              <th>Rating</th><th>Name</th><th>Publisher</th><th>Type</th><th>Style</th><th>Version</th><th>License</th><th>Arch</th><th>Date</th><th>Size</th><th>Requirement</th><th>Obsolete</th><th>Missing</th><th>Track</th><th>Notes</th><th>Path</th>
             </tr>
           </thead>
           <tbody>
         """
+        let metadataManager = MetadataManager.shared
         let rowsHTML = rows.map { r in
             let rating = ratingsManager.getRating(for: r.path)
             let ratingStr = rating > 0 ? String(repeating: "★", count: rating) : ""
             let note = notesManager.getNote(for: r.path)
+            let license = getLicenseType(for: r)
 
             return """
             <tr>
               <td class=\"rating\">\(escapeHTML(ratingStr))</td>
               <td>\(escapeHTML(r.name))</td>
-              <td>\(escapeHTML(r.publisher))</td>
+              <td>\(escapeHTML(metadataManager.getDisplayPublisher(for: r)))</td>
               <td>\(escapeHTML(r.type))</td>
-              <td>\(escapeHTML(r.style))</td>
-              <td>\(escapeHTML(r.version))</td>
+              <td>\(escapeHTML(metadataManager.getDisplayStyle(for: r)))</td>
+              <td>\(escapeHTML(metadataManager.getDisplayVersion(for: r)))</td>
+              <td>\(escapeHTML(license))</td>
               <td>\(escapeHTML(r.architectures))</td>
               <td>\(escapeHTML(r.dateString))</td>
               <td>\(escapeHTML(r.sizeString))</td>
@@ -469,11 +478,37 @@ struct ExportManager {
         return out
     }
 
+    // MARK: License Type Helper
+    @MainActor
+    private static func getLicenseType(for plugin: PluginItem) -> String {
+        let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
+            .replacingOccurrences(of: " ", with: "_")
+
+        if let license = LicenseManager.shared.getLicense(for: pluginID) {
+            // Check if it mentions iLok anywhere (imported from iLok)
+            if let notes = license.notes?.lowercased(), notes.contains("ilok") {
+                return "iLok"
+            }
+            if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
+                return "iLok"
+            }
+            // Check if it has a serial number or license key
+            if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
+                return "Serial"
+            }
+            // If we have a license entry but no specific data, still show something was imported
+            if license.notes?.isEmpty == false {
+                return "iLok"  // Default to iLok if we have notes but no serial
+            }
+        }
+        return ""
+    }
+
     // MARK: PDF (simple text rendering)
     @MainActor
     private static func makeTabularText(rows: [PluginItem], capacity: Int) -> String {
         // All columns in correct order matching table display
-        let headers = ["Rating", "Name", "Publisher", "Type", "Style", "Version", "Arch", "Date", "Size", "Requirement", "Obsolete", "Missing", "Track", "Notes", "Path"]
+        let headers = ["Rating", "Name", "Publisher", "Type", "Style", "Version", "License", "Arch", "Date", "Size", "Requirement", "Obsolete", "Missing", "Track", "Notes", "Path"]
         let columnCount = headers.count
         let sep = "  " // two spaces between columns
         let sepWidth = (columnCount - 1) * sep.count
@@ -483,18 +518,21 @@ struct ExportManager {
         let notesManager = NotesManager.shared
 
         // Gather content strings per column
+        let metadataManager = MetadataManager.shared
         func cols(for i: PluginItem) -> [String] {
             let rating = ratingsManager.getRating(for: i.path)
             let ratingStr = rating > 0 ? String(repeating: "★", count: rating) : ""
             let note = notesManager.getNote(for: i.path)
+            let license = getLicenseType(for: i)
 
             return [
                 ratingStr,
                 i.name,
-                i.publisher,
+                metadataManager.getDisplayPublisher(for: i),
                 i.type,
-                i.style,
-                i.version,
+                metadataManager.getDisplayStyle(for: i),
+                metadataManager.getDisplayVersion(for: i),
+                license,
                 i.architectures,
                 i.dateString,
                 i.sizeString,
@@ -508,8 +546,8 @@ struct ExportManager {
         }
 
         // Maximum desired widths (what we'd use if we had infinite space)
-        var maxDesired: [Int] = [6, 35, 20, 5, 15, 12, 16, 12, 10, 16, 3, 3, 18, 20, 60]
-        let minimums: [Int] = [4, 8, 6, 3, 6, 5, 8, 8, 4, 8, 1, 1, 5, 5, 10]
+        var maxDesired: [Int] = [6, 35, 20, 5, 15, 12, 8, 16, 12, 10, 16, 3, 3, 18, 20, 60]
+        let minimums: [Int] = [4, 8, 6, 3, 6, 5, 5, 8, 8, 4, 8, 1, 1, 5, 5, 10]
 
         // First, measure actual content
         var maxLens = Array(repeating: 0, count: columnCount)

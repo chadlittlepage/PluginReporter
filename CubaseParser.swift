@@ -140,16 +140,17 @@ private class CubaseXMLParser: NSObject, XMLParserDelegate {
         }
 
         // Plugin/Insert detection
-        if elementName == "PluginSlot" || elementName == "Insert" {
+        if elementName == "PluginSlot" || elementName == "Insert" || elementName == "Inserts" {
             inPluginSlot = true
             currentPluginName = ""
             currentManufacturer = ""
             currentPluginFormat = .VST3
         }
 
-        // VST plugin detection
+        // VST plugin detection - handle both nested and standalone
         if elementName == "VSTPlugin" || elementName == "Plugin" {
             inVSTPlugin = true
+            inPluginSlot = true  // Treat VSTPlugin as being in a plugin slot
 
             // Extract plugin info from attributes
             if let name = attributeDict["name"] {
@@ -168,6 +169,25 @@ private class CubaseXMLParser: NSObject, XMLParserDelegate {
             } else if let classID = attributeDict["classID"] {
                 // VST3 plugins have a classID
                 currentPluginFormat = .VST3
+            }
+
+            // If we have a name, add the plugin immediately (for simple format)
+            if !currentPluginName.isEmpty {
+                let plugin = ParsedPlugin(
+                    name: currentPluginName,
+                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
+                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
+                    trackIndex: currentTrackIndex,
+                    deviceIndex: currentDeviceIndex,
+                    format: currentPluginFormat
+                )
+                currentPlugins.append(plugin)
+                currentDeviceIndex += 1
+                print("   ✅ Added plugin: \(currentPluginName) by \(currentManufacturer)")
+
+                // Reset for next plugin
+                currentPluginName = ""
+                currentManufacturer = ""
             }
         }
 
@@ -221,15 +241,18 @@ private class CubaseXMLParser: NSObject, XMLParserDelegate {
 
         // End of track
         if elementName == "Track" || elementName == "AudioTrack" || elementName == "MIDITrack" || elementName == "InstrumentTrack" {
-            // Only add track if it has plugins
-            if !currentPlugins.isEmpty {
-                let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
-                let track = ParsedTrack(
-                    name: trackName,
-                    index: currentTrackIndex,
-                    plugins: currentPlugins
-                )
-                tracks.append(track)
+            // Always add track, even if it has no plugins
+            let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
+            let track = ParsedTrack(
+                name: trackName,
+                index: currentTrackIndex,
+                plugins: currentPlugins
+            )
+            tracks.append(track)
+
+            if currentPlugins.isEmpty {
+                print("🎵 Added track '\(trackName)' (no plugins)")
+            } else {
                 print("🎵 Added track '\(trackName)' with \(currentPlugins.count) plugins")
             }
 

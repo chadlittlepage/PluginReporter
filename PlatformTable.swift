@@ -82,6 +82,7 @@ struct PlatformTable: View {
     @Binding var selection: [PluginItem]
     @Binding var sortStatus: String
     @Binding var showDetailPanel: Bool
+    @Binding var detailPanelTab: DetailTab
 
     /// True while a scan is in progress. When false, the progress bar is hidden.
     @Binding var isScanning: Bool
@@ -98,6 +99,7 @@ struct PlatformTable: View {
             selection: $selection,
             sortStatus: $sortStatus,
             showDetailPanel: $showDetailPanel,
+            detailPanelTab: $detailPanelTab,
             onPluginsDeleted: onPluginsDeleted
         )
     }
@@ -108,6 +110,7 @@ struct PlatformTable: View {
         selection: Binding<[PluginItem]>,
         sortStatus: Binding<String> = .constant(""),
         showDetailPanel: Binding<Bool> = .constant(false),
+        detailPanelTab: Binding<DetailTab> = .constant(.metadata),
         isScanning: Binding<Bool> = .constant(false),
         scanProgress: Binding<Double> = .constant(0),
         onPluginsDeleted: (() -> Void)? = nil
@@ -116,6 +119,7 @@ struct PlatformTable: View {
         self._selection = selection
         self._sortStatus = sortStatus
         self._showDetailPanel = showDetailPanel
+        self._detailPanelTab = detailPanelTab
         self._isScanning = isScanning
         self._scanProgress = scanProgress
         self.onPluginsDeleted = onPluginsDeleted

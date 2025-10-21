@@ -122,8 +122,15 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
 
         // Plugin detection - Tracktion uses various plugin element names
         if elementName == "PLUGIN" || elementName == "VST" || elementName == "VST3" ||
-           elementName == "AU" || elementName == "TRACKTIONPLUGIN" {
+           elementName == "AU" || elementName == "TRACKTIONPLUGIN" || elementName == "VSTPLUGIN" {
             inPlugin = true
+
+            // Save current state if this is just a container
+            if elementName == "PLUGIN" && attributeDict["name"] == nil {
+                // This is just a container, don't process yet
+                return
+            }
+
             currentPluginName = ""
             currentManufacturer = ""
             currentPluginFormat = .VST3
@@ -144,7 +151,7 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
             }
 
             // Format detection
-            if elementName == "VST3" || attributeDict["type"]?.contains("VST3") == true {
+            if elementName == "VST3" || elementName == "VSTPLUGIN" || attributeDict["type"]?.contains("VST3") == true {
                 currentPluginFormat = .VST3
             } else if elementName == "VST" || attributeDict["type"]?.contains("VST") == true {
                 currentPluginFormat = .VST
@@ -157,7 +164,26 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
                 }
             }
 
-            print("   🔌 Found plugin: \(currentPluginName) by \(currentManufacturer)")
+            // If we have a plugin name, add it immediately (for simple format like VSTPLUGIN)
+            if !currentPluginName.isEmpty && elementName == "VSTPLUGIN" {
+                let plugin = ParsedPlugin(
+                    name: currentPluginName,
+                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
+                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
+                    trackIndex: currentTrackIndex,
+                    deviceIndex: currentDeviceIndex,
+                    format: currentPluginFormat
+                )
+                currentPlugins.append(plugin)
+                currentDeviceIndex += 1
+                print("   ✅ Added plugin: \(currentPluginName) by \(currentManufacturer)")
+
+                // Reset
+                currentPluginName = ""
+                currentManufacturer = ""
+            } else if !currentPluginName.isEmpty {
+                print("   🔌 Found plugin: \(currentPluginName) by \(currentManufacturer)")
+            }
         }
     }
 
@@ -169,8 +195,8 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
            elementName == "AU" || elementName == "TRACKTIONPLUGIN" {
             inPlugin = false
 
-            // Add plugin if we have valid data
-            if !currentPluginName.isEmpty {
+            // Add plugin if we have valid data (skip for VSTPLUGIN as it's added immediately)
+            if !currentPluginName.isEmpty && elementName != "VSTPLUGIN" {
                 let plugin = ParsedPlugin(
                     name: currentPluginName,
                     manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
@@ -190,17 +216,25 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
             currentPluginFormat = .VST3
         }
 
+        // VSTPLUGIN is already handled in didStartElement, just reset state
+        if elementName == "VSTPLUGIN" {
+            inPlugin = false
+        }
+
         // End of track
         if elementName == "TRACK" {
-            // Only add track if it has plugins
-            if !currentPlugins.isEmpty {
-                let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
-                let track = ParsedTrack(
-                    name: trackName,
-                    index: currentTrackIndex,
-                    plugins: currentPlugins
-                )
-                tracks.append(track)
+            // Always add track, even if it has no plugins
+            let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
+            let track = ParsedTrack(
+                name: trackName,
+                index: currentTrackIndex,
+                plugins: currentPlugins
+            )
+            tracks.append(track)
+
+            if currentPlugins.isEmpty {
+                print("🎵 Added track '\(trackName)' (no plugins)")
+            } else {
                 print("🎵 Added track '\(trackName)' with \(currentPlugins.count) plugins")
             }
 

@@ -74,13 +74,42 @@ class PluginMatcher {
         installedPlugins: [PluginItem]
     ) -> [DAWPlaylistEntry] {
 
+        // BUILD FAST LOOKUP DICTIONARIES - O(n) instead of O(n*m)!
+        let nameFormatMap: [String: PluginItem] = Dictionary(
+            installedPlugins.map { plugin in
+                let key = "\(plugin.name.lowercased())_\(plugin.type.lowercased())"
+                return (key, plugin)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        let nameOnlyMap: [String: PluginItem] = Dictionary(
+            installedPlugins.map { ($0.name.lowercased(), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        // Fast matching using dictionaries instead of linear search
         return parsedPlugins.map { parsed in
-            let match = findMatch(
-                pluginName: parsed.name,
-                manufacturer: parsed.manufacturer,
-                format: parsed.format,
-                in: installedPlugins
-            )
+            var match: PluginItem? = nil
+
+            // Try exact name + format match (FAST O(1) lookup)
+            let nameFormatKey = "\(parsed.name.lowercased())_\(parsed.format.rawValue.lowercased())"
+            match = nameFormatMap[nameFormatKey]
+
+            // Try name-only match
+            if match == nil {
+                match = nameOnlyMap[parsed.name.lowercased()]
+            }
+
+            // Fall back to slow search only if needed
+            if match == nil {
+                match = findMatch(
+                    pluginName: parsed.name,
+                    manufacturer: parsed.manufacturer,
+                    format: parsed.format,
+                    in: installedPlugins
+                )
+            }
 
             return DAWPlaylistEntry(
                 pluginName: parsed.name,

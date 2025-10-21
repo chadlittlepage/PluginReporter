@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Getting Started with Plugin Reporter</h1>
+        <p class="subtitle">Your quick start guide</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Welcome!</h2>
+            <p>Plugin Reporter helps you manage your audio plugin library with ease. This guide will walk you through the basics and get you up and running in minutes.</p>
+        </section>
+
+        <section>
+            <h2>First Launch</h2>
+            <p>When you first launch Plugin Reporter, the app will automatically scan your system for installed audio plugins. This process may take a few moments depending on how many plugins you have installed.</p>
+
+            <div class="note">
+                <strong>Note:</strong> Plugin Reporter scans the standard macOS plugin locations:
+                <ul>
+                    <li><code>~/Library/Audio/Plug-Ins/Components</code> (Audio Units)</li>
+                    <li><code>~/Library/Audio/Plug-Ins/VST</code> (VST2)</li>
+                    <li><code>~/Library/Audio/Plug-Ins/VST3</code> (VST3)</li>
+                    <li><code>/Library/Application Support/Avid/Audio/Plug-Ins</code> (AAX)</li>
+                    <li><code>~/Library/Audio/Plug-Ins/CLAP</code> (CLAP)</li>
+                    <li><code>~/.lv2</code> (LV2)</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Understanding the Interface</h2>
+
+            <h3>Main Window</h3>
+            <p>The Plugin Reporter interface consists of several key areas:</p>
+
+            <ol class="step-list">
+                <li><strong>Toolbar</strong> - Quick access to scanning, exporting, and view options</li>
+                <li><strong>Sidebar</strong> - Filter plugins by format, publisher, style, and ratings</li>
+                <li><strong>Plugin Table</strong> - Your main plugin list with sortable columns</li>
+                <li><strong>Detail Panel</strong> - View and edit information about selected plugins</li>
+                <li><strong>Search Bar</strong> - Quickly find plugins by name, publisher, or attributes</li>
+            </ol>
+
+            <h3>Key Features at a Glance</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h4>🔍 Search & Filter</h4>
+                    <p>Find plugins instantly</p>
+                </div>
+                <div class="feature-item">
+                    <h4>⭐ Ratings</h4>
+                    <p>Rate your favorites</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🏷️ Tags</h4>
+                    <p>Organize with tags</p>
+                </div>
+                <div class="feature-item">
+                    <h4>📝 Notes</h4>
+                    <p>Add personal notes</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🎵 DAW Projects</h4>
+                    <p>Import & analyze</p>
+                </div>
+                <div class="feature-item">
+                    <h4>📊 Export</h4>
+                    <p>Share your lists</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Basic Tasks</h2>
+
+            <h3>1. Scanning for Plugins</h3>
+            <p>To manually scan for new plugins:</p>
+            <ol class="step-list">
+                <li>Click the <strong>Scan</strong> button in the toolbar</li>
+                <li>Wait for the scan to complete</li>
+                <li>New plugins will appear in your list automatically</li>
+            </ol>
+
+            <div class="tip">
+                <strong>Tip:</strong> Plugin Reporter can automatically scan when you launch the app. Enable this in <strong>Preferences > Scanning</strong>.
+            </div>
+
+            <h3>2. Filtering Plugins</h3>
+            <p>Use the sidebar to filter your plugin list:</p>
+            <ul>
+                <li><strong>Formats</strong> - Show only AU, VST3, AAX, etc.</li>
+                <li><strong>Publishers</strong> - Filter by manufacturer</li>
+                <li><strong>Styles</strong> - View by plugin category (Effect, Instrument, etc.)</li>
+                <li><strong>Ratings</strong> - Show only your top-rated plugins</li>
+            </ul>
+
+            <h3>3. Rating Plugins</h3>
+            <p>To rate a plugin:</p>
+            <ol class="step-list">
+                <li>Select one or more plugins in the table</li>
+                <li>Click the star icons in the detail panel</li>
+                <li>Or right-click and choose <strong>Set Rating</strong></li>
+            </ol>
+
+            <h3>4. Adding Tags</h3>
+            <p>Organize plugins with custom tags:</p>
+            <ol class="step-list">
+                <li>Select a plugin</li>
+                <li>Click <strong>Add Tag</strong> in the detail panel</li>
+                <li>Enter a tag name (e.g., "Vocals", "Master Bus", "Favorites")</li>
+                <li>Press Return to save</li>
+            </ol>
+
+            <h3>5. Searching</h3>
+            <p>The search bar at the top filters your plugin list in real-time. Search by:</p>
+            <ul>
+                <li>Plugin name</li>
+                <li>Publisher/manufacturer</li>
+                <li>Style/category</li>
+                <li>Version number</li>
+                <li>Architecture (Intel, Apple Silicon)</li>
+            </ul>
+
+            <div class="note">
+                <strong>Pro Tip:</strong> You can also search by format. Type "VST3" or "AU" to filter by plugin type.
+            </div>
+        </section>
+
+        <section>
+            <h2>Importing DAW Projects</h2>
+            <p>One of Plugin Reporter's most powerful features is the ability to import and analyze your DAW project files.</p>
+
+            <h3>Supported DAWs</h3>
+            <p>Plugin Reporter supports 17+ major DAWs including:</p>
+            <div class="feature-grid">
+                <div class="feature-item">Ableton Live</div>
+                <div class="feature-item">Logic Pro</div>
+                <div class="feature-item">Pro Tools</div>
+                <div class="feature-item">Cubase</div>
+                <div class="feature-item">Nuendo</div>
+                <div class="feature-item">Studio One</div>
+                <div class="feature-item">FL Studio</div>
+                <div class="feature-item">Reaper</div>
+                <div class="feature-item">Bitwig</div>
+                <div class="feature-item">Reason</div>
+                <div class="feature-item">GarageBand</div>
+                <div class="feature-item">MainStage</div>
+            </div>
+
+            <h3>To Import a Project:</h3>
+            <ol class="step-list">
+                <li>Choose <strong>File > Import DAW Project</strong> (or press <kbd>⌘I</kbd>)</li>
+                <li>Select one or more project files</li>
+                <li>Plugin Reporter will extract the plugin list and show which plugins are used</li>
+                <li>Missing plugins (not installed on your system) will be highlighted</li>
+            </ol>
+
+            <p>You can also drag and drop project files directly onto the Plugin Reporter window!</p>
+        </section>
+
+        <section>
+            <h2>Exporting Your Plugin List</h2>
+            <p>Share your plugin inventory with others or keep records:</p>
+
+            <h3>Export Formats</h3>
+            <ul>
+                <li><strong>CSV</strong> - Import into Excel or Google Sheets</li>
+                <li><strong>JSON</strong> - For developers and automation</li>
+                <li><strong>HTML</strong> - Beautiful web page with your plugin list</li>
+                <li><strong>PDF</strong> - Professional printable reports</li>
+            </ul>
+
+            <h3>To Export:</h3>
+            <ol class="step-list">
+                <li>Choose <strong>File > Export</strong> (or press <kbd>⌘E</kbd>)</li>
+                <li>Select your desired format</li>
+                <li>Choose what to include (ratings, notes, tags, etc.)</li>
+                <li>Click <strong>Export</strong> and choose a save location</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Backup & Restore</h2>
+            <p>Protect your ratings, tags, notes, and playlists with the Archive feature:</p>
+
+            <ol class="step-list">
+                <li>Go to <strong>Settings > Backup & Restore</strong></li>
+                <li>Click <strong>Export Archive</strong></li>
+                <li>Choose whether to encrypt with a password (recommended)</li>
+                <li>Save the <code>.pluginreporter</code> file to a safe location</li>
+            </ol>
+
+            <p>To restore from a backup, click <strong>Import Archive</strong> and select your saved file.</p>
+
+            <div class="warning">
+                <strong>Important:</strong> If you encrypt your archive, make sure to remember your password! There is no way to recover an encrypted archive without the password.
+            </div>
+        </section>
+
+        <section>
+            <h2>Keyboard Shortcuts</h2>
+            <p>Work faster with these essential shortcuts:</p>
+
+            <table>
+                <tr>
+                    <th>Action</th>
+                    <th>Shortcut</th>
+                </tr>
+                <tr>
+                    <td>Scan for plugins</td>
+                    <td><kbd>⌘R</kbd></td>
+                </tr>
+                <tr>
+                    <td>Import DAW project</td>
+                    <td><kbd>⌘I</kbd></td>
+                </tr>
+                <tr>
+                    <td>Export plugin list</td>
+                    <td><kbd>⌘E</kbd></td>
+                </tr>
+                <tr>
+                    <td>Open preferences</td>
+                    <td><kbd>⌘,</kbd></td>
+                </tr>
+                <tr>
+                    <td>Focus search</td>
+                    <td><kbd>⌘F</kbd></td>
+                </tr>
+                <tr>
+                    <td>Select all</td>
+                    <td><kbd>⌘A</kbd></td>
+                </tr>
+            </table>
+
+            <p><a href="keyboard-shortcuts.html">View complete keyboard shortcut reference →</a></p>
+        </section>
+
+        <section>
+            <h2>Next Steps</h2>
+            <p>Now that you're familiar with the basics, explore these features:</p>
+            <ul>
+                <li><a href="filtering.html">Advanced Filtering Techniques</a></li>
+                <li><a href="playlists.html">Working with Playlists</a></li>
+                <li><a href="bulk-edit.html">Bulk Editing Multiple Plugins</a></li>
+                <li><a href="ai-suggestions.html">Using AI Suggestions</a></li>
+                <li><a href="custom-playlists.html">Creating Custom Playlists</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Need Help?</h2>
+            <p>If you have questions or run into issues:</p>
+            <ul>
+                <li><a href="faq.html">Check the FAQ</a></li>
+                <li><a href="common-issues.html">View Common Issues</a></li>
+                <li><a href="support.html">Contact Support</a></li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Home</a></p>
+        <p>&copy; 2025 Chad Littlepage. All rights reserved.</p>
+    </footer>
+</body>
+</html>

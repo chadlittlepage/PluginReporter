@@ -53,18 +53,24 @@ class CloudSyncStorage {
     /// Save data - automatically syncs to iCloud if available
     func setData(_ data: Data?, forKey key: String) {
         if isCloudAvailable {
+            let cloudStart = Date()
             if let data = data {
                 ubiquitousStore.set(data, forKey: key)
-                ubiquitousStore.synchronize()
-                print("☁️ Saved to iCloud: \(key)")
+                // Removed synchronize() - system automatically syncs in background
+                // This prevents blocking the main thread waiting for network I/O
+                let cloudTime = Date().timeIntervalSince(cloudStart)
+                print("☁️ Queued for iCloud sync: \(key) (\(cloudTime)s)")
             } else {
                 ubiquitousStore.removeObject(forKey: key)
-                ubiquitousStore.synchronize()
+                // Removed synchronize() - system handles automatic sync
             }
         }
 
         // Always save to local as backup
+        let localStart = Date()
         localStore.set(data, forKey: key)
+        let localTime = Date().timeIntervalSince(localStart)
+        print("💾 UserDefaults write: \(key) (\(localTime)s)")
     }
 
     /// Load data - prefers iCloud if available, falls back to local
@@ -85,16 +91,18 @@ class CloudSyncStorage {
     func removeData(forKey key: String) {
         if isCloudAvailable {
             ubiquitousStore.removeObject(forKey: key)
-            ubiquitousStore.synchronize()
+            // Removed synchronize() - system handles automatic sync
         }
         localStore.removeObject(forKey: key)
     }
 
     /// Force synchronization with iCloud
+    /// NOTE: synchronize() is deprecated and may block. System automatically syncs in background.
+    /// Only use this if absolutely necessary (e.g., before app termination).
     func forceSynchronize() {
         if isCloudAvailable {
             ubiquitousStore.synchronize()
-            print("☁️ Forced iCloud sync")
+            print("☁️ Forced iCloud sync (blocking operation)")
         }
     }
 

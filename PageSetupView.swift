@@ -312,6 +312,7 @@ struct PageSetupView: View {
                             ColumnToggleButton(label: "Type", isOn: $preferences.pdfShowType)
                             ColumnToggleButton(label: "Style", isOn: $preferences.pdfShowStyle)
                             ColumnToggleButton(label: "Version", isOn: $preferences.pdfShowVersion)
+                            ColumnToggleButton(label: "License", isOn: $preferences.pdfShowLicense)
                             ColumnToggleButton(label: "Arch", isOn: $preferences.pdfShowArch)
                             ColumnToggleButton(label: "Date", isOn: $preferences.pdfShowDate)
                             ColumnToggleButton(label: "Size", isOn: $preferences.pdfShowSize)
@@ -331,6 +332,7 @@ struct PageSetupView: View {
                                 preferences.pdfShowType = true
                                 preferences.pdfShowStyle = true
                                 preferences.pdfShowVersion = true
+                                preferences.pdfShowLicense = true
                                 preferences.pdfShowArch = true
                                 preferences.pdfShowDate = true
                                 preferences.pdfShowSize = true
@@ -351,6 +353,7 @@ struct PageSetupView: View {
                                 preferences.pdfShowType = false
                                 preferences.pdfShowStyle = false
                                 preferences.pdfShowVersion = false
+                                preferences.pdfShowLicense = false
                                 preferences.pdfShowArch = false
                                 preferences.pdfShowDate = false
                                 preferences.pdfShowSize = false
@@ -443,6 +446,7 @@ struct PageSetupView: View {
         .onChange(of: preferences.pdfShowType) { _ in updatePreview() }
         .onChange(of: preferences.pdfShowStyle) { _ in updatePreview() }
         .onChange(of: preferences.pdfShowVersion) { _ in updatePreview() }
+        .onChange(of: preferences.pdfShowLicense) { _ in updatePreview() }
         .onChange(of: preferences.pdfShowArch) { _ in updatePreview() }
         .onChange(of: preferences.pdfShowDate) { _ in updatePreview() }
         .onChange(of: preferences.pdfShowSize) { _ in updatePreview() }
@@ -526,6 +530,30 @@ struct PageSetupView: View {
         }
     }
 
+    private func getLicenseType(for plugin: PluginItem) -> String {
+        let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
+            .replacingOccurrences(of: " ", with: "_")
+
+        if let license = LicenseManager.shared.getLicense(for: pluginID) {
+            // Check if it mentions iLok anywhere (imported from iLok)
+            if let notes = license.notes?.lowercased(), notes.contains("ilok") {
+                return "iLok"
+            }
+            if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
+                return "iLok"
+            }
+            // Check if it has a serial number or license key
+            if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
+                return "Serial"
+            }
+            // If we have a license entry but no specific data, still show something was imported
+            if license.notes?.isEmpty == false {
+                return "iLok"  // Default to iLok if we have notes but no serial
+            }
+        }
+        return ""
+    }
+
     private func buildPreviewTable(capacity: Int, topMargin: CGFloat, bottomMargin: CGFloat) -> String {
         // Get managers for rating, notes, and metadata (SAME as actual export)
         let ratingsManager = RatingsManager.shared
@@ -563,6 +591,9 @@ struct PageSetupView: View {
         }
         if preferences.pdfShowVersion {
             columns.append(ColumnInfo(header: "Version", maxDesired: 12, minimum: 5) { item, _, _ in metadataManager.getDisplayVersion(for: item) })
+        }
+        if preferences.pdfShowLicense {
+            columns.append(ColumnInfo(header: "License", maxDesired: 8, minimum: 5) { item, _, _ in getLicenseType(for: item) })
         }
         if preferences.pdfShowArch {
             columns.append(ColumnInfo(header: "Arch", maxDesired: 16, minimum: 8) { item, _, _ in item.architectures })

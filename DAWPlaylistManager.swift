@@ -147,7 +147,7 @@ struct DAWPlaylistEntry: Identifiable, Codable, Equatable, Hashable {
 }
 
 /// Supported DAW types
-enum DAWType: String, Codable, Hashable, CaseIterable {
+public enum DAWType: String, Codable, Hashable, CaseIterable {
     case abletonLive = "Ableton Live"
     case logicPro = "Logic Pro"
     case garageBand = "GarageBand"
@@ -245,22 +245,29 @@ class DAWPlaylistManager: ObservableObject {
             }
         }
 
+        let startTime = Date()
+
         // Determine DAW type from file extension
         let dawType = detectDAWType(from: url)
+        print("⏱️ Detect DAW type: \(Date().timeIntervalSince(startTime))s")
 
         await updateProgress(0.2)
 
         // Parse the project file using the parser registry
+        let parseStart = Date()
         let parsedProject: ParsedProject
         parsedProject = try DAWParserRegistry.shared.parseProject(url: url, dawType: dawType)
+        print("⏱️ Parse project: \(Date().timeIntervalSince(parseStart))s")
 
         await updateProgress(0.5)
 
         // Match plugins with installed ones
+        let matchStart = Date()
         let entries = PluginMatcher.createEntries(
             from: parsedProject.allPlugins,
             installedPlugins: installedPlugins
         )
+        print("⏱️ Match \(parsedProject.allPlugins.count) plugins: \(Date().timeIntervalSince(matchStart))s")
 
         await updateProgress(0.8)
 
@@ -277,13 +284,15 @@ class DAWPlaylistManager: ObservableObject {
             key: parsedProject.key
         )
 
-        // Save playlist
-        await MainActor.run {
-            playlists.append(playlist)
-            savePlaylists()
-        }
+        // Note: We DO NOT append to playlists here during import!
+        // This prevents triggering @Published updates on every import.
+        // The caller is responsible for batching updates.
+        // For individual imports, use addPlaylist() instead.
+        print("⏱️ Playlist created (not saved yet - batching for performance)")
 
         await updateProgress(1.0)
+
+        print("⏱️ TOTAL IMPORT TIME: \(Date().timeIntervalSince(startTime))s")
 
         return playlist
     }
@@ -327,6 +336,41 @@ class DAWPlaylistManager: ObservableObject {
 
         playlists.append(playlist)
         savePlaylists()
+    }
+
+    /// Batch add multiple playlists at once (for bulk DAW imports)
+    /// This triggers only ONE @Published update instead of N updates
+    func addPlaylists(_ newPlaylists: [DAWPlaylist]) {
+        guard !newPlaylists.isEmpty else { return }
+
+        let batchStart = Date()
+        print("⏱️ Starting batch add of \(newPlaylists.count) playlists...")
+
+        #if os(macOS)
+        // Register undo for batch operation
+        undoManager.registerUndo(withTarget: self) { manager in
+            for playlist in newPlaylists.reversed() {
+                manager.deletePlaylist(playlist)
+            }
+        }
+        undoManager.setActionName("Import \(newPlaylists.count) Projects")
+        updateUndoState()
+        #endif
+
+        // Single append operation triggers ONE @Published update
+        playlists.append(contentsOf: newPlaylists)
+
+        let appendTime = Date().timeIntervalSince(batchStart)
+        print("⏱️   - Batch append time: \(appendTime)s")
+
+        // Single save operation
+        let saveStart = Date()
+        savePlaylists()
+        let saveTime = Date().timeIntervalSince(saveStart)
+        print("⏱️   - Batch save time: \(saveTime)s")
+
+        let totalTime = Date().timeIntervalSince(batchStart)
+        print("⏱️ TOTAL BATCH ADD TIME: \(totalTime)s for \(newPlaylists.count) playlists")
     }
 
     /// Add a plugin to a custom playlist
@@ -575,12 +619,18 @@ class DAWPlaylistManager: ObservableObject {
     // MARK: - Persistence
 
     private func savePlaylists() {
+        let encodeStart = Date()
         guard let encoded = try? JSONEncoder().encode(playlists) else {
             print("❌ Failed to encode DAW playlists")
             return
         }
+        let encodeTime = Date().timeIntervalSince(encodeStart)
+        print("⏱️   - JSON encode time: \(encodeTime)s (\(encoded.count) bytes)")
 
+        let saveStart = Date()
         CloudSyncStorage.shared.setData(encoded, forKey: storageKey)
+        let saveTime = Date().timeIntervalSince(saveStart)
+        print("⏱️   - Storage write time: \(saveTime)s")
     }
 
     private func loadPlaylists() {

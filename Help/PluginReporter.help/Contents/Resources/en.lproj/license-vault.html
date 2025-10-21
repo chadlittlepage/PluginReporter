@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Vault - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>License Vault</h1>
+        <p class="subtitle">Secure storage for your plugin licenses and credentials</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Overview</h2>
+            <p>Plugin Reporter's License Vault provides a secure, centralized location to store all your plugin license information, serial numbers, activation codes, and account credentials. Never lose a license key again!</p>
+
+            <h3>What You Can Store</h3>
+            <ul>
+                <li><strong>Serial Numbers</strong> - License keys and registration codes</li>
+                <li><strong>Account Credentials</strong> - Email addresses and passwords (encrypted in macOS Keychain)</li>
+                <li><strong>Activation Tracking</strong> - Monitor how many seats you've used</li>
+                <li><strong>Purchase Information</strong> - Purchase dates and invoice numbers</li>
+                <li><strong>Vendor Links</strong> - Quick access to manufacturer websites, account portals, and support pages</li>
+                <li><strong>Notes</strong> - Additional information or reminders</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Accessing the License Vault</h2>
+            <p>There are two ways to access license information for a plugin:</p>
+
+            <h3>Method 1: Detail Panel</h3>
+            <ol>
+                <li>Select a plugin in the main table</li>
+                <li>Open the Detail Panel (if not already visible)</li>
+                <li>Click the <strong>"License"</strong> tab at the top</li>
+                <li>You'll see the license information for that plugin</li>
+            </ol>
+
+            <h3>Method 2: Direct Access</h3>
+            <p>You can also access license information from:</p>
+            <ul>
+                <li>Right-click menu on any plugin</li>
+                <li>Double-clicking a plugin (if configured in preferences)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>License Column Quick View</h2>
+            <p>Plugin Reporter displays license status directly in the main plugin table for quick reference:</p>
+
+            <h3>What the License Column Shows</h3>
+            <ul>
+                <li><strong>"Serial"</strong> - Plugin has a serial number or license key stored</li>
+                <li><strong>"iLok"</strong> - License managed via iLok License Manager (manually added or imported)</li>
+                <li><strong>Blank</strong> - No license information stored yet</li>
+            </ul>
+
+            <h3>Benefits</h3>
+            <ul>
+                <li>See at a glance which plugins have licenses stored</li>
+                <li>Identify license type without opening the License tab</li>
+                <li>Sort and filter by license status</li>
+                <li>Included in all exports (CSV, PDF, printed reports)</li>
+            </ul>
+
+            <div class="tip">
+                <h4>💡 Pro Tip</h4>
+                <p>Use the License column to quickly identify plugins that still need license information added. Blank entries show plugins where you haven't stored license data yet.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Adding License Information</h2>
+            <p>To add license information for a plugin:</p>
+
+            <ol>
+                <li>Navigate to the plugin's License tab (see above)</li>
+                <li>Click <strong>"Add License Info"</strong></li>
+                <li>Fill in the relevant fields:
+                    <ul>
+                        <li>Serial Number or License Key</li>
+                        <li>Account email</li>
+                        <li>Password (stored securely in macOS Keychain)</li>
+                        <li>Activation tracking (seats used/total)</li>
+                        <li>Purchase date and invoice number</li>
+                        <li>Vendor URLs (website, account portal, support)</li>
+                        <li>Notes</li>
+                    </ul>
+                </li>
+                <li>Click <strong>"Done"</strong> to save</li>
+            </ol>
+
+            <div class="tip">
+                <h4>💡 Tip: Import from iLok</h4>
+                <p>If you use iLok License Manager, you can import all your licenses at once! See <a href="ilok-import.html">Importing from iLok</a> for details.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Viewing License Information</h2>
+            <p>Once added, license information is displayed in an organized, easy-to-read format:</p>
+
+            <h3>Serial Number Section</h3>
+            <ul>
+                <li>Displays your serial number or license key</li>
+                <li>One-click copy to clipboard button</li>
+                <li>Text selection enabled for easy copying</li>
+            </ul>
+
+            <h3>Account Credentials</h3>
+            <ul>
+                <li>Email address (visible)</li>
+                <li>Password (hidden as ••••••••)</li>
+                <li>Copy buttons for quick access</li>
+            </ul>
+
+            <h3>Activation Tracking</h3>
+            <ul>
+                <li>Shows seats used vs. total available</li>
+                <li>Warning indicator when all activations are used</li>
+                <li>Optional activation code field</li>
+            </ul>
+
+            <h3>Purchase Information</h3>
+            <ul>
+                <li>Purchase date</li>
+                <li>Invoice number</li>
+                <li>Helps with warranty and upgrade tracking</li>
+            </ul>
+
+            <h3>Vendor Links</h3>
+            <ul>
+                <li>Manufacturer website - Company homepage</li>
+                <li>Account portal - Manage your licenses online</li>
+                <li>Support - Get help from the vendor</li>
+            </ul>
+
+            <h3>Notes</h3>
+            <ul>
+                <li>Free-form text area for any additional information</li>
+                <li>Great for installation notes, upgrade history, etc.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Editing License Information</h2>
+            <p>To edit existing license information:</p>
+
+            <ol>
+                <li>Open the plugin's License tab</li>
+                <li>Click <strong>"Edit"</strong></li>
+                <li>Make your changes</li>
+                <li>Click <strong>"Done"</strong> to save</li>
+            </ol>
+
+            <p>All changes are saved immediately and synced to iCloud (if enabled).</p>
+        </section>
+
+        <section>
+            <h2>Security Features</h2>
+
+            <h3>Keychain Integration</h3>
+            <p>Passwords are stored using <strong>macOS Keychain</strong>, the same secure system used by Safari, Mail, and other Apple apps. This means:</p>
+            <ul>
+                <li>Passwords are encrypted by the system</li>
+                <li>Protected by your Mac's login password</li>
+                <li>Never stored in plain text</li>
+                <li>Backed up via iCloud Keychain (if enabled)</li>
+                <li>Same security level as your banking credentials</li>
+            </ul>
+
+            <h3>Archive Encryption</h3>
+            <p>When you export an archive, you can choose to encrypt it with AES-256-GCM encryption. Encrypted archives include:</p>
+            <ul>
+                <li>All license data (serial numbers, etc.)</li>
+                <li>Keychain passwords</li>
+                <li>Complete protection with your chosen password</li>
+            </ul>
+
+            <h3>Privacy</h3>
+            <ul>
+                <li>All data stays local or in your personal iCloud</li>
+                <li>No third-party servers</li>
+                <li>You have complete control over your data</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Common Use Cases</h2>
+
+            <h3>Computer Migration</h3>
+            <p><strong>Scenario:</strong> Moving to a new Mac</p>
+            <ol>
+                <li>Export encrypted archive from old Mac</li>
+                <li>Transfer archive to new Mac</li>
+                <li>Import archive</li>
+                <li>All license info restored instantly!</li>
+            </ol>
+
+            <h3>License Recovery</h3>
+            <p><strong>Scenario:</strong> "Where did I put that serial key?!"</p>
+            <ol>
+                <li>Open Plugin Reporter</li>
+                <li>Find the plugin</li>
+                <li>Click License tab</li>
+                <li>Copy serial number - done!</li>
+            </ol>
+
+            <h3>Activation Management</h3>
+            <p><strong>Scenario:</strong> Need to deactivate before reinstalling</p>
+            <ol>
+                <li>Check License tab to see activation count</li>
+                <li>Plan deactivations if at limit</li>
+                <li>Use account portal link to manage online</li>
+            </ol>
+
+            <h3>Team Collaboration</h3>
+            <p><strong>Scenario:</strong> Studio with multiple users</p>
+            <ol>
+                <li>Store shared license info centrally</li>
+                <li>Export individual license files if needed</li>
+                <li>Track which plugins need team licenses</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Tips & Best Practices</h2>
+
+            <div class="tip">
+                <h4>✅ Do This</h4>
+                <ul>
+                    <li>Add license info as soon as you purchase a plugin</li>
+                    <li>Create regular encrypted backups</li>
+                    <li>Use the iLok import feature to bulk-add licenses</li>
+                    <li>Keep vendor URLs up to date</li>
+                    <li>Use Notes field for upgrade eligibility info</li>
+                    <li>Track activation limits to avoid surprises</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ Important</h4>
+                <ul>
+                    <li>Always export encrypted archives, not unencrypted ones (passwords aren't included in unencrypted exports)</li>
+                    <li>Don't share unencrypted archives - they contain serial numbers</li>
+                    <li>Use strong passwords for Keychain items</li>
+                    <li>Keep your archive passwords in a safe place</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Related Topics</h2>
+            <ul>
+                <li><a href="adding-licenses.html">Adding License Information</a> - Step-by-step guide</li>
+                <li><a href="ilok-import.html">Importing from iLok</a> - Bulk import your iLok licenses</li>
+                <li><a href="license-security.html">Security & Keychain</a> - How your data is protected</li>
+                <li><a href="archive.html">Archive & Restore</a> - Backup your license data</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Index</a></p>
+    </footer>
+</body>
+</html>

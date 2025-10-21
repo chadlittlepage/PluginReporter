@@ -11,6 +11,7 @@ import SwiftUI
 
 class PrintHelper {
     /// Create a printable NSView with the plugin table
+    @MainActor
     static func createPrintableView(plugins: [PluginItem], preferences: Preferences) -> NSView {
         let printInfo = NSPrintInfo.shared
         let pageWidth = printInfo.paperSize.width
@@ -68,6 +69,7 @@ class PrintHelper {
     }
 
     /// Build formatted table text
+    @MainActor
     private static func buildTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloat) -> String {
         // Calculate character capacity
         let charWidth = fontSize * 0.6
@@ -98,13 +100,14 @@ class PrintHelper {
         // Separator line
         result += String(repeating: "─", count: min(capacity, result.count)) + "\n"
 
-        // Data rows
+        // Data rows - use MetadataManager for edited metadata
+        let metadataManager = MetadataManager.shared
         for plugin in plugins {
             result += pad(plugin.name, widths[0]) + "  "
-            result += pad(plugin.publisher, widths[1]) + "  "
+            result += pad(metadataManager.getDisplayPublisher(for: plugin), widths[1]) + "  "
             result += pad(plugin.type, widths[2]) + "  "
-            result += pad(plugin.style, widths[3]) + "  "
-            result += pad(plugin.version, widths[4]) + "  "
+            result += pad(metadataManager.getDisplayStyle(for: plugin), widths[3]) + "  "
+            result += pad(metadataManager.getDisplayVersion(for: plugin), widths[4]) + "  "
             result += pad(plugin.architectures, widths[5]) + "\n"
         }
 

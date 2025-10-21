@@ -27,7 +27,9 @@ struct FastFilterEngine {
         searchText: String
     ) -> [PluginItem] {
 
-        print("🚀 FastFilterEngine.filter() CALLED with searchText: '\(searchText)'")
+        #if DEBUG
+        AppLogger.debug("FastFilterEngine.filter() called with search: '\(searchText)'")
+        #endif
 
         var result = plugins
 
@@ -65,39 +67,25 @@ struct FastFilterEngine {
             result = result.filter { styles.contains($0.style) }
         }
 
-        // STEP 4: Search filter
+        // STEP 4: Search filter (optimized - compute query strings once)
         // Empty string = show all, otherwise search all fields
         if !searchText.isEmpty {
             let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
             let queryUpper = trimmed.uppercased()
-            let queryLower = trimmed.lowercased()
 
-            print("🔎 Search filter - raw: '\(searchText)', trimmed: '\(trimmed)', upper: '\(queryUpper)'")
-
-            // Check if search query is a known plugin format (use EXACT same logic as format filter)
+            // Check if search query is a known plugin format
             let knownFormats = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2", "OBSLT", "OBSOLETE"]
             let isFormatSearch = knownFormats.contains(queryUpper)
 
-            print("🔎 Is format search? \(isFormatSearch) (checking if '\(queryUpper)' is in \(knownFormats))")
-
             if isFormatSearch {
-                // Format search: Use EXACT same comparison as format filter (case-sensitive)
-                print("🔍 Format search detected: '\(queryUpper)' - Before filter: \(result.count) plugins")
+                // Format search: EXACT match
+                let isObsoleteSearch = (queryUpper == "OBSOLETE")
                 result = result.filter { plugin in
-                    // Handle "OBSOLETE" synonym
-                    if queryUpper == "OBSOLETE" {
-                        return plugin.type == "OBSLT" || plugin.obsolete
-                    }
-                    // EXACT match with plugin.type (same as format filter logic)
-                    let matches = plugin.type == queryUpper
-                    if !matches {
-                        print("  ❌ Excluding: \(plugin.name) - Type: \(plugin.type)")
-                    }
-                    return matches
+                    isObsoleteSearch ? (plugin.type == "OBSLT" || plugin.obsolete) : plugin.type == queryUpper
                 }
-                print("🔍 After filter: \(result.count) plugins")
             } else {
-                // Regular search: search all fields except path
+                // Regular search: Pre-compute lowercase query ONCE
+                let queryLower = trimmed.lowercased()
                 result = result.filter { plugin in
                     plugin.name.lowercased().contains(queryLower) ||
                     plugin.publisher.lowercased().contains(queryLower) ||

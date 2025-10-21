@@ -81,6 +81,32 @@ func createPrintablePluginView(plugins: [PluginItem], preferences: Preferences) 
     return view
 }
 
+/// Get license type for a plugin
+@MainActor
+func getLicenseType(for plugin: PluginItem) -> String {
+    let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
+        .replacingOccurrences(of: " ", with: "_")
+
+    if let license = LicenseManager.shared.getLicense(for: pluginID) {
+        // Check if it mentions iLok anywhere (imported from iLok)
+        if let notes = license.notes?.lowercased(), notes.contains("ilok") {
+            return "iLok"
+        }
+        if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
+            return "iLok"
+        }
+        // Check if it has a serial number or license key
+        if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
+            return "Serial"
+        }
+        // If we have a license entry but no specific data, still show something was imported
+        if license.notes?.isEmpty == false {
+            return "iLok"  // Default to iLok if we have notes but no serial
+        }
+    }
+    return ""
+}
+
 /// Build formatted table text for printing (matches ExportManager implementation)
 @MainActor
 func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloat, preferences: Preferences) -> String {
@@ -91,9 +117,10 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
 
     print("📄 Export: width=\(width), fontSize=\(fontSize), ACTUAL charWidth=\(charWidth), capacity=\(capacity)")
 
-    // Get managers for rating and notes
+    // Get managers for rating, notes, and metadata
     let ratingsManager = RatingsManager.shared
     let notesManager = NotesManager.shared
+    let metadataManager = MetadataManager.shared
 
     // Define column information structure
     struct ColumnInfo {
@@ -116,16 +143,19 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
         columns.append(ColumnInfo(header: "Name", maxDesired: 35, minimum: 8) { item, _, _ in item.name })
     }
     if preferences.pdfShowPublisher {
-        columns.append(ColumnInfo(header: "Publisher", maxDesired: 20, minimum: 6) { item, _, _ in item.publisher })
+        columns.append(ColumnInfo(header: "Publisher", maxDesired: 20, minimum: 6) { item, _, _ in metadataManager.getDisplayPublisher(for: item) })
     }
     if preferences.pdfShowType {
         columns.append(ColumnInfo(header: "Type", maxDesired: 5, minimum: 3) { item, _, _ in item.type })
     }
     if preferences.pdfShowStyle {
-        columns.append(ColumnInfo(header: "Style", maxDesired: 15, minimum: 6) { item, _, _ in item.style })
+        columns.append(ColumnInfo(header: "Style", maxDesired: 15, minimum: 6) { item, _, _ in metadataManager.getDisplayStyle(for: item) })
     }
     if preferences.pdfShowVersion {
-        columns.append(ColumnInfo(header: "Version", maxDesired: 12, minimum: 5) { item, _, _ in item.version })
+        columns.append(ColumnInfo(header: "Version", maxDesired: 12, minimum: 5) { item, _, _ in metadataManager.getDisplayVersion(for: item) })
+    }
+    if preferences.pdfShowLicense {
+        columns.append(ColumnInfo(header: "License", maxDesired: 8, minimum: 5) { item, _, _ in getLicenseType(for: item) })
     }
     if preferences.pdfShowArch {
         columns.append(ColumnInfo(header: "Arch", maxDesired: 16, minimum: 8) { item, _, _ in item.architectures })
@@ -910,6 +940,11 @@ struct PluginReporterApp: App {
                 }
                 .keyboardShortcut("d", modifiers: .command)
 
+                Button("License...") {
+                    NotificationCenter.default.post(name: NSNotification.Name("ShowLicense"), object: nil)
+                }
+                .keyboardShortcut("l", modifiers: .command)
+
                 Divider()
 
                 Button("Uninstall Selected...") {
@@ -1186,6 +1221,7 @@ struct PluginReporterApp: App {
         #if os(macOS)
         Settings {
             SettingsView(prefs: prefs)
+                .environmentObject(scanner)
                 .preferredColorScheme(.dark)
         }
         #endif

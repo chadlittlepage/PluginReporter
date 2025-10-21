@@ -3,6 +3,7 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject var prefs: Preferences
+    @EnvironmentObject private var scanner: PluginScanner
     @State private var showBugReport = false
     @State private var showFeatureRequest = false
     @Environment(\.colorScheme) var colorScheme
@@ -262,6 +263,7 @@ struct SettingsView: View {
                             ColumnToggleButton(label: "Type", isOn: $prefs.pdfShowType)
                             ColumnToggleButton(label: "Style", isOn: $prefs.pdfShowStyle)
                             ColumnToggleButton(label: "Version", isOn: $prefs.pdfShowVersion)
+                            ColumnToggleButton(label: "License", isOn: $prefs.pdfShowLicense)
                             ColumnToggleButton(label: "Arch", isOn: $prefs.pdfShowArch)
                             ColumnToggleButton(label: "Date", isOn: $prefs.pdfShowDate)
                             ColumnToggleButton(label: "Size", isOn: $prefs.pdfShowSize)
@@ -282,6 +284,7 @@ struct SettingsView: View {
                                 prefs.pdfShowType = true
                                 prefs.pdfShowStyle = true
                                 prefs.pdfShowVersion = true
+                                prefs.pdfShowLicense = true
                                 prefs.pdfShowArch = true
                                 prefs.pdfShowDate = true
                                 prefs.pdfShowSize = true
@@ -301,6 +304,7 @@ struct SettingsView: View {
                                 prefs.pdfShowType = false
                                 prefs.pdfShowStyle = false
                                 prefs.pdfShowVersion = false
+                                prefs.pdfShowLicense = false
                                 prefs.pdfShowArch = false
                                 prefs.pdfShowDate = false
                                 prefs.pdfShowSize = false
@@ -446,6 +450,118 @@ struct SettingsView: View {
                     .padding(.horizontal, 20)
                 }
 
+                // MARK: - Backup & Restore
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Backup & Restore")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 0) {
+                        // Export Archive
+                        Button(action: {
+                            exportArchive()
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.up.doc.fill")
+                                    .foregroundColor(.blue)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Export Archive")
+                                        .foregroundColor(.primary)
+                                    Text("Create a complete backup of all your data")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                            .padding(16)
+                        }
+                        .buttonStyle(.plain)
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        // Import Archive
+                        Button(action: {
+                            importArchive()
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.down.doc.fill")
+                                    .foregroundColor(.green)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Import Archive")
+                                        .foregroundColor(.primary)
+                                    Text("Restore data from a backup file")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                            .padding(16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+
+                    // Info text
+                    Text("Archive files contain all your ratings, tags, notes, playlists, metadata, and preferences. Use this to backup your data or transfer to a new computer.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                }
+
+                // MARK: - License Import
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("License Import")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 0) {
+                        // iLok Import
+                        Button(action: {
+                            openiLokImportWindow()
+                        }) {
+                            HStack {
+                                Image(systemName: "key.fill")
+                                    .foregroundColor(.purple)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Import from iLok")
+                                        .foregroundColor(.primary)
+                                    Text("Import license data from iLok License Manager CSV export")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                            .padding(16)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+
+                    // Info text
+                    Text("Import serial numbers, activation codes, and other license information from iLok License Manager to automatically populate your plugin license vault.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                }
+
                 Spacer(minLength: 40)
             }
             .padding(.top, 20)
@@ -477,6 +593,36 @@ struct SettingsView: View {
         window.titleVisibility = .visible
 
         let hostingView = NSHostingView(rootView: BugReportView())
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        window.isReleasedWhenClosed = false
+    }
+
+    func openiLokImportWindow() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 700),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.center()
+        window.title = "Import from iLok License Manager"
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+        window.titlebarAppearsTransparent = false
+        window.titleVisibility = .visible
+        window.minSize = NSSize(width: 600, height: 600)
+        window.maxSize = NSSize(width: 600, height: 1000)
+
+        // Get plugins from scanner
+        let plugins = scanner.plugins
+
+        // Provide environment objects to the view
+        let hostingView = NSHostingView(
+            rootView: iLokImportView(plugins: plugins)
+                .environmentObject(scanner)
+                .environmentObject(prefs)
+        )
         window.contentView = hostingView
         window.makeKeyAndOrderFront(nil)
         window.isReleasedWhenClosed = false
@@ -521,6 +667,264 @@ struct SettingsView: View {
             let new = p.urls.map { $0.path }
             let merged = Array(Set(prefs.extraScanPaths).union(new)).sorted()
             prefs.extraScanPaths = merged
+        }
+    }
+
+    // MARK: - Archive Export/Import
+
+    func exportArchive() {
+        // Ensure we're on main thread for immediate UI response
+        Task { @MainActor in
+            // First, ask if user wants encryption
+            let encryptAlert = NSAlert()
+            encryptAlert.messageText = "Archive Encryption"
+            encryptAlert.informativeText = "Do you want to encrypt this archive with a password?\n\nEncrypted archives use AES-256 encryption and require the password to restore."
+            encryptAlert.alertStyle = .informational
+            encryptAlert.addButton(withTitle: "Encrypt with Password")
+            encryptAlert.addButton(withTitle: "No Encryption")
+            encryptAlert.addButton(withTitle: "Cancel")
+
+            let encryptChoice = encryptAlert.runModal()
+
+            if encryptChoice == .alertThirdButtonReturn {
+                return // User cancelled
+            }
+
+            let useEncryption = (encryptChoice == .alertFirstButtonReturn)
+            var password: String? = nil
+
+            if useEncryption {
+                // Prompt for password
+                let passwordAlert = NSAlert()
+                passwordAlert.messageText = "Set Archive Password"
+                passwordAlert.informativeText = "Enter a strong password to encrypt your archive.\n\n⚠️ Important: Store this password safely - you will need it to restore the archive."
+                passwordAlert.alertStyle = .informational
+
+                let passwordField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+                passwordField.placeholderString = "Password"
+                passwordAlert.accessoryView = passwordField
+
+                passwordAlert.addButton(withTitle: "Encrypt")
+                passwordAlert.addButton(withTitle: "Cancel")
+
+                let passwordResponse = passwordAlert.runModal()
+
+                if passwordResponse == .alertSecondButtonReturn {
+                    return // User cancelled
+                }
+
+                password = passwordField.stringValue
+
+                if password?.isEmpty ?? true {
+                    let emptyAlert = NSAlert()
+                    emptyAlert.messageText = "Password Required"
+                    emptyAlert.informativeText = "Please enter a password to encrypt the archive, or choose 'No Encryption'."
+                    emptyAlert.alertStyle = .warning
+                    emptyAlert.addButton(withTitle: "OK")
+                    emptyAlert.runModal()
+                    return
+                }
+
+                // Confirm password
+                let confirmAlert = NSAlert()
+                confirmAlert.messageText = "Confirm Password"
+                confirmAlert.informativeText = "Re-enter your password to confirm:"
+                confirmAlert.alertStyle = .informational
+
+                let confirmField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+                confirmField.placeholderString = "Password"
+                confirmAlert.accessoryView = confirmField
+
+                confirmAlert.addButton(withTitle: "Confirm")
+                confirmAlert.addButton(withTitle: "Cancel")
+
+                let confirmResponse = confirmAlert.runModal()
+
+                if confirmResponse == .alertSecondButtonReturn {
+                    return // User cancelled
+                }
+
+                if confirmField.stringValue != password {
+                    let mismatchAlert = NSAlert()
+                    mismatchAlert.messageText = "Passwords Don't Match"
+                    mismatchAlert.informativeText = "The passwords you entered don't match. Please try again."
+                    mismatchAlert.alertStyle = .warning
+                    mismatchAlert.addButton(withTitle: "OK")
+                    mismatchAlert.runModal()
+                    return
+                }
+            }
+
+            // Now show save panel
+            let panel = NSSavePanel()
+            panel.title = "Export Plugin Reporter Archive"
+            panel.message = "Choose a location to save your complete Plugin Reporter backup"
+            panel.nameFieldStringValue = "Plugin Reporter Backup \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)).pluginreporter"
+            panel.allowedContentTypes = [.init(filenameExtension: ArchiveManager.archiveExtension)!]
+            panel.canCreateDirectories = true
+
+            panel.begin { response in
+                guard response == .OK, let url = panel.url else { return }
+
+                Task {
+                    do {
+                        try ArchiveManager.shared.exportArchive(to: url, password: password)
+
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "Archive Exported Successfully"
+                            let encryptionStatus = useEncryption ? "🔐 Encrypted with AES-256" : "⚠️ Unencrypted"
+                            alert.informativeText = """
+                            Your Plugin Reporter data has been backed up to:
+                            \(url.lastPathComponent)
+
+                            Status: \(encryptionStatus)
+                            """
+                            alert.alertStyle = .informational
+                            alert.addButton(withTitle: "OK")
+                            alert.addButton(withTitle: "Show in Finder")
+
+                            let response = alert.runModal()
+                            if response == .alertSecondButtonReturn {
+                                NSWorkspace.shared.activateFileViewerSelecting([url])
+                            }
+                        }
+                    } catch {
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "Export Failed"
+                            alert.informativeText = "Failed to export archive: \(error.localizedDescription)"
+                            alert.alertStyle = .critical
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func importArchive() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Plugin Reporter Archive"
+        panel.message = "Choose a Plugin Reporter archive file to restore"
+        panel.allowedContentTypes = [.init(filenameExtension: ArchiveManager.archiveExtension)!]
+        panel.allowsMultipleSelection = false
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            Task {
+                // Check if archive is encrypted
+                let isEncrypted = ArchiveManager.shared.isArchiveEncrypted(at: url)
+                var password: String? = nil
+
+                if isEncrypted {
+                    // Prompt for password
+                    await MainActor.run {
+                        let passwordAlert = NSAlert()
+                        passwordAlert.messageText = "Encrypted Archive"
+                        passwordAlert.informativeText = "This archive is encrypted. Enter the password to decrypt:"
+                        passwordAlert.alertStyle = .informational
+
+                        let passwordField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+                        passwordField.placeholderString = "Password"
+                        passwordAlert.accessoryView = passwordField
+
+                        passwordAlert.addButton(withTitle: "Decrypt")
+                        passwordAlert.addButton(withTitle: "Cancel")
+
+                        let passwordResponse = passwordAlert.runModal()
+
+                        if passwordResponse == .alertSecondButtonReturn {
+                            return // User cancelled
+                        }
+
+                        password = passwordField.stringValue
+                    }
+
+                    guard password != nil && !password!.isEmpty else {
+                        return
+                    }
+                }
+
+                do {
+                    // Validate the archive
+                    let (manifest, _) = try ArchiveManager.shared.validateArchive(at: url, password: password)
+
+                    // Show confirmation dialog with archive details
+                    await MainActor.run {
+                        let alert = NSAlert()
+                        alert.messageText = "Import Archive?"
+                        alert.informativeText = """
+                        This will import data from:
+
+                        Export Date: \(DateFormatter.localizedString(from: manifest.exportDate, dateStyle: .medium, timeStyle: .short))
+                        App Version: \(manifest.appVersion)
+                        Platform: \(manifest.platform)
+
+                        Contents:
+                        • \(manifest.inventory.ratingsCount) ratings
+                        • \(manifest.inventory.tagsCount) tags
+                        • \(manifest.inventory.notesCount) notes
+                        • \(manifest.inventory.playlistsCount) playlists
+                        • \(manifest.inventory.metadataCount) metadata items
+
+                        Choose how to import:
+                        """
+                        alert.alertStyle = .informational
+                        alert.addButton(withTitle: "Replace All Data")
+                        alert.addButton(withTitle: "Merge with Existing")
+                        alert.addButton(withTitle: "Cancel")
+
+                        let response = alert.runModal()
+
+                        if response == .alertThirdButtonReturn {
+                            return // User cancelled
+                        }
+
+                        let mergeMode = (response == .alertSecondButtonReturn)
+
+                        Task {
+                            do {
+                                _ = try ArchiveManager.shared.importArchive(from: url, password: password, mergeMode: mergeMode)
+
+                                await MainActor.run {
+                                    let successAlert = NSAlert()
+                                    successAlert.messageText = "Archive Imported Successfully"
+                                    successAlert.informativeText = mergeMode ?
+                                        "Your data has been merged with the imported archive. The app will now restart to load the new data." :
+                                        "Your data has been replaced with the imported archive. The app will now restart to load the new data."
+                                    successAlert.alertStyle = .informational
+                                    successAlert.addButton(withTitle: "Restart Now")
+                                    successAlert.runModal()
+
+                                    // Restart the app to reload all data
+                                    NSApplication.shared.terminate(nil)
+                                }
+                            } catch {
+                                await MainActor.run {
+                                    let errorAlert = NSAlert()
+                                    errorAlert.messageText = "Import Failed"
+                                    errorAlert.informativeText = "Failed to import archive: \(error.localizedDescription)"
+                                    errorAlert.alertStyle = .critical
+                                    errorAlert.addButton(withTitle: "OK")
+                                    errorAlert.runModal()
+                                }
+                            }
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        let alert = NSAlert()
+                        alert.messageText = "Invalid Archive"
+                        alert.informativeText = "This archive file is invalid or corrupted: \(error.localizedDescription)"
+                        alert.alertStyle = .critical
+                        alert.addButton(withTitle: "OK")
+                        alert.runModal()
+                    }
+                }
+            }
         }
     }
 }

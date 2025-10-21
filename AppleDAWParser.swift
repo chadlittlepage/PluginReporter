@@ -8,24 +8,28 @@
 
 import Foundation
 
+#if os(macOS)
 /// Shared parsing logic for Apple DAW applications
 /// Logic Pro, GarageBand, and MainStage all use the same ProjectData plist format
-class AppleDAWParser {
+public class AppleDAWParser {
 
     // MARK: - Shared Parsing Methods
 
     /// Parse tracks from Apple DAW plist format
-    static func parseTracks(from plist: [String: Any]) -> [ParsedTrack] {
+    public static func parseTracks(from plist: [String: Any]) -> [ParsedTrack] {
         var tracks: [ParsedTrack] = []
 
         // Apple DAWs store tracks in various locations depending on version
-        // Common paths: "Tracks", "TrackList", or within "Folder" objects
+        // Common paths: "Tracks", "TrackList", or "patches" (MainStage)
         var tracksArray: [[String: Any]] = []
 
         if let trackList = plist["Tracks"] as? [[String: Any]] {
             tracksArray = trackList
         } else if let trackList = plist["TrackList"] as? [[String: Any]] {
             tracksArray = trackList
+        } else if let patches = plist["patches"] as? [[String: Any]] {
+            // MainStage uses "patches" instead of tracks
+            tracksArray = patches
         } else {
             // Try deep search for tracks in nested structures
             tracksArray = deepSearchTracks(in: plist)
@@ -52,28 +56,45 @@ class AppleDAWParser {
         // Parse plugins from this track
         let plugins = parsePlugins(from: dict, trackName: trackName, trackIndex: index)
 
-        guard !plugins.isEmpty else { return nil }
-
+        // Always return track, even if it has no plugins
         return ParsedTrack(name: trackName, index: index, plugins: plugins)
     }
 
     /// Parse plugins from a track dictionary
     static func parsePlugins(from dict: [String: Any], trackName: String, trackIndex: Int) -> [ParsedPlugin] {
         var plugins: [ParsedPlugin] = []
+        var deviceIndex = 0
 
         // Look for plugin arrays in common locations
         let possiblePluginKeys = ["PluginData", "Plugins", "InsertEffects", "Inserts", "AudioUnitPreset"]
 
         for key in possiblePluginKeys {
             if let pluginArray = dict[key] as? [[String: Any]] {
-                for (deviceIndex, pluginDict) in pluginArray.enumerated() {
+                for pluginDict in pluginArray {
                     if let plugin = parsePluginDict(pluginDict, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex) {
                         plugins.append(plugin)
+                        deviceIndex += 1
                     }
                 }
             } else if let singlePlugin = dict[key] as? [String: Any] {
-                if let plugin = parsePluginDict(singlePlugin, trackName: trackName, trackIndex: trackIndex, deviceIndex: 0) {
+                if let plugin = parsePluginDict(singlePlugin, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex) {
                     plugins.append(plugin)
+                    deviceIndex += 1
+                }
+            }
+        }
+
+        // MainStage specific: Look inside channelStrips
+        if let channelStrips = dict["channelStrips"] as? [[String: Any]] {
+            for channelStrip in channelStrips {
+                // Check for Plugins inside each channel strip
+                if let pluginArray = channelStrip["Plugins"] as? [[String: Any]] {
+                    for pluginDict in pluginArray {
+                        if let plugin = parsePluginDict(pluginDict, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex) {
+                            plugins.append(plugin)
+                            deviceIndex += 1
+                        }
+                    }
                 }
             }
         }
@@ -192,25 +213,28 @@ class AppleDAWParser {
 
     /// Find ProjectData file in Apple DAW package
     static func findProjectData(in packageURL: URL, dawName: String) throws -> URL {
-        // Try standard locations
+        // Try standard locations (both capitalized and lowercase versions)
         let alternativesURL = packageURL
             .appendingPathComponent("Alternatives")
             .appendingPathComponent("000")
             .appendingPathComponent("ProjectData")
 
         let fallbackURL = packageURL.appendingPathComponent("ProjectData")
+        let fallbackURLLower = packageURL.appendingPathComponent("projectData")
 
         if FileManager.default.fileExists(atPath: alternativesURL.path) {
             return alternativesURL
         } else if FileManager.default.fileExists(atPath: fallbackURL.path) {
             return fallbackURL
+        } else if FileManager.default.fileExists(atPath: fallbackURLLower.path) {
+            return fallbackURLLower
         } else {
             throw ParserError.invalidProjectData("ProjectData file not found in \(dawName) project package")
         }
     }
 
     /// Parse Apple DAW project with common logic
-    static func parseAppleProject(
+    public static func parseAppleProject(
         url: URL,
         dawType: DAWType,
         supportedExtensions: [String],
@@ -255,3 +279,4 @@ class AppleDAWParser {
         )
     }
 }
+#endif

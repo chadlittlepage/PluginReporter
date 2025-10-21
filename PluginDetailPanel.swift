@@ -7,9 +7,22 @@
 
 import SwiftUI
 
+enum DetailTab: String, CaseIterable {
+    case metadata = "Metadata"
+    case license = "License"
+
+    var icon: String {
+        switch self {
+        case .metadata: return "slider.horizontal.3"
+        case .license: return "key.fill"
+        }
+    }
+}
+
 struct PluginDetailPanel: View {
     let plugin: PluginItem?
     @Binding var isVisible: Bool
+    @Binding var selectedTab: DetailTab
 
     @StateObject private var metadataManager = MetadataManager.shared
     @StateObject private var tagsManager = TagsManager.shared
@@ -34,6 +47,11 @@ struct PluginDetailPanel: View {
 
     // Track the current plugin to prevent unnecessary re-initialization
     @State private var currentPluginID: UUID?
+
+    // Reset confirmation dialog
+    @State private var showResetConfirmation = false
+
+    // Tab selection for Metadata vs License (now controlled externally via binding)
 
     private let panelWidth: CGFloat = 350
 
@@ -71,19 +89,37 @@ struct PluginDetailPanel: View {
     var body: some View {
         if isVisible, let plugin = plugin {
             VStack(alignment: .leading, spacing: 0) {
-                // Title (matching DAW Playlists sidebar style)
-                HStack(spacing: 12) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.title2)
-                        .foregroundColor(.accentColor)
-
-                    Text("Metadata")
-                        .font(.headline)
-
-                    Spacer()
+                // Tab Buttons
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        ForEach(DetailTab.allCases, id: \.self) { tab in
+                            Button(action: {
+                                selectedTab = tab
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: tab.icon)
+                                        .font(.system(size: 13))
+                                    Text(tab.rawValue)
+                                        .font(.system(size: 13))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 12)
+                                #if os(macOS)
+                                .background(selectedTab == tab ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+                                #else
+                                .background(selectedTab == tab ? Color.accentColor : Color(.systemGray6))
+                                #endif
+                                .foregroundColor(selectedTab == tab ? .white : .primary)
+                                .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 17)
+                    .padding(.bottom, 12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 17)
 
                 divider
 
@@ -92,51 +128,63 @@ struct PluginDetailPanel: View {
 
                 divider
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Editable Metadata Section
-                        editableMetadataSection(plugin: plugin)
+                // Content based on selected tab
+                if selectedTab == .metadata {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            // Editable Metadata Section
+                            editableMetadataSection(plugin: plugin)
 
-                        divider
+                            divider
 
-                        // Info Section (Read-Only)
-                        infoSection(plugin: plugin)
+                            // Info Section (Read-Only)
+                            infoSection(plugin: plugin)
 
-                        divider
+                            divider
 
-                        // Tags Section
-                        tagsSection(plugin: plugin)
+                            // Tags Section
+                            tagsSection(plugin: plugin)
 
-                        divider
+                            divider
 
-                        // Suggested Tags Section
-                        suggestedTagsSection(plugin: plugin)
+                            // Suggested Tags Section
+                            suggestedTagsSection(plugin: plugin)
 
-                        divider
+                            divider
 
-                        // Rating Section
-                        ratingSection(plugin: plugin)
+                            // Rating Section
+                            ratingSection(plugin: plugin)
 
-                        divider
+                            divider
 
-                        // Notes Section
-                        notesSection(plugin: plugin)
+                            // Notes Section
+                            notesSection(plugin: plugin)
+                        }
+                        .padding(16)
                     }
-                    .padding(16)
-                }
-                .onAppear {
-                    // Initialize editable fields when panel appears
-                    if currentPluginID != plugin.id {
-                        currentPluginID = plugin.id
-                        initializeFields(for: plugin)
+                    .onAppear {
+                        // Initialize editable fields when panel appears
+                        if currentPluginID != plugin.id {
+                            currentPluginID = plugin.id
+                            initializeFields(for: plugin)
+                        }
                     }
-                }
-                .onChange(of: plugin.id) { newID in
-                    // Only refresh fields when plugin selection actually changes
-                    if currentPluginID != newID {
-                        currentPluginID = newID
-                        initializeFields(for: plugin)
+                    .onChange(of: plugin.id) { newID in
+                        // Only refresh fields when plugin selection actually changes
+                        if currentPluginID != newID {
+                            currentPluginID = newID
+                            initializeFields(for: plugin)
+                        }
                     }
+                } else {
+                    // License tab (macOS only)
+                    #if os(macOS)
+                    PluginLicensePanel(plugin: plugin)
+                    #else
+                    Text("License management not available on iOS")
+                        .foregroundColor(.secondary)
+                        .padding()
+                    #endif
                 }
             }
             .frame(width: panelWidth)
@@ -155,6 +203,15 @@ struct PluginDetailPanel: View {
                 alignment: .top
             )
             #endif
+            .alert("Reset to Original Metadata?", isPresented: $showResetConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Reset", role: .destructive) {
+                    metadataManager.removeOverride(for: plugin.path)
+                    print("✅ Reset metadata to original for: \(plugin.name)")
+                }
+            } message: {
+                Text("This will restore the original metadata (Publisher, Version, Style) for this plugin. You can undo this action using the Undo button.")
+            }
         }
     }
 
@@ -205,41 +262,47 @@ struct PluginDetailPanel: View {
                 placeholder: "e.g., EQ, Compressor, Reverb"
             )
 
-            // Type (read-only, showing badge)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("TYPE")
+            // Reset and Undo buttons
+            HStack(spacing: 12) {
+                // Reset to Original button
+                Button(action: {
+                    showResetConfirmation = true
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Reset to Original")
+                    }
                     .font(.caption)
-                    .foregroundColor(secondaryTextColor)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                .disabled(!metadataManager.hasOverride(for: plugin.path))
+                .opacity(metadataManager.hasOverride(for: plugin.path) ? 1.0 : 0.5)
 
-                Text(plugin.type)
-                    .font(.subheadline)
-                    .padding(8)
-                    #if os(macOS)
-                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                    #else
-                    .background(Color(.systemBackground))
-                    #endif
-                    .cornerRadius(4)
-                    .foregroundColor(.secondary)
-            }
-
-            // Architecture (read-only)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ARCHITECTURE")
+                // Undo button
+                Button(action: {
+                    metadataManager.undoRemoveOverride(for: plugin.path)
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.uturn.backward")
+                        Text("Undo")
+                    }
                     .font(.caption)
-                    .foregroundColor(secondaryTextColor)
-
-                Text(plugin.architectures)
-                    .font(.subheadline)
-                    .padding(8)
-                    #if os(macOS)
-                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                    #else
-                    .background(Color(.systemBackground))
-                    #endif
-                    .cornerRadius(4)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.accentColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.accentColor.opacity(0.1))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                .disabled(!metadataManager.canUndo(for: plugin.path))
+                .opacity(metadataManager.canUndo(for: plugin.path) ? 1.0 : 0.5)
             }
+            .padding(.top, 8)
 
             // Track Name (for playlist plugins)
             if plugin.trackName != nil {
@@ -251,61 +314,6 @@ struct PluginDetailPanel: View {
                     // Track name editing (display only, no persistence yet)
                     print("Track edited to: \(editedTrack)")
                 }
-            }
-
-            // Date (read-only)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("DATE MODIFIED")
-                    .font(.caption)
-                    .foregroundColor(secondaryTextColor)
-
-                Text(plugin.dateString)
-                    .font(.subheadline)
-                    .padding(8)
-                    #if os(macOS)
-                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                    #else
-                    .background(Color(.systemBackground))
-                    #endif
-                    .cornerRadius(4)
-                    .foregroundColor(.secondary)
-            }
-
-            // Size (read-only)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("SIZE")
-                    .font(.caption)
-                    .foregroundColor(secondaryTextColor)
-
-                Text(plugin.sizeString)
-                    .font(.subheadline)
-                    .padding(8)
-                    #if os(macOS)
-                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                    #else
-                    .background(Color(.systemBackground))
-                    #endif
-                    .cornerRadius(4)
-                    .foregroundColor(.secondary)
-            }
-
-            // Path (read-only)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("PATH")
-                    .font(.caption)
-                    .foregroundColor(secondaryTextColor)
-
-                Text(plugin.path)
-                    .font(.caption)
-                    .lineLimit(3)
-                    .padding(8)
-                    #if os(macOS)
-                    .background(prefs.appearance == .space ? Color(red: 18/255, green: 18/255, blue: 18/255) : Color(NSColor.textBackgroundColor).opacity(0.5))
-                    #else
-                    .background(Color(.systemBackground))
-                    #endif
-                    .cornerRadius(4)
-                    .foregroundColor(.secondary)
             }
         }
     }
@@ -449,21 +457,14 @@ struct PluginDetailPanel: View {
 
             infoRow(label: "DEVELOPER:", value: metadataManager.getDisplayPublisher(for: plugin))
             infoRow(label: "VERSION:", value: metadataManager.getDisplayVersion(for: plugin))
-
-            // Types
-            HStack(alignment: .top, spacing: 8) {
-                Text("TYPES:")
-                    .font(.subheadline)
-                    .foregroundColor(secondaryTextColor)
-                    .frame(width: 100, alignment: .leading)
-
-                Text(plugin.type)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
-
-                Spacer()
-            }
-
+            infoRow(label: "TYPE:", value: plugin.type)
+            #if os(macOS)
+            infoRow(label: "LICENSE:", value: LicenseTypeHelper.getCachedLicenseType(for: plugin))
+            #endif
+            infoRow(label: "ARCHITECTURE:", value: plugin.architectures)
+            infoRow(label: "DATE MODIFIED:", value: plugin.dateString)
+            infoRow(label: "SIZE:", value: plugin.sizeString)
+            infoRow(label: "PATH:", value: plugin.path)
             infoRow(label: "LAST BACKUP:", value: plugin.displayDate)
 
             // Website link
@@ -850,5 +851,7 @@ private struct SimpleFlowLayout<T: Hashable>: View {
             }
         }
     }
+
+    // MARK: - Helper Functions
 }
 

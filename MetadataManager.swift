@@ -16,6 +16,9 @@ class MetadataManager: ObservableObject {
     @Published private var overrides: [String: PluginMetadataOverride] = [:]
     @Published private var publisherNormalizations: [String: String] = [:]
 
+    // Undo system: stores the last removed override per plugin path
+    private var undoStack: [String: PluginMetadataOverride] = [:]
+
     private let overridesKey = "plugin_metadata_overrides"
     private let normalizationsKey = "publisher_normalizations"
 
@@ -184,6 +187,11 @@ class MetadataManager: ObservableObject {
         return overrides[pluginPath]
     }
 
+    /// Check if a plugin has any metadata overrides
+    func hasOverride(for pluginPath: String) -> Bool {
+        return overrides[pluginPath] != nil
+    }
+
     /// Set override for a plugin
     func setOverride(for pluginPath: String, override: PluginMetadataOverride) {
         overrides[pluginPath] = override
@@ -191,11 +199,38 @@ class MetadataManager: ObservableObject {
         objectWillChange.send()
     }
 
-    /// Remove override for a plugin
+    /// Remove override for a plugin (saves to undo stack)
     func removeOverride(for pluginPath: String) {
+        // Save to undo stack before removing
+        if let override = overrides[pluginPath] {
+            undoStack[pluginPath] = override
+            print("💾 Saved override to undo stack for: \(pluginPath)")
+        }
+
         overrides.removeValue(forKey: pluginPath)
         saveOverrides()
         objectWillChange.send()
+    }
+
+    /// Check if undo is available for a plugin
+    func canUndo(for pluginPath: String) -> Bool {
+        return undoStack[pluginPath] != nil
+    }
+
+    /// Restore the last removed override for a plugin
+    func undoRemoveOverride(for pluginPath: String) {
+        guard let savedOverride = undoStack[pluginPath] else {
+            print("⚠️ No undo available for: \(pluginPath)")
+            return
+        }
+
+        // Restore the override
+        overrides[pluginPath] = savedOverride
+        undoStack.removeValue(forKey: pluginPath)
+        saveOverrides()
+        objectWillChange.send()
+
+        print("↩️ Restored override from undo stack for: \(pluginPath)")
     }
 
     /// Get the display publisher (normalized or overridden)

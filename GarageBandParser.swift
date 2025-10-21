@@ -8,6 +8,7 @@
 
 import Foundation
 
+#if os(macOS)
 /// Parser for GarageBand project files (Package-based)
 /// Uses shared AppleDAWParser for common logic with Logic Pro and MainStage
 class GarageBandParser: DAWParser {
@@ -27,3 +28,4 @@ class GarageBandParser: DAWParser {
         )
     }
 }
+#endif

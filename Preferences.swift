@@ -72,6 +72,7 @@ final class Preferences: ObservableObject {
     @Published var pdfShowType: Bool = true
     @Published var pdfShowStyle: Bool = true
     @Published var pdfShowVersion: Bool = true
+    @Published var pdfShowLicense: Bool = true
     @Published var pdfShowArch: Bool = true
     @Published var pdfShowDate: Bool = true
     @Published var pdfShowSize: Bool = true

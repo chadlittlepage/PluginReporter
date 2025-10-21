@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequently Asked Questions - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Frequently Asked Questions</h1>
+        <p class="subtitle">Quick answers to common questions</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>General Questions</h2>
+
+            <h3>What is Plugin Reporter?</h3>
+            <p>Plugin Reporter is a macOS application that helps you catalog, organize, and manage your audio plugin library. It scans your system for AU, VST, VST3, AAX, CLAP, and LV2 plugins, allowing you to rate, tag, add notes, and organize them efficiently.</p>
+
+            <h3>Is Plugin Reporter free?</h3>
+            <p>Check the App Store or the official website for current pricing and licensing information.</p>
+
+            <h3>What versions of macOS are supported?</h3>
+            <p>Plugin Reporter requires macOS 13.0 (Ventura) or later. It's optimized for both Intel and Apple Silicon Macs.</p>
+
+            <h3>Does Plugin Reporter work on iOS/iPadOS?</h3>
+            <p>Yes! Plugin Reporter is available for iPad and iPhone. The iOS version includes most macOS features with a touch-optimized interface.</p>
+
+            <h3>Will Plugin Reporter slow down my system?</h3>
+            <p>No. Plugin Reporter is highly optimized and uses minimal system resources. Scanning runs in the background and won't interfere with your music production work.</p>
+        </section>
+
+        <section>
+            <h2>Scanning & Detection</h2>
+
+            <h3>Why aren't all my plugins showing up?</h3>
+            <p>Common reasons:</p>
+            <ul>
+                <li>Plugins are installed in non-standard locations (use custom scan paths in Settings)</li>
+                <li>Scan hasn't completed yet (check status bar)</li>
+                <li>Plugins are in a format not yet supported</li>
+                <li>Cache needs to be cleared (Settings > Scanning > Clear Cache)</li>
+            </ul>
+
+            <h3>How do I scan custom plugin folders?</h3>
+            <ol class="step-list">
+                <li>Open Settings (<kbd>⌘,</kbd>)</li>
+                <li>Go to the <strong>Scanning</strong> section</li>
+                <li>Click <strong>Add Custom Path</strong></li>
+                <li>Navigate to your custom plugin folder</li>
+                <li>Click <strong>Scan Now</strong></li>
+            </ol>
+
+            <h3>How long does scanning take?</h3>
+            <p>Scanning speed depends on how many plugins you have:</p>
+            <ul>
+                <li><strong>50-100 plugins:</strong> ~5-10 seconds</li>
+                <li><strong>200-500 plugins:</strong> ~15-30 seconds</li>
+                <li><strong>1000+ plugins:</strong> ~1-2 minutes</li>
+            </ul>
+
+            <h3>Can I scan while I'm working?</h3>
+            <p>Yes! Scanning runs in the background with minimal CPU usage. You can continue using your DAW or other apps while Plugin Reporter scans.</p>
+
+            <h3>Does Plugin Reporter scan my DAW plugins automatically?</h3>
+            <p>Yes. Plugin Reporter scans the standard plugin locations used by all major DAWs. If your DAW uses custom locations, you can add them manually in Settings.</p>
+        </section>
+
+        <section>
+            <h2>DAW Project Import</h2>
+
+            <h3>Which DAWs are supported?</h3>
+            <p>Plugin Reporter supports 17+ major DAWs including:</p>
+            <ul>
+                <li>Ableton Live (.als)</li>
+                <li>Logic Pro (.logicx)</li>
+                <li>Pro Tools (.ptx, .txt)</li>
+                <li>Cubase/Nuendo (.cpr, .npr)</li>
+                <li>Studio One (.song)</li>
+                <li>FL Studio (.flp)</li>
+                <li>Reaper (.rpp)</li>
+                <li>Bitwig (.bwproject)</li>
+                <li>And many more!</li>
+            </ul>
+            <p><a href="daw-import.html">See complete list →</a></p>
+
+            <h3>Why do some imported projects show 0 plugins?</h3>
+            <p>This can happen if:</p>
+            <ul>
+                <li>The project genuinely has no plugins (only audio/MIDI clips)</li>
+                <li>The project file format is newer than Plugin Reporter supports (update the app)</li>
+                <li>The project file is corrupted or incomplete</li>
+                <li>Plugins are referenced in an unsupported way</li>
+            </ul>
+
+            <h3>Can I import multiple projects at once?</h3>
+            <p>Yes! Select multiple project files when importing, or drag a whole folder onto Plugin Reporter. Projects are processed in parallel for maximum speed.</p>
+
+            <h3>Do imported projects modify my original files?</h3>
+            <p>No. Plugin Reporter only reads project files - it never modifies them. Your original projects are completely safe.</p>
+        </section>
+
+        <section>
+            <h2>Ratings, Tags & Notes</h2>
+
+            <h3>Can I rate multiple plugins at once?</h3>
+            <p>Yes! Select multiple plugins (using <kbd>⌘</kbd>+click or <kbd>Shift</kbd>+click) and press <kbd>1</kbd>-<kbd>5</kbd> to rate them all at once.</p>
+
+            <h3>Are ratings synced between Macs?</h3>
+            <p>Yes, if you enable iCloud Sync in Settings. All ratings, tags, and notes sync automatically across your Macs.</p>
+
+            <h3>Can I export my ratings?</h3>
+            <p>Yes. Use File > Export and choose to include ratings in the exported file (CSV, JSON, HTML, or PDF).</p>
+
+            <h3>What's the difference between tags and styles?</h3>
+            <ul>
+                <li><strong>Style:</strong> The plugin's category (Effect, Instrument, Reverb, etc.) - detected automatically from plugin metadata</li>
+                <li><strong>Tags:</strong> Your personal organization system - you create and assign these (e.g., "Vocals", "Master Bus", "Favorites")</li>
+            </ul>
+
+            <h3>How many tags can I add to a plugin?</h3>
+            <p>There's no limit! Add as many tags as you need to organize your plugins effectively.</p>
+        </section>
+
+        <section>
+            <h2>Data & Privacy</h2>
+
+            <h3>Does Plugin Reporter collect any data?</h3>
+            <p>Plugin Reporter respects your privacy:</p>
+            <ul>
+                <li>All plugin data stays on your Mac (or in your personal iCloud)</li>
+                <li>No plugin lists are sent to external servers</li>
+                <li>Anonymous crash reports may be collected (can be disabled in Settings)</li>
+                <li>No tracking, analytics, or advertising</li>
+            </ul>
+
+            <h3>Where is my data stored?</h3>
+            <p>Plugin Reporter stores data in:</p>
+            <ul>
+                <li><code>~/Library/Containers/com.chadlittlepage.PluginReporter/</code> - Main app data</li>
+                <li>iCloud Key-Value Store (if iCloud Sync is enabled)</li>
+                <li>Archives you create manually (.pluginreporter files)</li>
+            </ul>
+
+            <h3>Can I export all my data?</h3>
+            <p>Yes! Use Settings > Backup & Restore > Export Archive to create a complete backup of all your data.</p>
+
+            <h3>Is my data encrypted?</h3>
+            <ul>
+                <li>Local data is protected by macOS file permissions</li>
+                <li>iCloud data is encrypted in transit and at rest by Apple</li>
+                <li>Archives can be encrypted with AES-256 if you choose a password</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Performance</h2>
+
+            <h3>Plugin Reporter is running slowly. What can I do?</h3>
+            <p>Try these steps:</p>
+            <ol class="step-list">
+                <li>Clear the scan cache (Settings > Scanning > Clear Cache)</li>
+                <li>Close other apps to free up RAM</li>
+                <li>Check for app updates</li>
+                <li>Restart Plugin Reporter</li>
+                <li>If you have 5000+ plugins, consider filtering to reduce the displayed list</li>
+            </ol>
+
+            <h3>Scanning is taking too long</h3>
+            <p>If scanning seems stuck:</p>
+            <ul>
+                <li>Check if you have plugins in network drives (these scan slower)</li>
+                <li>Some plugins may be corrupted and hang during scanning (check Console.app)</li>
+                <li>Try excluding problematic folders in Settings > Scanning > Excluded Paths</li>
+            </ul>
+
+            <h3>The app is using too much disk space</h3>
+            <p>Plugin Reporter is very lightweight (typically under 100 MB including cache). If disk usage is high:</p>
+            <ul>
+                <li>Clear the cache (Settings > Scanning > Clear Cache)</li>
+                <li>Delete old archives you no longer need</li>
+                <li>Check if playlists contain large amounts of data</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Exporting</h2>
+
+            <h3>What export formats are available?</h3>
+            <ul>
+                <li><strong>CSV:</strong> Import into Excel, Google Sheets, Numbers</li>
+                <li><strong>JSON:</strong> For developers and automation scripts</li>
+                <li><strong>HTML:</strong> Beautiful standalone web page</li>
+                <li><strong>PDF:</strong> Professional printable reports</li>
+            </ul>
+
+            <h3>Can I customize what's included in exports?</h3>
+            <p>Yes! The export dialog lets you choose:</p>
+            <ul>
+                <li>Which columns to include</li>
+                <li>Whether to include ratings, tags, notes</li>
+                <li>Filtered vs. all plugins</li>
+                <li>Sort order</li>
+            </ul>
+
+            <h3>Can I schedule automatic exports?</h3>
+            <p>Not currently, but you can use macOS Automator or shortcuts to automate exports using AppleScript.</p>
+        </section>
+
+        <section>
+            <h2>Troubleshooting</h2>
+
+            <h3>Plugin Reporter won't launch</h3>
+            <p>Try these steps in order:</p>
+            <ol class="step-list">
+                <li>Restart your Mac</li>
+                <li>Check for macOS updates</li>
+                <li>Reinstall Plugin Reporter from the App Store</li>
+                <li>Check Console.app for crash logs</li>
+                <li>Contact support with crash logs</li>
+            </ol>
+
+            <h3>I accidentally deleted all my ratings!</h3>
+            <p>Don't panic:</p>
+            <ul>
+                <li>If you have iCloud Sync enabled, turn it off and back on to restore from iCloud</li>
+                <li>If you have a recent archive, import it (Settings > Backup & Restore)</li>
+                <li>Check Time Machine backups for your Plugin Reporter container</li>
+            </ul>
+
+            <h3>Plugins are showing as "missing" but they're installed</h3>
+            <p>This can happen when:</p>
+            <ul>
+                <li>Plugin names don't match exactly (e.g., "Reverb" vs "Reverb Pro")</li>
+                <li>Plugin format has changed (AU vs VST)</li>
+                <li>Plugins were renamed after the project was created</li>
+                <li>Scan hasn't detected the newly installed plugin yet (try Force Rescan)</li>
+            </ul>
+
+            <h3>App is asking for permissions</h3>
+            <p>Plugin Reporter needs:</p>
+            <ul>
+                <li><strong>File Access:</strong> To scan plugin folders</li>
+                <li><strong>Full Disk Access:</strong> To scan system plugin directories (optional, for AAX/system plugins)</li>
+            </ul>
+            <p>Grant these in System Preferences > Security & Privacy > Privacy.</p>
+        </section>
+
+        <section>
+            <h2>Features & Requests</h2>
+
+            <h3>Can I suggest a feature?</h3>
+            <p>Absolutely! Use Help > Send Feature Request or visit the GitHub repository to submit ideas.</p>
+
+            <h3>Will you add support for [my DAW]?</h3>
+            <p>Probably! If it's a popular DAW with a documented file format, file a feature request. Include:</p>
+            <ul>
+                <li>DAW name and version</li>
+                <li>File extension</li>
+                <li>Sample project file (if possible)</li>
+            </ul>
+
+            <h3>Can Plugin Reporter launch plugins?</h3>
+            <p>Not currently. Plugin Reporter is a cataloging tool, not a plugin host. It focuses on organization and management.</p>
+
+            <h3>Will you add Windows/Linux support?</h3>
+            <p>Plugin Reporter is currently macOS-only. Windows/Linux support may be considered in the future based on demand.</p>
+        </section>
+
+        <section>
+            <h2>Getting More Help</h2>
+
+            <h3>Where can I get support?</h3>
+            <ul>
+                <li><a href="support.html">Contact Support</a></li>
+                <li><a href="https://github.com/chadlittlepage/pluginreporter">GitHub Issues</a></li>
+                <li>Email: support@pluginreporter.app</li>
+            </ul>
+
+            <h3>How do I report a bug?</h3>
+            <p>Use <strong>Help > Report a Bug</strong> in the menu bar, or:</p>
+            <ol class="step-list">
+                <li>Note the steps to reproduce the issue</li>
+                <li>Check Console.app for error messages</li>
+                <li>Take screenshots if relevant</li>
+                <li>Submit via GitHub Issues or email support</li>
+            </ol>
+
+            <h3>Is there a user community?</h3>
+            <p>Join other Plugin Reporter users:</p>
+            <ul>
+                <li>GitHub Discussions</li>
+                <li>Discord server (link in app)</li>
+                <li>Reddit r/PluginReporter</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Still Have Questions?</h2>
+            <p>If you didn't find your answer here:</p>
+            <ul>
+                <li><a href="index.html">Browse all help topics</a></li>
+                <li><a href="common-issues.html">Check common issues</a></li>
+                <li><a href="support.html">Contact support</a></li>
+                <li>Use the search function in the Help menu</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Home</a></p>
+        <p>&copy; 2025 Chad Littlepage. All rights reserved.</p>
+    </footer>
+</body>
+</html>
