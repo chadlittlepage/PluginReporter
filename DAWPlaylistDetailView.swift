@@ -137,7 +137,36 @@ struct DAWPlaylistDetailView: View {
     }
 
     private func exportPlaylist() {
-        // TODO: Implement CSV export
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = "\(playlist.name).csv"
+        panel.title = "Export Playlist to CSV"
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            do {
+                let csvContent = generateCSV()
+                try csvContent.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                AppLogger.error("Failed to export CSV: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func generateCSV() -> String {
+        var csv = "Track,Plugin Name,Manufacturer,Format,Status,Device Index\n"
+
+        for trackName in PluginMatcher.sortedTrackNames(playlist.entries) {
+            let entries = playlist.entries(forTrack: trackName)
+            for entry in entries {
+                let status = entry.isInstalled ? "Installed" : "Missing"
+                let row = "\"\(trackName)\",\"\(entry.pluginName)\",\"\(entry.pluginManufacturer)\",\"\(entry.pluginFormat.rawValue)\",\"\(status)\",\(entry.deviceIndex + 1)\n"
+                csv += row
+            }
+        }
+
+        return csv
     }
 
     private func deletePlaylist() {

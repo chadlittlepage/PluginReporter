@@ -2,11 +2,12 @@
 
 # Your app's bundle identifier
 # Find in Xcode: Select target → General → Bundle Identifier
-app_identifier("com.yourdomain.pluginreporter")  # TODO: Update with your actual bundle ID
+app_identifier("com.chadlittlepage.PluginReporter")  # Main macOS app bundle ID
 
 # Your Apple ID email
 # Only needed for TestFlight/App Store uploads
-# apple_id("your.email@example.com")  # TODO: Uncomment and update when you have Apple Developer Account
+# Uncomment and update when you have Apple Developer Account
+# apple_id("your.email@example.com")
 
 # Team ID (optional, for Apple Developer Account)
 # Find at: https://developer.apple.com/account → Membership

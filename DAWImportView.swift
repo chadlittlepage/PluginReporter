@@ -69,9 +69,7 @@ struct DAWImportView: View {
 
             Spacer()
 
-            // Recent playlists - TEMPORARILY DISABLED TO PREVENT CRASH
-            // TODO: Re-enable after fixing data model issues
-            /*
+            // Recent playlists
             if !playlistManager.playlists.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Recent Imports")
@@ -89,7 +87,6 @@ struct DAWImportView: View {
                 .frame(maxWidth: 500)
                 .padding(.horizontal)
             }
-            */
 
             Spacer()
         }
