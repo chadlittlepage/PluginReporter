@@ -19,7 +19,7 @@ struct PluginReporterApp: App {
     #endif
     @StateObject private var scanner = PluginScanner()
     @StateObject private var prefs = Preferences()
-    @State private var sync = makeSyncServices(backend: .none) // CloudKit disabled until Apple ID is added to Xcode
+    @State private var sync = makeSyncServices(backend: .cloudKit) // CloudKit enabled for iCloud sync
     @StateObject private var zoomState = ZoomState()
     @StateObject private var dashboardScheduler = DashboardScheduler.shared
     @StateObject private var appState = AppState()
@@ -74,6 +74,9 @@ struct PluginReporterApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RequestFeature"))) { _ in
                     openFeatureRequestWindow()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .showCrashReportingPrompt)) { _ in
+                    openCrashReportingPrompt()
+                }
                 .onChange(of: prefs.cloudSyncEnabled) { enabled in
                     if enabled { sync.preferences.startSync(prefs: prefs) }
                     else { sync.preferences.stopSync() }
@@ -127,6 +130,14 @@ struct PluginReporterApp: App {
                     // Auto-start scheduler if enabled
                     if UserDefaults.standard.bool(forKey: "dashboard_enabled") {
                         dashboardScheduler.start()
+                    }
+
+                    // Show crash reporting opt-in prompt if needed (after 1 day of use)
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds after launch
+                        await MainActor.run {
+                            CrashReportingAnalytics.shared.showOptInPromptIfNeeded()
+                        }
                     }
                 }
                 .onChange(of: scanner.plugins) { newPlugins in
@@ -650,6 +661,26 @@ struct PluginReporterApp: App {
         window.titleVisibility = .visible
 
         let hostingView = NSHostingView(rootView: FeatureRequestView())
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        window.isReleasedWhenClosed = false
+        #endif
+    }
+
+    private func openCrashReportingPrompt() {
+        #if os(macOS)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.center()
+        window.title = "Help Improve Plugin Reporter"
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+
+        let hostingView = NSHostingView(rootView: CrashReportingPromptView())
         window.contentView = hostingView
         window.makeKeyAndOrderFront(nil)
         window.isReleasedWhenClosed = false

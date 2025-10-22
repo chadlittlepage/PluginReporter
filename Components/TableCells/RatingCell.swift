@@ -21,6 +21,9 @@ struct RatingCell: View {
     @ObservedObject var ratingsManager: RatingsManager
     let fontSize: CGFloat
 
+    @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         let currentRating = ratingsManager.getRating(forName: pluginName)
 
@@ -36,7 +39,10 @@ struct RatingCell: View {
                 }) {
                     Image(systemName: star <= currentRating ? "star.fill" : "star")
                         .font(.system(size: fontSize - 2))
-                        .foregroundColor(star <= currentRating ? .yellow : .secondary.opacity(0.3))
+                        .fontWeight(prefs.highContrastMode ? .semibold : .regular)
+                        .foregroundColor(star <= currentRating
+                            ? (prefs.highContrastMode ? Color(red: 1.0, green: 0.85, blue: 0.0) : .yellow)
+                            : .secondary.opacity(prefs.highContrastMode ? 0.5 : 0.3))
                 }
                 .buttonStyle(.plain)
                 .help("Rate \(star) star\(star == 1 ? "" : "s")")

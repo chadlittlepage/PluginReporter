@@ -57,7 +57,6 @@ class FairlightParser: DAWParser {
 
     private static func extractStrings(from data: Data, minLength: Int = 4) -> [String] {
         var strings: [String] = []
-        var currentString = ""
         var currentBytes: [UInt8] = []
 
         for byte in data {

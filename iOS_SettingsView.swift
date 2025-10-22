@@ -71,6 +71,16 @@ struct iOS_SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+
+                // High Contrast Mode
+                Toggle("High Contrast Mode", isOn: $prefs.highContrastMode)
+                    .accessibilityLabel("High contrast mode")
+                    .accessibilityHint("Increases contrast ratios and uses bolder text for improved visibility")
+                    .accessibilityValue(prefs.highContrastMode ? "On" : "Off")
+            } footer: {
+                if prefs.highContrastMode {
+                    Text("High contrast mode is enabled. Text will appear bolder with enhanced visual separation for better accessibility.")
+                }
             }
 
             // AI Suggestions Section

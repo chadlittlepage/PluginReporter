@@ -166,7 +166,7 @@ private class CubaseXMLParser: NSObject, XMLParserDelegate {
             // Determine format from attributes
             if let pluginType = attributeDict["type"] {
                 currentPluginFormat = parsePluginType(pluginType)
-            } else if let classID = attributeDict["classID"] {
+            } else if attributeDict["classID"] != nil {
                 // VST3 plugins have a classID
                 currentPluginFormat = .VST3
             }

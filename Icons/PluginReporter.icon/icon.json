@@ -11,9 +11,11 @@
       "layers" : [
         {
           "blend-mode" : "overlay",
+          "glass" : true,
+          "hidden" : false,
           "image-name" : "PR Only.png",
           "name" : "PR Only",
-          "opacity" : 0.7,
+          "opacity" : 0.9,
           "position" : {
             "scale" : 0.8,
             "translation-in-points" : [

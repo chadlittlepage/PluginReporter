@@ -112,6 +112,7 @@ struct ContentView: View {
         }
     }
 
+    @MainActor
     func loadPlugins() {
         // Load from shared storage (same location as macOS)
         isLoading = true
@@ -159,11 +160,13 @@ struct ContentView: View {
         }
     }
 
+    @MainActor
     func loadPluginsFromFile() {
         AppLogger.debug("iPhone loadPluginsFromFile called")
         loadPlugins()
     }
 
+    @MainActor
     func loadPluginsSilently() {
         // Auto-load on launch without showing alerts
         do {
@@ -178,24 +181,7 @@ struct ContentView: View {
         }
     }
 
-    func loadPluginsSilentlyAsync() async {
-        // Auto-load on launch without showing alerts - async version
-        do {
-            let loadedPlugins = try await Task.detached {
-                try SharedStorage.loadPlugins()
-            }.value
-            await MainActor.run {
-                plugins = loadedPlugins
-                isLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                plugins = []
-                isLoading = false
-            }
-        }
-    }
-
+    @MainActor
     func loadPluginsFromURL(_ url: URL) {
         do {
             // Validate file exists and is readable

@@ -37,7 +37,11 @@ import UniformTypeIdentifiers
     @State private var lastManualAscending: Bool = true
     @State private var lastRowsCount: Int = 0
 
+    // PAGINATION: For large plugin lists (10,000+)
+    @StateObject private var pagination = PaginationManager<PluginItem>(threshold: 1000) // Uses default INF
+
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var prefs: Preferences
 
     // MARK: Resizable column widths - Set to match user's preferred layout
@@ -84,6 +88,58 @@ import UniformTypeIdentifiers
     enum SortKey: String, CaseIterable, Identifiable { case rating, name, publisher, type, style, version, license, arch, date, size, requirement, obsolete, missing, track, notes, path; var id: String { rawValue } }
     @State private var manualSortKey: SortKey = .name
     @State private var manualAscending: Bool = true
+
+    // MARK: - Persistence Helpers
+    private func loadTableState() {
+        // Load sort preferences
+        if let sortKeyRaw = UserDefaults.standard.string(forKey: "tableSortKey"),
+           let sortKey = SortKey(rawValue: sortKeyRaw) {
+            manualSortKey = sortKey
+        }
+        manualAscending = UserDefaults.standard.object(forKey: "tableSortAscending") as? Bool ?? true
+
+        // Load column widths
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_rating") as? Double, savedWidth > 0 { wRating = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_name") as? Double, savedWidth > 0 { wName = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_publisher") as? Double, savedWidth > 0 { wPublisher = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_type") as? Double, savedWidth > 0 { wType = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_style") as? Double, savedWidth > 0 { wStyle = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_version") as? Double, savedWidth > 0 { wVersion = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_license") as? Double, savedWidth > 0 { wLicense = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_arch") as? Double, savedWidth > 0 { wArch = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_date") as? Double, savedWidth > 0 { wDate = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_size") as? Double, savedWidth > 0 { wSize = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_requirement") as? Double, savedWidth > 0 { wRequirement = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_obsolete") as? Double, savedWidth > 0 { wObsolete = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_missing") as? Double, savedWidth > 0 { wMissing = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_track") as? Double, savedWidth > 0 { wTrack = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_notes") as? Double, savedWidth > 0 { wNotes = CGFloat(savedWidth) }
+        if let savedWidth = UserDefaults.standard.object(forKey: "colWidth_path") as? Double, savedWidth > 0 { wPath = CGFloat(savedWidth) }
+    }
+
+    private func saveTableState() {
+        // Save sort preferences
+        UserDefaults.standard.set(manualSortKey.rawValue, forKey: "tableSortKey")
+        UserDefaults.standard.set(manualAscending, forKey: "tableSortAscending")
+
+        // Save column widths
+        UserDefaults.standard.set(Double(wRating), forKey: "colWidth_rating")
+        UserDefaults.standard.set(Double(wName), forKey: "colWidth_name")
+        UserDefaults.standard.set(Double(wPublisher), forKey: "colWidth_publisher")
+        UserDefaults.standard.set(Double(wType), forKey: "colWidth_type")
+        UserDefaults.standard.set(Double(wStyle), forKey: "colWidth_style")
+        UserDefaults.standard.set(Double(wVersion), forKey: "colWidth_version")
+        UserDefaults.standard.set(Double(wLicense), forKey: "colWidth_license")
+        UserDefaults.standard.set(Double(wArch), forKey: "colWidth_arch")
+        UserDefaults.standard.set(Double(wDate), forKey: "colWidth_date")
+        UserDefaults.standard.set(Double(wSize), forKey: "colWidth_size")
+        UserDefaults.standard.set(Double(wRequirement), forKey: "colWidth_requirement")
+        UserDefaults.standard.set(Double(wObsolete), forKey: "colWidth_obsolete")
+        UserDefaults.standard.set(Double(wMissing), forKey: "colWidth_missing")
+        UserDefaults.standard.set(Double(wTrack), forKey: "colWidth_track")
+        UserDefaults.standard.set(Double(wNotes), forKey: "colWidth_notes")
+        UserDefaults.standard.set(Double(wPath), forKey: "colWidth_path")
+    }
 
     private func handleRowClick(_ row: PluginItem) {
         #if os(macOS)
@@ -379,9 +435,14 @@ import UniformTypeIdentifiers
         return pairs.map { $0.item }
     }
     
-    // SPEED: Return cached value directly
+    // SPEED: Return cached value directly (with pagination support)
     private var displayedRows: [PluginItem] {
-        cachedDisplayedRows
+        // If pagination is enabled, return current page
+        if pagination.isEnabled {
+            return pagination.getCurrentPage()
+        }
+        // Otherwise return all cached rows
+        return cachedDisplayedRows
     }
 
     // SPEED: Compute sorted rows only when sort key or data changes
@@ -440,6 +501,14 @@ import UniformTypeIdentifiers
         lastManualSortKey = manualSortKey
         lastManualAscending = manualAscending
         lastRowsCount = rows.count
+
+        // Update pagination with sorted data
+        pagination.updateItems(sorted)
+
+        // Preload adjacent pages for smooth scrolling
+        if PaginationConfig.preloadAdjacentPages {
+            pagination.preloadAdjacentPages()
+        }
     }
 
     private func updatePathWidth() {
@@ -520,12 +589,12 @@ import UniformTypeIdentifiers
                     // Use faster animation for rapid scrolling (< 100ms between keypresses)
                     if timeSinceLastScroll < 0.1 {
                         // Ultra-fast for rapid key repeats - keep selection centered
-                        withAnimation(.interpolatingSpring(stiffness: 500, damping: 50)) {
+                        AnimationHelper.withAnimation(reduceMotion, .interpolatingSpring(stiffness: 500, damping: 50)) {
                             proxy.scrollTo(edgeItem.id, anchor: .center)
                         }
                     } else {
                         // Smooth spring for normal pace - keep selection centered
-                        withAnimation(.spring(response: 0.25, dampingFraction: 1.0)) {
+                        AnimationHelper.withSpringAnimation(reduceMotion) {
                             proxy.scrollTo(edgeItem.id, anchor: .center)
                         }
                     }
@@ -567,12 +636,12 @@ import UniformTypeIdentifiers
                 // Use faster animation for rapid scrolling (< 100ms between keypresses)
                 if timeSinceLastScroll < 0.1 {
                     // Ultra-fast for rapid key repeats - keep selection centered
-                    withAnimation(.interpolatingSpring(stiffness: 500, damping: 50)) {
+                    AnimationHelper.withAnimation(reduceMotion, .interpolatingSpring(stiffness: 500, damping: 50)) {
                         proxy.scrollTo(newItem.id, anchor: .center)
                     }
                 } else {
                     // Smooth spring for normal pace - keep selection centered
-                    withAnimation(.spring(response: 0.25, dampingFraction: 1.0)) {
+                    AnimationHelper.withSpringAnimation(reduceMotion) {
                         proxy.scrollTo(newItem.id, anchor: .center)
                     }
                 }
@@ -783,13 +852,40 @@ import UniformTypeIdentifiers
     private var scrollViewWithAppearance: some View {
         scrollViewWithSorting
             .onAppear {
+                loadTableState()  // Load saved column widths and sort preferences
                 if cachedDisplayedRows.isEmpty { computeDisplayedRows() }
                 sortStatus = makeSortStatus()
                 updatePathWidth()
             }
+            .onDisappear {
+                saveTableState()  // Save column widths and sort preferences on exit
+            }
             .onChange(of: prefs.uiFontSizeOffset) { _ in
                 updatePathWidth()
             }
+            .onChange(of: manualSortKey) { _ in
+                saveTableState()  // Save when sort column changes
+            }
+            .onChange(of: manualAscending) { _ in
+                saveTableState()  // Save when sort direction changes
+            }
+            // Save column widths when they change
+            .onChange(of: wRating) { _ in saveTableState() }
+            .onChange(of: wName) { _ in saveTableState() }
+            .onChange(of: wPublisher) { _ in saveTableState() }
+            .onChange(of: wType) { _ in saveTableState() }
+            .onChange(of: wStyle) { _ in saveTableState() }
+            .onChange(of: wVersion) { _ in saveTableState() }
+            .onChange(of: wLicense) { _ in saveTableState() }
+            .onChange(of: wArch) { _ in saveTableState() }
+            .onChange(of: wDate) { _ in saveTableState() }
+            .onChange(of: wSize) { _ in saveTableState() }
+            .onChange(of: wRequirement) { _ in saveTableState() }
+            .onChange(of: wObsolete) { _ in saveTableState() }
+            .onChange(of: wMissing) { _ in saveTableState() }
+            .onChange(of: wTrack) { _ in saveTableState() }
+            .onChange(of: wNotes) { _ in saveTableState() }
+            .onChange(of: wPath) { _ in saveTableState() }
             .scrollContentBackground(.hidden)
             .background(colorScheme == .light ? Color.white : Color.clear)
     }
@@ -883,6 +979,11 @@ import UniformTypeIdentifiers
     var body: some View {
         VStack(spacing: 0) {
             mainContentView
+
+            // Pagination controls (only shown when enabled)
+            if pagination.isEnabled {
+                MacPaginationControls(pagination: pagination)
+            }
         }
     }
 
@@ -895,6 +996,7 @@ import UniformTypeIdentifiers
         let action: () -> Void
 
         @EnvironmentObject private var prefs: Preferences
+        @Environment(\.colorScheme) private var colorScheme
 
         var body: some View {
             Button(action: action) {
@@ -902,7 +1004,7 @@ import UniformTypeIdentifiers
                     HStack(spacing: 4) {  // Inner HStack with controlled spacing
                         Text(title)
                             .font(.system(size: prefs.scaledSize(13)))
-                            .fontWeight(active ? .bold : .regular)
+                            .fontWeight(active ? .bold : (prefs.highContrastMode ? .semibold : .regular))
                         if active {
                             Image(systemName: ascending ? "arrow.up" : "arrow.down")
                                 .font(.system(size: prefs.scaledSize(10)))
@@ -1335,6 +1437,18 @@ private struct OptimizedTableRow: View {
         .frame(maxWidth: .infinity)
         .font(.callout)
         .contentShape(Rectangle())
+        .overlay(
+            // High contrast row border
+            Rectangle()
+                .stroke(
+                    prefs.highContrastMode
+                        ? (colorScheme == .dark
+                            ? Color(red: 0.5, green: 0.5, blue: 0.5).opacity(0.3)
+                            : Color(red: 0.5, green: 0.5, blue: 0.5).opacity(0.3))
+                        : Color.clear,
+                    lineWidth: prefs.highContrastMode ? 1 : 0
+                )
+        )
         .onTapGesture(perform: onTap)
         #if os(macOS)
         .contextMenu {
@@ -1498,10 +1612,12 @@ private struct TableCell: View {
     var lineLimit: Int? = 1
 
     @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Text(text)
             .font(.system(size: prefs.scaledSize(13)))
+            .fontWeight(prefs.highContrastMode ? .semibold : .regular)
             .lineLimit(lineLimit)
             .truncationMode(truncationMode)
             .padding(.leading, 6)
@@ -1514,6 +1630,7 @@ private struct ColoredTypeCell: View {
     let width: CGFloat
 
     @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
 
     // Fixed badge width to match CLAP (the widest plugin type)
     private let badgeWidth: CGFloat = 52
@@ -1522,11 +1639,15 @@ private struct ColoredTypeCell: View {
         HStack(spacing: 4) {
             Text(type)
                 .font(.system(size: prefs.scaledSize(12), weight: .semibold))
-                .foregroundColor(colorForPluginType(type))
+                .foregroundColor(prefs.highContrastMode ? colorForPluginType(type) : colorForPluginType(type))
                 .frame(width: badgeWidth, height: 20)  // Fixed uniform size
                 .background(
                     RoundedRectangle(cornerRadius: 5)
-                        .fill(colorForPluginType(type).opacity(0.2))
+                        .fill(colorForPluginType(type).opacity(prefs.highContrastMode ? 0.3 : 0.2))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(colorForPluginType(type), lineWidth: prefs.highContrastMode ? 2 : 0)
                 )
         }
         .padding(.leading, 6)
@@ -1535,11 +1656,18 @@ private struct ColoredTypeCell: View {
 }
 
 private struct TableDivider: View {
+    @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let dividerColor = prefs.highContrastMode
+            ? (colorScheme == .dark ? Color(red: 0.4, green: 0.4, blue: 0.4) : Color(red: 0.6, green: 0.6, blue: 0.6))
+            : Color(NSColor.separatorColor)
+
         Rectangle()
-            .fill(Color(NSColor.separatorColor))
-            .frame(width: 4, height: 32)
-            .padding(.horizontal, 2)
+            .fill(dividerColor)
+            .frame(width: prefs.highContrastMode ? 2 : 4, height: 32)
+            .padding(.horizontal, prefs.highContrastMode ? 1 : 2)
     }
 }
 

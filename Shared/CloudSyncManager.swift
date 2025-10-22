@@ -60,8 +60,8 @@ class CloudSyncManager: ObservableObject {
             sourceDeviceName = deviceName
 
         } catch {
-            errorMessage = "Upload failed: \(error.localizedDescription)"
-            AppLogger.error("CloudKit upload failed: \(error.localizedDescription)")
+            errorMessage = UserFriendlyError.syncMessage(for: error)
+            AppLogger.error("CloudKit upload failed: \(UserFriendlyError.technicalDetails(for: error))")
         }
 
         isSyncing = false
@@ -97,8 +97,8 @@ class CloudSyncManager: ObservableObject {
             lastSyncDate = Date()
 
         } catch {
-            errorMessage = "Sync failed: \(error.localizedDescription)"
-            AppLogger.error("CloudKit sync failed: \(error.localizedDescription)")
+            errorMessage = UserFriendlyError.syncMessage(for: error)
+            AppLogger.error("CloudKit sync failed: \(UserFriendlyError.technicalDetails(for: error))")
         }
 
         isSyncing = false

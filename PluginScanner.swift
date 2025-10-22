@@ -71,12 +71,13 @@ public final class PluginScanner: ObservableObject {
     private let resultQueue = DispatchQueue(label: "plugin.results.queue")
     private var scanTask: Task<Void, Never>?
 
-    public init() {
+    nonisolated public init() {
         // Check if we need to show privacy disclosure on first scan
-        checkPrivacyDisclosureStatus()
-
-        // Load previously scanned plugins
-        loadCachedPlugins()
+        // Note: These are deferred to run on MainActor after initialization
+        Task { @MainActor in
+            self.checkPrivacyDisclosureStatus()
+            self.loadCachedPlugins()
+        }
     }
 
     // MARK: - Privacy Disclosure

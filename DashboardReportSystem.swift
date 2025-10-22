@@ -300,6 +300,32 @@ func dashboardTrackAIRequest() {
     defaults.set(count + 1, forKey: "usage_ai_requests")
 }
 
+func dashboardLogEvent(event: String, properties: [String: Any]) {
+    // Log custom events with properties
+    AppLogger.info("Dashboard event: \(event) with properties: \(properties)")
+
+    // Store event in UserDefaults for dashboard reporting
+    var events: [[String: Any]] = []
+    if let eventsData = UserDefaults.standard.data(forKey: "dashboard_events"),
+       let existingEvents = try? JSONSerialization.jsonObject(with: eventsData) as? [[String: Any]] {
+        events = existingEvents
+    }
+
+    var eventData: [String: Any] = properties
+    eventData["event"] = event
+    eventData["timestamp"] = ISO8601DateFormatter().string(from: Date())
+    events.append(eventData)
+
+    // Keep only last 100 events
+    if events.count > 100 {
+        events = Array(events.suffix(100))
+    }
+
+    if let data = try? JSONSerialization.data(withJSONObject: events) {
+        UserDefaults.standard.set(data, forKey: "dashboard_events")
+    }
+}
+
 func dashboardLogError(message: String, severity: String = "error", context: String? = nil) {
     let errorLog = DashboardReport.ErrorLog(
         timestamp: Date(),

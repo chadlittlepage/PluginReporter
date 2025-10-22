@@ -17,6 +17,7 @@ struct PluginListView: View {
     @State private var selectedPublisher: String? = nil
     @State private var sortOrder: SortOrder = .name
     @State private var showFilterSheet = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // SPEED: Cached computed values to avoid recalculation
     @State private var cachedConsolidated: [ConsolidatedPlugin] = []
@@ -27,6 +28,9 @@ struct PluginListView: View {
     @State private var cachedUniqueStyles: [String] = []
     @State private var cachedFormatCounts: [String: Int] = [:]
     @State private var cachedStyleCounts: [String: Int] = [:]
+
+    // PAGINATION: For large plugin lists (10,000+)
+    @StateObject private var pagination = PaginationManager<ConsolidatedPlugin>(threshold: 1000, defaultPageSize: 250)
 
     enum SortOrder {
         case name, publisher, type, style
@@ -166,7 +170,11 @@ struct PluginListView: View {
             }
         }
 
-        cachedConsolidated = consolidated
+        // Update pagination with consolidated results
+        pagination.updateItems(consolidated)
+
+        // Get paginated or full results
+        cachedConsolidated = pagination.isEnabled ? pagination.getCurrentPage() : consolidated
         computeSectioned()
     }
 
@@ -272,129 +280,184 @@ struct PluginListView: View {
     }
 
     var searchBarBackgroundColor: Color {
-        appearance == "space" ? spaceDarker : appearance == "dark" ? darkDarker : appearance == "light" ? lightDarker : Color(UIColor.systemGray6)
+        // Break up complex ternary to help compiler
+        if appearance == "space" {
+            return spaceDarker
+        } else if appearance == "dark" {
+            return darkDarker
+        } else if appearance == "light" {
+            return lightDarker
+        } else {
+            return Color(UIColor.systemGray6)
+        }
+    }
+
+    // MARK: - Main Content
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Stats Card
+            statsCard
+                .padding(.top, 0)
+                .padding(.bottom, 0)
+
+            // Active Sort and Filters
+            if sortOrder != .name || hasActiveFilters {
+                activeFiltersView
+            }
+
+            // Plugin List
+            pluginListContent
+        }
+    }
+
+    private var activeFiltersView: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // Sort badge with X to reset to Name
+                if sortOrder != .name {
+                    SortBadge(title: sortOrderBadge, onRemove: { sortOrder = .name })
+                }
+
+                ForEach(Array(selectedFormats).sorted(by: { ColorUtilities.formatSortOrder($0) < ColorUtilities.formatSortOrder($1) }), id: \.self) { format in
+                    FilterChip(title: format, onRemove: { selectedFormats.remove(format) }, color: ColorUtilities.colorForFormat(format))
+                }
+                ForEach(Array(selectedStarRatings).sorted(by: >), id: \.self) { rating in
+                    FilterChip(title: "\(rating)★", onRemove: { selectedStarRatings.remove(rating) }, color: .yellow)
+                }
+                if let style = selectedStyle {
+                    FilterChip(title: style, onRemove: { selectedStyle = nil })
+                }
+                if let publisher = selectedPublisher {
+                    FilterChip(title: publisher, onRemove: { selectedPublisher = nil })
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+    }
+
+    @ViewBuilder
+    private var pluginListContent: some View {
+        if plugins.isEmpty {
+            emptyStateView
+        } else {
+            pluginListView
+        }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "music.note.list")
+                .font(.system(size: 60))
+                .foregroundColor(.secondary)
+            Text("No Plugins Yet")
+                .font(.title2)
+                .fontWeight(.semibold)
+            Text("Export plugins from your Mac app\nand import them here")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var pluginListView: some View {
+        ZStack(alignment: .trailing) {
+            ScrollViewReader { proxy in
+                List {
+                    ForEach(sectionedPlugins, id: \.key) { section in
+                        Section(header: EmptyView()) {
+                            ForEach(section.plugins) { consolidated in
+                                NavigationLink(value: consolidated) {
+                                    ConsolidatedPluginRow(consolidated: consolidated)
+                                        .equatable()
+                                }
+                                .listRowBackground(Color.clear)
+                            }
+                        }
+                        .id(section.key)
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToSection"))) { notification in
+                    if let section = notification.object as? String {
+                        AnimationHelper.withAnimation(reduceMotion) {
+                            proxy.scrollTo(section, anchor: .top)
+                        }
+                    }
+                }
+            }
+
+            // Custom section index
+            SectionIndexView(sections: sectionedPlugins.map { $0.key })
+                .padding(.trailing, 4)
+        }
+    }
+
+    private var bottomSafeAreaContent: some View {
+        Group {
+            if pagination.isEnabled {
+                iOSPaginationControls(pagination: pagination)
+            }
+        }
+    }
+
+    private var topSafeAreaContent: some View {
+        VStack(spacing: 10) {
+            // Title - level with navigation bar
+            HStack {
+                Text("Plugin Reporter")
+                    .font(.system(size: Constants.Typography.titleSize, weight: .bold))
+                Spacer()
+            }
+            .padding(.horizontal, Constants.Layout.standardPadding)
+            .padding(.top, -45)
+
+            // Search Bar
+            searchBarView
+        }
+    }
+
+    private var searchBarView: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            TextField("Search", text: $searchText)
+
+            if !searchText.isEmpty {
+                Button(action: { searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(10)
+        .background(searchBarBackgroundColor)
+        .cornerRadius(10)
+        .padding(.horizontal, Constants.Layout.standardPadding)
+        .padding(.bottom, 2)
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Stats Card
-                statsCard
-                    .padding(.top, 0)
-                    .padding(.bottom, 0)
+            contentWithModifiers
+        }
+    }
 
-                // Active Sort and Filters
-                if sortOrder != .name || hasActiveFilters {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            // Sort badge with X to reset to Name
-                            if sortOrder != .name {
-                                SortBadge(title: sortOrderBadge, onRemove: { sortOrder = .name })
-                            }
-
-                            ForEach(Array(selectedFormats).sorted(by: { ColorUtilities.formatSortOrder($0) < ColorUtilities.formatSortOrder($1) }), id: \.self) { format in
-                                FilterChip(title: format, onRemove: { selectedFormats.remove(format) }, color: ColorUtilities.colorForFormat(format))
-                            }
-                            ForEach(Array(selectedStarRatings).sorted(by: >), id: \.self) { rating in
-                                FilterChip(title: "\(rating)★", onRemove: { selectedStarRatings.remove(rating) }, color: .yellow)
-                            }
-                            if let style = selectedStyle {
-                                FilterChip(title: style, onRemove: { selectedStyle = nil })
-                            }
-                            if let publisher = selectedPublisher {
-                                FilterChip(title: publisher, onRemove: { selectedPublisher = nil })
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                    }
-                }
-
-                // Plugin List
-                if plugins.isEmpty {
-                    VStack(spacing: 20) {
-                        Spacer()
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary)
-                        Text("No Plugins Yet")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        Text("Export plugins from your Mac app\nand import them here")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    ZStack(alignment: .trailing) {
-                        ScrollViewReader { proxy in
-                            List {
-                                ForEach(sectionedPlugins, id: \.key) { section in
-                                    Section(header: EmptyView()) {
-                                        ForEach(section.plugins) { consolidated in
-                                            NavigationLink(value: consolidated) {
-                                                ConsolidatedPluginRow(consolidated: consolidated)
-                                                    .equatable()
-                                            }
-                                            .listRowBackground(Color.clear)
-                                        }
-                                    }
-                                    .id(section.key)
-                                }
-                            }
-                            .listStyle(.plain)
-                            .scrollContentBackground(.hidden)
-                            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToSection"))) { notification in
-                                if let section = notification.object as? String {
-                                    withAnimation {
-                                        proxy.scrollTo(section, anchor: .top)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Custom section index
-                        SectionIndexView(sections: sectionedPlugins.map { $0.key })
-                            .padding(.trailing, 4)
-                    }
-                }
-            }
+    private var contentWithModifiers: some View {
+        mainContent
             .background(customBackgroundColor)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomSafeAreaContent
+            }
             .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: 10) {
-                    // Title - level with navigation bar
-                    HStack {
-                        Text("Plugin Reporter")
-                            .font(.system(size: Constants.Typography.titleSize, weight: .bold))
-                        Spacer()
-                    }
-                    .padding(.horizontal, Constants.Layout.standardPadding)
-                    .padding(.top, -45)
-
-                    // Search Bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
-                        TextField("Search", text: $searchText)
-
-                        if !searchText.isEmpty {
-                            Button(action: { searchText = "" }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
-                            }
-                            .accessibilityLabel("Clear search")
-                        }
-                    }
-                    .padding(10)
-                    .background(searchBarBackgroundColor)
-                    .cornerRadius(10)
-                    .padding(.horizontal, Constants.Layout.standardPadding)
-                    .padding(.bottom, 2)
-                }
+                topSafeAreaContent
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -730,7 +793,6 @@ struct PluginListView: View {
             .transaction { transaction in
                 transaction.animation = nil // Disable all List/Form animations
             }
-        }
     }
 
     private var hasActiveFilters: Bool {

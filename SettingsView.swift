@@ -90,6 +90,33 @@ struct SettingsView: View {
                                 .padding(.horizontal, 16)
                                 .padding(.bottom, 12)
                         }
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        // High Contrast Mode
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Toggle("High Contrast Mode", isOn: $prefs.highContrastMode)
+                                Spacer()
+                                if prefs.highContrastMode {
+                                    Image(systemName: "eye.fill")
+                                        .foregroundColor(.blue)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .accessibilityLabel("High contrast mode")
+                            .accessibilityHint("Increases contrast ratios and uses bolder text for improved visibility")
+                            .accessibilityValue(prefs.highContrastMode ? "On" : "Off")
+
+                            Text("Increases contrast ratios, uses bolder text, and enhances visual separation for better accessibility")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 12)
+                        }
                     }
                     .background(cardBackground)
                     .cornerRadius(12)
@@ -111,10 +138,13 @@ struct SettingsView: View {
                                 HStack(spacing: 4) {
                                     Image(systemName: "checkmark.icloud.fill")
                                         .foregroundColor(.green)
+                                        .accessibilityHidden(true)
                                     Text("Active")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("iCloud sync active")
                             }
                         }
                         .padding(16)
@@ -195,6 +225,8 @@ struct SettingsView: View {
                                             .foregroundColor(.red)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityLabel("Delete scan path")
+                                    .accessibilityHint("Removes \(path) from scan paths")
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
@@ -357,6 +389,7 @@ struct SettingsView: View {
                                 Image(systemName: "ant.fill")
                                     .foregroundColor(.red)
                                     .font(.title3)
+                                    .accessibilityHidden(true)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Report a Bug")
@@ -371,11 +404,43 @@ struct SettingsView: View {
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
                             }
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Report a bug")
+                        .accessibilityHint("Opens bug report form to send crash reports and bug details")
                         .padding(16)
+
+                        Divider()
+                            .padding(.horizontal, 16)
+
+                        // Crash Reporting Toggle
+                        Toggle(isOn: Binding(
+                            get: { prefs.crashReportingEnabled },
+                            set: { newValue in
+                                prefs.crashReportingEnabled = newValue
+                                // trackOptInChange is called automatically by the property setter
+                            }
+                        )) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.shield.fill")
+                                    .foregroundColor(prefs.crashReportingEnabled ? .green : .gray)
+                                    .font(.title3)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Automatic Crash Reporting")
+                                        .foregroundColor(.primary)
+                                    Text(prefs.crashReportingEnabled ? "Enabled - Helping improve the app" : "Disabled - No crash reports sent")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .padding(16)
+                        .help("Automatically send anonymous crash reports to help us fix bugs faster")
 
                         Divider()
                             .padding(.horizontal, 16)
@@ -387,6 +452,7 @@ struct SettingsView: View {
                                 Image(systemName: "lightbulb.fill")
                                     .foregroundColor(.yellow)
                                     .font(.title3)
+                                    .accessibilityHidden(true)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Request a Feature")
@@ -401,10 +467,13 @@ struct SettingsView: View {
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
                             }
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Request a feature")
+                        .accessibilityHint("Opens feature request form to suggest new features or improvements")
                         .padding(16)
 
                         Text("Your device information will be automatically included to help us assist you better.")
@@ -793,10 +862,13 @@ struct SettingsView: View {
                         await MainActor.run {
                             let alert = NSAlert()
                             alert.messageText = "Export Failed"
-                            alert.informativeText = "Failed to export archive: \(error.localizedDescription)"
-                            alert.alertStyle = .critical
+                            alert.informativeText = UserFriendlyError.exportMessage(for: error, format: "archive")
+                            alert.alertStyle = .warning
                             alert.addButton(withTitle: "OK")
                             alert.runModal()
+
+                            // Log technical details
+                            AppLogger.error("Archive export failed: \(UserFriendlyError.technicalDetails(for: error))")
                         }
                     }
                 }
@@ -906,10 +978,13 @@ struct SettingsView: View {
                                 await MainActor.run {
                                     let errorAlert = NSAlert()
                                     errorAlert.messageText = "Import Failed"
-                                    errorAlert.informativeText = "Failed to import archive: \(error.localizedDescription)"
-                                    errorAlert.alertStyle = .critical
+                                    errorAlert.informativeText = UserFriendlyError.importMessage(for: error, source: "archive")
+                                    errorAlert.alertStyle = .warning
                                     errorAlert.addButton(withTitle: "OK")
                                     errorAlert.runModal()
+
+                                    // Log technical details
+                                    AppLogger.error("Archive import failed: \(UserFriendlyError.technicalDetails(for: error))")
                                 }
                             }
                         }
@@ -918,10 +993,13 @@ struct SettingsView: View {
                     await MainActor.run {
                         let alert = NSAlert()
                         alert.messageText = "Invalid Archive"
-                        alert.informativeText = "This archive file is invalid or corrupted: \(error.localizedDescription)"
-                        alert.alertStyle = .critical
+                        alert.informativeText = "The archive file appears to be corrupted or invalid. Please try a different file."
+                        alert.alertStyle = .warning
                         alert.addButton(withTitle: "OK")
                         alert.runModal()
+
+                        // Log technical details
+                        AppLogger.error("Archive validation failed: \(UserFriendlyError.technicalDetails(for: error))")
                     }
                 }
             }

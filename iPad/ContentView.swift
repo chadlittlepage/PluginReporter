@@ -148,24 +148,6 @@ struct ContentView: View {
             isLoading = false
         }
     }
-
-    func loadPluginsSilentlyAsync() async {
-        // Auto-load on launch without showing alerts - async version
-        do {
-            let loadedPlugins = try await Task.detached {
-                try SharedStorage.loadPlugins()
-            }.value
-            await MainActor.run {
-                plugins = loadedPlugins
-                isLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                plugins = []
-                isLoading = false
-            }
-        }
-    }
 }
 
 #Preview {

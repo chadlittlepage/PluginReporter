@@ -43,6 +43,7 @@ struct ContentView: View {
     @State private var showFormatsPopover: Bool = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var didCollapseSidebar: Bool = false
     @State private var showOverlaySidebar: Bool = false
     @State private var sortStatus: String = "Sorted by: Name (ascending)"
@@ -299,7 +300,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Button("Filters") {
-                    withAnimation(.snappy(duration: 0.2)) {
+                    AnimationHelper.withSnappyAnimation(reduceMotion) {
                         showOverlaySidebar.toggle()
                     }
                 }
@@ -332,6 +333,8 @@ struct ContentView: View {
                                 .padding(.trailing, 8)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                        .accessibilityHint("Clears the search field")
                     }
                 }
 
@@ -358,10 +361,13 @@ struct ContentView: View {
                         Image(systemName: "checkmark.icloud.fill")
                             .foregroundColor(.green)
                             .font(.system(size: 14))
+                            .accessibilityHidden(true)
                         Text("Ready")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Scanner ready")
                 }
 
                 Menu {
@@ -390,7 +396,7 @@ struct ContentView: View {
         HStack(spacing: 8) {
             #if os(macOS)
             Button(action: {
-                withAnimation(.snappy(duration: 0.2)) {
+                AnimationHelper.withSnappyAnimation(reduceMotion) {
                     showPlaylistSidebar.toggle()
                 }
             }) {
@@ -398,11 +404,12 @@ struct ContentView: View {
                     .foregroundColor(showPlaylistSidebar ? .accentColor : .primary)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel(showPlaylistSidebar ? "Hide DAW Playlists" : "Show DAW Playlists")
             .help(showPlaylistSidebar ? "Hide DAW Playlists" : "Show DAW Playlists")
             #endif
 
             Button("Filters") {
-                withAnimation(.snappy(duration: 0.2)) {
+                AnimationHelper.withSnappyAnimation(reduceMotion) {
                     showOverlaySidebar.toggle()
                 }
             }
@@ -431,6 +438,8 @@ struct ContentView: View {
                             .padding(.trailing, 8)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                    .accessibilityHint("Clears the search field")
                 }
             }
             .frame(width: 300)
@@ -463,10 +472,13 @@ struct ContentView: View {
                     Image(systemName: "checkmark.icloud.fill")
                         .foregroundColor(.green)
                         .font(.system(size: 14))
+                        .accessibilityHidden(true)
                     Text("Ready")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Scanner ready")
             }
 
             Menu {
@@ -490,6 +502,7 @@ struct ContentView: View {
                     .foregroundColor((showDetailPanel && showPlaylistSidebar && activePlaylistFilters.count == 1) ? .accentColor : .white)
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
             .help(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
             .padding(.trailing, 8)
         }
@@ -640,8 +653,8 @@ struct ContentView: View {
     private var bodyWithSidebars: some View {
         bodyWithoutModifiers
             .overlay(alignment: .leading) { filterSidebarOverlay }
-            .animation(suppressAnimations ? nil : .snappy(duration: 0.2), value: showOverlaySidebar)
-            .animation(suppressAnimations ? nil : .snappy(duration: 0.2), value: showPlaylistSidebar)
+            .animation(suppressAnimations ? nil : AnimationHelper.snappy(reduceMotion), value: showOverlaySidebar)
+            .animation(suppressAnimations ? nil : AnimationHelper.snappy(reduceMotion), value: showPlaylistSidebar)
             .transaction { tx in if suppressAnimations { tx.animation = nil } }
     }
 
@@ -678,6 +691,7 @@ struct ContentView: View {
                 Image(systemName: "music.note.list")
                     .font(.system(size: 48))
                     .foregroundColor(.white)
+                    .accessibilityHidden(true)
 
                 // Title
                 Text("Importing DAW Project")
@@ -1033,7 +1047,7 @@ struct ContentView: View {
                             HStack {
                                 Spacer()
                                 Button(action: {
-                                    withAnimation(.snappy(duration: 0.2)) {
+                                    AnimationHelper.withSnappyAnimation(reduceMotion) {
                                         showOverlaySidebar = false
                                     }
                                 }) {
@@ -1044,6 +1058,8 @@ struct ContentView: View {
                                         .background(Circle().fill(Color.white.opacity(0.1)))
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Close filters")
+                                .accessibilityHint("Closes the filter sidebar")
                                 .offset(x: 8, y: -8)  // Push into top right corner
                             }
                         }
@@ -1119,6 +1135,7 @@ struct ContentView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.system(size: 14))
+                                        .accessibilityHidden(true)
                                     Text("Clear Filters")
                                         .font(.system(size: 13, weight: .medium))
                                 }
@@ -1128,6 +1145,8 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("Clear all filters")
+                            .accessibilityHint("Removes all active format, style, publisher, and rating filters")
                             .padding(.top, 10)
                         }
 
@@ -1535,12 +1554,15 @@ struct ContentView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+                                .accessibilityHidden(true)
                             Text("Close Playlists").font(.system(size: 13, weight: .medium))
                         }
                         .foregroundColor(.red)
                         .padding(.vertical, 6).padding(.horizontal, 10)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Close playlists")
+                    .accessibilityHint("Closes all active DAW playlist filters")
                 }
 
                 // Clear Filters button (when format or rating filters are selected)
@@ -1552,12 +1574,15 @@ struct ContentView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+                                .accessibilityHidden(true)
                             Text("Clear Filters").font(.system(size: 13, weight: .medium))
                         }
                         .foregroundColor(.red)
                         .padding(.vertical, 6).padding(.horizontal, 10)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear filters")
+                    .accessibilityHint("Clears format and rating filters")
                 }
 
                 Spacer()
@@ -1573,6 +1598,7 @@ struct ContentView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+                        .accessibilityHidden(true)
                     Text("Clear Filter").font(.system(size: 13, weight: .medium))
                 }
                 .foregroundColor(.red)
@@ -1580,6 +1606,8 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Clear filter")
+            .accessibilityHint("Clears all active filters")
             .padding(.top, 4)
         }
         #endif
@@ -1710,13 +1738,13 @@ struct ContentView: View {
 
         // View menu
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ToggleFilters"), object: nil, queue: .main) { [self] _ in
-            withAnimation(.snappy(duration: 0.2)) {
+            AnimationHelper.withSnappyAnimation(self.reduceMotion) {
                 self.showOverlaySidebar.toggle()
             }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("TogglePlaylists"), object: nil, queue: .main) { [self] _ in
-            withAnimation(.snappy(duration: 0.2)) {
+            AnimationHelper.withSnappyAnimation(self.reduceMotion) {
                 self.showPlaylistSidebar.toggle()
             }
         }

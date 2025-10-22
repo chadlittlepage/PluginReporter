@@ -67,7 +67,15 @@ struct ExportManager {
             try csv.data(using: .utf8)?.write(to: url)
             dashboardTrackExport()
         } catch {
-            NSAlert(error: error).runModal()
+            let alert = NSAlert()
+            alert.messageText = "Export Failed"
+            alert.informativeText = UserFriendlyError.exportMessage(for: error, format: "CSV")
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+
+            // Log technical details for debugging
+            AppLogger.error("CSV export failed: \(UserFriendlyError.technicalDetails(for: error))")
             dashboardLogError(message: "CSV export failed: \(error.localizedDescription)", severity: "error")
         }
     }
@@ -84,7 +92,15 @@ struct ExportManager {
             try data.write(to: url)
             dashboardTrackExport()
         } catch {
-            NSAlert(error: error).runModal()
+            let alert = NSAlert()
+            alert.messageText = "Export Failed"
+            alert.informativeText = UserFriendlyError.exportMessage(for: error, format: "JSON")
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+
+            // Log technical details for debugging
+            AppLogger.error("JSON export failed: \(UserFriendlyError.technicalDetails(for: error))")
             dashboardLogError(message: "JSON export failed: \(error.localizedDescription)", severity: "error")
         }
     }
@@ -98,7 +114,15 @@ struct ExportManager {
             try html.data(using: .utf8)?.write(to: url)
             dashboardTrackExport()
         } catch {
-            NSAlert(error: error).runModal()
+            let alert = NSAlert()
+            alert.messageText = "Export Failed"
+            alert.informativeText = UserFriendlyError.exportMessage(for: error, format: "HTML")
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+
+            // Log technical details for debugging
+            AppLogger.error("HTML export failed: \(UserFriendlyError.technicalDetails(for: error))")
             dashboardLogError(message: "HTML export failed: \(error.localizedDescription)", severity: "error")
         }
     }
@@ -198,7 +222,15 @@ struct ExportManager {
                     ctx.closePDF()
                     dashboardTrackExport()
                 } catch {
-                    NSAlert(error: error).runModal()
+                    let alert = NSAlert()
+                    alert.messageText = "Export Failed"
+                    alert.informativeText = UserFriendlyError.exportMessage(for: error, format: "PDF")
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+
+                    // Log technical details for debugging
+                    AppLogger.error("PDF export failed: \(UserFriendlyError.technicalDetails(for: error))")
                     dashboardLogError(message: "PDF export failed: \(error.localizedDescription)", severity: "error")
                 }
             }

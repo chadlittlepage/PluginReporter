@@ -14,9 +14,10 @@
 5. **Error Handling** - Comprehensive error messages and logging
 
 ### ⚠️ **What's DISABLED (Waiting for Your Action):**
-1. **iCloud Entitlements** - Currently commented out
-2. **Xcode Capabilities** - Need to enable in project settings
-3. **Sync Backend** - Set to `.none` in app initialization
+1. **iCloud Entitlements** - ✅ Already uncommented in `Plugin Reporter.entitlements`
+2. **Xcode Capabilities** - ⚠️ Need to enable iCloud capability in Xcode (see ICLOUD_CONTAINER_SETUP.md)
+3. **iCloud Container** - ⚠️ Needs to be created in Apple Developer portal or via Xcode
+4. **Sync Backend** - Set to `.none` in app initialization
 
 ---
 
@@ -217,8 +218,8 @@ After completing setup, test in this order:
 **Fix:** Settings → Apple ID → Sign in to iCloud
 
 ### **"Not Entitled" Error**
-**Cause:** Entitlements not uncommented or capability not added
-**Fix:** Follow Steps 2-3 above
+**Cause:** iCloud capability not enabled in Xcode or container not created
+**Fix:** See ICLOUD_CONTAINER_SETUP.md - enable iCloud capability in Xcode
 
 ### **"Container Not Found" Error**
 **Cause:** Container name mismatch
@@ -237,8 +238,9 @@ After completing setup, test in this order:
 | **CloudKit Code** | ✅ Ready | None - already implemented |
 | **NSUbiquitousKeyValueStore** | ✅ Ready | None - already implemented |
 | **UI Toggle** | ✅ Ready | None - already in Settings |
-| **Entitlements** | ⚠️ Commented | Uncomment (Step 3) |
-| **Xcode Capabilities** | ⚠️ Not Enabled | Add iCloud (Step 2) |
+| **Entitlements File** | ✅ Ready | None - already uncommented |
+| **Xcode iCloud Capability** | ⚠️ Not Enabled | See ICLOUD_CONTAINER_SETUP.md |
+| **iCloud Container** | ⚠️ Not Created | Create via Xcode or Developer portal |
 | **Sync Backend** | ⚠️ Disabled | Change to .cloudKit (Step 4) |
 | **Testing** | ❌ Not Tested | Run verification tests |
 

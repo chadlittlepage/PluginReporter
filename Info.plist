@@ -67,6 +67,8 @@
     <!-- Support URLs -->
     <key>NSPrivacyPolicyURL</key>
     <string>$(PRIVACY_POLICY_URL)</string>
+    <key>SUPPORT_URL</key>
+    <string>$(SUPPORT_URL)</string>
 
     <!-- Launch Screen Background Color (Black) -->
     <key>UILaunchScreen</key>

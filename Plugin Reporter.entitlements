@@ -3,14 +3,10 @@
 <plist version="1.0">
 <dict>
 	<!-- iCloud Key-Value Storage for ratings, tags, notes, and metadata sync -->
-	<!-- Uncomment when you have Apple Developer account with iCloud enabled -->
-	<!--
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
-	-->
 
-	<!-- CloudKit containers (optional - for future features) -->
-	<!-- Uncomment when you have Apple Developer account and want full CloudKit
+	<!-- CloudKit containers for full data sync -->
 	<key>com.apple.developer.aps-environment</key>
 	<string>development</string>
 	<key>com.apple.developer.icloud-container-identifiers</key>
@@ -21,6 +17,5 @@
 	<array>
 		<string>CloudKit</string>
 	</array>
-	-->
 </dict>
 </plist>

@@ -21,6 +21,8 @@ struct NotesCell: View {
     @State private var isEditing = false
     @State private var editingText = ""
     @FocusState private var isFocused: Bool
+    @EnvironmentObject private var prefs: Preferences
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -28,6 +30,7 @@ struct NotesCell: View {
                 TextField("Add notes...", text: $editingText)
                     .textFieldStyle(.plain)
                     .font(.system(size: fontSize))
+                    .fontWeight(prefs.highContrastMode ? .semibold : .regular)
                     .padding(.leading, 6)
                     .frame(width: width, height: 32, alignment: .leading)
                     .focused($isFocused)
@@ -41,6 +44,7 @@ struct NotesCell: View {
                 let note = notesManager.getNote(for: pluginPath)
                 Text(note.isEmpty ? "" : note)
                     .font(.system(size: fontSize))
+                    .fontWeight(prefs.highContrastMode ? .semibold : .regular)
                     .foregroundColor(note.isEmpty ? .secondary.opacity(0.5) : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)

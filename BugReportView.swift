@@ -360,6 +360,9 @@ struct BugReportView: View {
 
                 try await UserFeedbackClient.shared.sendBugReport(report)
 
+                // Track bug report submission
+                CrashReportingAnalytics.shared.trackBugReportSubmitted(includedCrashLog: includeCrashLog)
+
                 await MainActor.run {
                     isSending = false
                     showSuccess = true
