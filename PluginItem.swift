@@ -1,7 +1,8 @@
 import Foundation
 
-public enum PluginFormat: String, CaseIterable, Codable, Identifiable {
-    case AU, VST, VST3, AAX, CLAP, LV2
+public enum PluginFormat: String, CaseIterable, Codable, Identifiable, Hashable {
+    case AU, VST, VST3, AAX, CLAP, LV2, OBSLT
+    case unknown = "Unknown"
     public var id: String { rawValue }
 }
 
@@ -20,6 +21,10 @@ public struct PluginItem: Identifiable, Hashable, Codable {
     public var path: String
     public var runtimeRequirement: String
     public var obsolete: Bool
+    /// Track name from DAW project (only populated when viewing a playlist)
+    public var trackName: String?
+    /// Whether this plugin is missing (not installed on the system)
+    public var missing: Bool
 
     public init(
         id: UUID = UUID(),
@@ -33,7 +38,9 @@ public struct PluginItem: Identifiable, Hashable, Codable {
         sizeBytes: Int64 = 0,
         path: String = "",
         runtimeRequirement: String = "",
-        obsolete: Bool = false
+        obsolete: Bool = false,
+        trackName: String? = nil,
+        missing: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -47,6 +54,8 @@ public struct PluginItem: Identifiable, Hashable, Codable {
         self.path = path
         self.runtimeRequirement = runtimeRequirement
         self.obsolete = obsolete
+        self.trackName = trackName
+        self.missing = missing
     }
 
     /// Human-readable display size (e.g., "1.5 MB") - alias for sizeString

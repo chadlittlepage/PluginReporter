@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adding License Information - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Adding License Information</h1>
+        <p class="subtitle">Step-by-step guide to storing your plugin licenses</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Quick Start</h2>
+            <p>Adding license information is simple:</p>
+            <ol>
+                <li>Select a plugin in the main table</li>
+                <li>Open the Detail Panel → License tab</li>
+                <li>Click "Add License Info"</li>
+                <li>Fill in the fields</li>
+                <li>Click "Done" to save</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Detailed Instructions</h2>
+
+            <h3>Step 1: Navigate to License Tab</h3>
+            <ol>
+                <li><strong>Select the plugin</strong> you want to add license info for</li>
+                <li>The <strong>Detail Panel</strong> should appear on the right
+                    <ul>
+                        <li>If hidden, click the detail panel toggle button</li>
+                    </ul>
+                </li>
+                <li>Click the <strong>"License"</strong> tab at the top
+                    <ul>
+                        <li>You'll see "Metadata" and "License" tabs</li>
+                        <li>Click "License"</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Step 2: Create New License Entry</h3>
+            <p>If no license info exists yet, you'll see:</p>
+            <ul>
+                <li>A key icon</li>
+                <li>"No license information stored" message</li>
+                <li><strong>"Add License Info"</strong> button</li>
+            </ul>
+            <p>Click the "Add License Info" button to begin.</p>
+
+            <h3>Step 3: Fill in License Details</h3>
+            <p>The license form will appear with several sections. Fill in what you have:</p>
+
+            <h4>Serial Number</h4>
+            <ul>
+                <li>Enter your license key or serial number</li>
+                <li>This is usually the most important field</li>
+                <li>Copy from your purchase email or plugin account</li>
+            </ul>
+
+            <h4>Account Credentials</h4>
+            <ul>
+                <li><strong>Email</strong> - The email address for your plugin account</li>
+                <li><strong>Password</strong> - Stored securely in macOS Keychain
+                    <ul>
+                        <li>Encrypted automatically</li>
+                        <li>Same security as Safari passwords</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h4>Activation Tracking</h4>
+            <ul>
+                <li><strong>Activations Used</strong> - How many computers/seats you've activated</li>
+                <li><strong>Max Activations</strong> - Total allowed (e.g., 3)</li>
+                <li><strong>Activation Code</strong> (optional) - Some plugins have separate activation codes</li>
+            </ul>
+
+            <h4>Purchase Information</h4>
+            <ul>
+                <li><strong>Purchase Date</strong> - When you bought the plugin</li>
+                <li><strong>Invoice Number</strong> (optional) - For warranty/upgrade tracking</li>
+            </ul>
+
+            <h4>Vendor Links</h4>
+            <ul>
+                <li><strong>Manufacturer Website</strong> - Company homepage</li>
+                <li><strong>Account Portal</strong> - Where you manage your license online</li>
+                <li><strong>Support</strong> - Help/support page</li>
+            </ul>
+
+            <h4>Notes</h4>
+            <ul>
+                <li>Free-form text area</li>
+                <li>Add installation notes, upgrade history, etc.</li>
+                <li>Helpful for remembering special circumstances</li>
+            </ul>
+
+            <h3>Step 4: Save the License</h3>
+            <p>Click <strong>"Done"</strong> to save. The information is:</p>
+            <ul>
+                <li>Saved immediately to local storage</li>
+                <li>Synced to iCloud (if enabled)</li>
+                <li>Included in archive backups</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Field-by-Field Guide</h2>
+
+            <h3>Serial Number / License Key</h3>
+            <p><strong>What it is:</strong> The unique code that proves you own the plugin.</p>
+            <p><strong>Where to find it:</strong></p>
+            <ul>
+                <li>Purchase confirmation email</li>
+                <li>Plugin manufacturer's account portal</li>
+                <li>Inside the plugin installer</li>
+                <li>iLok License Manager (for iLok-protected plugins)</li>
+            </ul>
+            <p><strong>Examples:</strong></p>
+            <ul>
+                <li><code>XXXX-XXXX-XXXX-XXXX</code> (standard format)</li>
+                <li><code>ABC123-DEF456-GHI789</code> (alphanumeric)</li>
+                <li><code>1234567890ABCDEF</code> (long code)</li>
+            </ul>
+
+            <h3>Account Email</h3>
+            <p><strong>What it is:</strong> The email address you used to create your account with the vendor.</p>
+            <p><strong>Why store it:</strong></p>
+            <ul>
+                <li>Required for password resets</li>
+                <li>Needed to access account portals</li>
+                <li>Helps identify which account has the license</li>
+            </ul>
+
+            <h3>Password</h3>
+            <p><strong>What it is:</strong> Your vendor account password.</p>
+            <p><strong>Security:</strong></p>
+            <ul>
+                <li>Stored in macOS Keychain (encrypted)</li>
+                <li>Never visible in plain text (shows ••••••••)</li>
+                <li>Protected by your Mac login password</li>
+                <li>Only included in encrypted archive exports</li>
+            </ul>
+            <p><strong>Copy feature:</strong> Click the copy button to paste password when logging in.</p>
+
+            <h3>Activations Used / Max Activations</h3>
+            <p><strong>What it tracks:</strong> How many computers you've activated the plugin on.</p>
+            <p><strong>Example:</strong></p>
+            <ul>
+                <li>Used: 2</li>
+                <li>Max: 3</li>
+                <li>Meaning: You can install on 1 more computer</li>
+            </ul>
+            <p><strong>Warning indicator:</strong> Plugin Reporter shows a warning when you're at the limit.</p>
+
+            <h3>Activation Code</h3>
+            <p><strong>What it is:</strong> Some plugins require a separate code for activation (different from serial number).</p>
+            <p><strong>Examples:</strong></p>
+            <ul>
+                <li>Challenge/response codes</li>
+                <li>Machine-specific activation codes</li>
+                <li>Offline activation codes</li>
+            </ul>
+
+            <h3>Purchase Date</h3>
+            <p><strong>What it is:</strong> When you purchased the plugin.</p>
+            <p><strong>Why store it:</strong></p>
+            <ul>
+                <li>Track upgrade eligibility</li>
+                <li>Warranty tracking</li>
+                <li>Tax/expense records</li>
+            </ul>
+
+            <h3>Invoice Number</h3>
+            <p><strong>What it is:</strong> Receipt or invoice number from your purchase.</p>
+            <p><strong>Why store it:</strong></p>
+            <ul>
+                <li>Proof of purchase</li>
+                <li>Warranty claims</li>
+                <li>Upgrade verification</li>
+            </ul>
+
+            <h3>Vendor Links</h3>
+            <p><strong>Manufacturer Website:</strong></p>
+            <ul>
+                <li>Company homepage (e.g., https://www.fabfilter.com)</li>
+                <li>Quick access to product info</li>
+            </ul>
+
+            <p><strong>Account Portal:</strong></p>
+            <ul>
+                <li>Where you manage licenses online</li>
+                <li>Example: https://account.fabfilter.com</li>
+                <li>Useful for activations/deactivations</li>
+            </ul>
+
+            <p><strong>Support:</strong></p>
+            <ul>
+                <li>Help or support page</li>
+                <li>Quick access when you need help</li>
+            </ul>
+
+            <h3>Notes</h3>
+            <p><strong>What to include:</strong></p>
+            <ul>
+                <li>Installation notes ("Requires iLok 3")</li>
+                <li>Upgrade history ("Upgraded from v2 on 2024-06-15")</li>
+                <li>Special circumstances ("Educational license, renews annually")</li>
+                <li>Where files are stored ("License file in Dropbox")</li>
+                <li>Bundle info ("Part of FabFilter Total Bundle")</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Editing Existing Licenses</h2>
+            <p>To update license information:</p>
+
+            <ol>
+                <li>Open the plugin's License tab</li>
+                <li>Click <strong>"Edit"</strong></li>
+                <li>Modify any fields</li>
+                <li>Click <strong>"Done"</strong> to save</li>
+            </ol>
+
+            <p>All changes are saved immediately and the "Last Modified" timestamp is updated.</p>
+        </section>
+
+        <section>
+            <h2>Copying License Information</h2>
+            <p>When viewing (not editing) a license, you can quickly copy:</p>
+
+            <ul>
+                <li><strong>Serial Number</strong> - Click the copy button next to it</li>
+                <li><strong>Email</strong> - Click the copy button</li>
+                <li><strong>Password</strong> - Click the copy button (copies hidden password)</li>
+                <li><strong>Activation Code</strong> - Click the copy button</li>
+            </ul>
+
+            <p>A green "Copied to clipboard" message appears briefly to confirm.</p>
+        </section>
+
+        <section>
+            <h2>Deleting License Information</h2>
+            <p>To remove license info for a plugin:</p>
+
+            <ol>
+                <li>Open the License tab</li>
+                <li>Scroll to the bottom</li>
+                <li>Click <strong>"Delete License Info"</strong> (red button)</li>
+                <li>Confirm deletion</li>
+            </ol>
+
+            <div class="warning">
+                <h4>⚠️ Warning</h4>
+                <p>This permanently deletes the license info (including Keychain password). Make sure you have the information backed up if needed!</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Tips for Organization</h2>
+
+            <h3>Add Licenses Right Away</h3>
+            <p>When you purchase a plugin:</p>
+            <ol>
+                <li>Install it</li>
+                <li>Immediately add license info</li>
+                <li>You'll never lose the serial number</li>
+            </ol>
+
+            <h3>Use Consistent Formatting</h3>
+            <ul>
+                <li>Keep serial numbers in ORIGINAL format (don't add/remove dashes)</li>
+                <li>Use full URLs for vendor links (include https://)</li>
+                <li>Be consistent with date formats</li>
+            </ul>
+
+            <h3>Fill in What You Have</h3>
+            <ul>
+                <li>Not all fields are required</li>
+                <li>At minimum, store the serial number</li>
+                <li>Add more info as you find it</li>
+            </ul>
+
+            <h3>Regular Backups</h3>
+            <ul>
+                <li>Create encrypted archives regularly</li>
+                <li>Store backups in safe locations</li>
+                <li>Test restore process occasionally</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Common Scenarios</h2>
+
+            <h3>Educational/NFR Licenses</h3>
+            <p>For educational or NFR (Not For Resale) licenses:</p>
+            <ul>
+                <li>Add "(EDU)" or "(NFR)" to the notes</li>
+                <li>Include expiration date if applicable</li>
+                <li>Note any usage restrictions</li>
+            </ul>
+
+            <h3>Subscription Licenses</h3>
+            <p>For subscription-based plugins:</p>
+            <ul>
+                <li>Note renewal date in Notes field</li>
+                <li>Include subscription tier if relevant</li>
+                <li>Add payment frequency (monthly/annual)</li>
+            </ul>
+
+            <h3>Bundle Licenses</h3>
+            <p>For plugin bundles:</p>
+            <ul>
+                <li>You can create one license entry or separate ones</li>
+                <li>If one serial covers multiple plugins, note which ones</li>
+                <li>Use Notes to link related plugins</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Bulk Import Alternative</h2>
+            <p>If you have many licenses to add, consider:</p>
+
+            <ul>
+                <li><a href="ilok-import.html">Importing from iLok</a> - Import hundreds at once</li>
+                <li>CSV template (future feature) - Import from spreadsheet</li>
+            </ul>
+
+            <p>Manual entry is best for:</p>
+            <ul>
+                <li>Single plugins</li>
+                <li>Non-iLok licenses</li>
+                <li>Custom/detailed information</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Related Topics</h2>
+            <ul>
+                <li><a href="license-vault.html">License Vault Overview</a> - Main features</li>
+                <li><a href="ilok-import.html">Importing from iLok</a> - Bulk import</li>
+                <li><a href="license-security.html">Security & Keychain</a> - Data protection</li>
+                <li><a href="archive.html">Archive & Restore</a> - Backup your licenses</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Index</a></p>
+    </footer>
+</body>
+</html>

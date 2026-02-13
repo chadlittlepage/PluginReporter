@@ -5,7 +5,7 @@ import AppKit
 #endif
 
 // MARK: - Data Model expected by UI
-public struct ScannerPluginItem: Identifiable, Hashable {
+public struct ScannerPluginItem: Identifiable, Hashable, Codable {
     public let id: UUID
     public let name: String
     public let publisher: String
@@ -61,15 +61,23 @@ public final class PluginScanner: ObservableObject {
     @Published public var shouldShowPrivacyDisclosure: Bool = false
     private static let privacyDisclosureKey = "hasShownFileAccessDisclosure"
 
+    // Persistent storage for scanned plugins
+    private static let pluginsCacheKey = "cachedScannedPlugins"
+    private static let lastScanDateKey = "lastPluginScanDate"
+
     // Optimized background processing
     private let scanQueue = DispatchQueue(label: "plugin.scanner.queue", qos: .userInitiated, attributes: .concurrent)
     private let discoveryQueue = DispatchQueue(label: "plugin.discovery.queue", qos: .utility)
     private let resultQueue = DispatchQueue(label: "plugin.results.queue")
     private var scanTask: Task<Void, Never>?
 
-    public init() {
+    nonisolated public init() {
         // Check if we need to show privacy disclosure on first scan
-        checkPrivacyDisclosureStatus()
+        // Note: These are deferred to run on MainActor after initialization
+        Task { @MainActor in
+            self.checkPrivacyDisclosureStatus()
+            self.loadCachedPlugins()
+        }
     }
 
     // MARK: - Privacy Disclosure
@@ -82,6 +90,48 @@ public final class PluginScanner: ObservableObject {
     public func acknowledgePrivacyDisclosure() {
         UserDefaults.standard.set(true, forKey: Self.privacyDisclosureKey)
         shouldShowPrivacyDisclosure = false
+    }
+
+    // MARK: - Persistent Storage
+
+    private func loadCachedPlugins() {
+        guard let data = UserDefaults.standard.data(forKey: Self.pluginsCacheKey) else {
+            return
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            let cachedPlugins = try decoder.decode([ScannerPluginItem].self, from: data)
+            self.plugins = cachedPlugins
+            self.totalToScan = cachedPlugins.count
+
+            if let lastScanDate = UserDefaults.standard.object(forKey: Self.lastScanDateKey) as? Date {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                self.status = "Loaded \(cachedPlugins.count) plugins (scanned \(formatter.string(from: lastScanDate)))"
+            } else {
+                self.status = "Loaded \(cachedPlugins.count) plugins"
+            }
+
+            AppLogger.info("Loaded \(cachedPlugins.count) cached plugins from persistent storage")
+        } catch {
+            AppLogger.error("Failed to load cached plugins: \(error.localizedDescription)")
+            dashboardLogError(message: "Failed to load cached plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Cache Load")
+        }
+    }
+
+    private func saveCachedPlugins() {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(plugins)
+            UserDefaults.standard.set(data, forKey: Self.pluginsCacheKey)
+            UserDefaults.standard.set(Date(), forKey: Self.lastScanDateKey)
+            AppLogger.info("Saved \(plugins.count) plugins to persistent storage")
+        } catch {
+            AppLogger.error("Failed to save cached plugins: \(error.localizedDescription)")
+            dashboardLogError(message: "Failed to save cached plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Cache Save")
+        }
     }
     
     // MARK: Async Semaphore Helper
@@ -260,8 +310,14 @@ public final class PluginScanner: ObservableObject {
             self.status = "Scan complete."
             self.totalToScan = allItems.count
 
+            // Save to persistent storage
+            self.saveCachedPlugins()
+
             // Auto-save to shared location for iOS app
             self.saveToSharedLocation()
+
+            // Track scan completion for dashboard reporting
+            dashboardTrackScan()
         }
     }
 
@@ -323,6 +379,7 @@ public final class PluginScanner: ObservableObject {
     // MARK: Defaults & discovery
 
     private nonisolated func defaultPluginRoots() -> [URL] {
+        #if os(macOS)
         let fm = FileManager.default
         let home = fm.homeDirectoryForCurrentUser
         return [
@@ -331,6 +388,9 @@ public final class PluginScanner: ObservableObject {
             URL(fileURLWithPath: "/Library/Application Support/Avid/Audio/Plug-Ins", isDirectory: true),
             home.appendingPathComponent("Library/Application Support/Avid/Audio/Plug-Ins", isDirectory: true)
         ].filter { FileManager.default.fileExists(atPath: $0.path) }
+        #else
+        return []
+        #endif
     }
 
     private nonisolated func dedupe(_ urls: [URL]) -> [URL] {
@@ -343,17 +403,21 @@ public final class PluginScanner: ObservableObject {
             var results: [URL] = []
             let exts: Set<String> = ["component","vst","vst3","aaxplugin","clap","lv2"]
 
-            guard let enumerator = fm.enumerator(at: root,
-                                                 includingPropertiesForKeys: [.isDirectoryKey],
-                                                 options: [.skipsHiddenFiles]) else { return [] }
-            
-            for case let url as URL in enumerator {
-                if exts.contains(url.pathExtension.lowercased()) {
-                    results.append(url)
-                    enumerator.skipDescendants()
+            // Recursive directory traversal
+            func traverse(_ dir: URL) {
+                guard let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) else { return }
+
+                for url in contents {
+                    if exts.contains(url.pathExtension.lowercased()) {
+                        results.append(url)
+                        // Don't descend into plugin bundles
+                    } else if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                        traverse(url)
+                    }
                 }
             }
-            
+
+            traverse(root)
             return results
         }.value
     }
@@ -423,7 +487,7 @@ public final class PluginScanner: ObservableObject {
 
     // MARK: Info extraction
 
-    private struct PlugInfo {
+    private struct PlugInfo: Sendable {
         var bundleID: String?
         var name: String?
         var version: String?
@@ -433,13 +497,11 @@ public final class PluginScanner: ObservableObject {
     }
 
     private nonisolated func readInfo(for url: URL, type: String) -> PlugInfo {
-        var out = PlugInfo()
-
         // Fast path for AAX plugins - use lightweight scanning
         if type == "AAX" {
             return readAAXInfoFast(for: url)
         }
-        
+
         // Fast path for other plugin types - skip heavy operations when possible
         return readPluginInfoFast(for: url, type: type)
     }
@@ -524,7 +586,7 @@ public final class PluginScanner: ObservableObject {
         for component in components {
             let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
             // Skip if it looks like a version number (starts with digit)
-            if !trimmed.isEmpty && !trimmed.first!.isNumber {
+            if !trimmed.isEmpty, let firstChar = trimmed.first, !firstChar.isNumber {
                 return trimmed
             }
         }
@@ -889,9 +951,11 @@ public final class PluginScanner: ObservableObject {
                 }
             }
             if out.executableURL == nil {
-                if let e = FileManager.default.enumerator(at: url, includingPropertiesForKeys: nil) {
-                    for case let f as URL in e where ["dylib","so"].contains(f.pathExtension.lowercased()) {
-                        out.executableURL = f; break
+                // Use synchronous directory enumeration for Swift 6 compatibility
+                if let files = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+                    for f in files where ["dylib","so"].contains(f.pathExtension.lowercased()) {
+                        out.executableURL = f
+                        break
                     }
                 }
             }
@@ -988,9 +1052,10 @@ public final class PluginScanner: ObservableObject {
     }
 
     // Architecture detection cache to avoid repeated lipo/file calls
-    private static let archCache = NSCache<NSString, NSString>()
+    private nonisolated(unsafe) static let archCache = NSCache<NSString, NSString>()
 
     private nonisolated func architectures(at execURL: URL?) -> String {
+        #if os(macOS)
         guard let execURL, FileManager.default.fileExists(atPath: execURL.path) else { return "" }
 
         // Check cache first
@@ -1036,6 +1101,9 @@ public final class PluginScanner: ObservableObject {
         Self.archCache.setObject(result as NSString, forKey: cacheKey)
 
         return result
+        #else
+        return ""
+        #endif
     }
 
     private nonisolated func packageSize(at url: URL) -> Int64 {
@@ -1061,8 +1129,17 @@ public final class PluginScanner: ObservableObject {
     // MARK: - Auto-save for iOS Sync
 
     private func saveToSharedLocation() {
+        #if os(macOS)
         let sharedDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/PluginReporter")
+        #else
+        // On iOS, use the app's document directory
+        guard let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            AppLogger.error("Could not access documents directory")
+            return
+        }
+        let sharedDir = documentsDir.appendingPathComponent("PluginReporter")
+        #endif
 
         do {
             // Create directory if needed
@@ -1094,6 +1171,7 @@ public final class PluginScanner: ObservableObject {
             AppLogger.info("Auto-saved \(plugins.count) plugins")
         } catch {
             AppLogger.error("Failed to auto-save plugins: \(error.localizedDescription)")
+            dashboardLogError(message: "Failed to auto-save plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Auto Save")
         }
     }
 

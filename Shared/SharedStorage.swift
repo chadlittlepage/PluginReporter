@@ -26,16 +26,28 @@ public enum SharedStorage {
         return appDir.appendingPathComponent("plugins.json")
 
         #else
-        // iOS: In simulator, read from Mac's Application Support
-        // On device, will use iCloud later
+        // iOS/iPadOS
         #if targetEnvironment(simulator)
-        // Simulator: For now, user must manually copy plugins.json to simulator's Documents
+        // Simulator: Read directly from Mac's REAL Application Support (not simulator's sandbox!)
         // The Mac app saves to: ~/Library/Application Support/PluginReporter/plugins.json
-        // User can copy it to the simulator via Finder or drag-drop
-        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        // Extract username from simulator's home directory
+        // Format: /Users/username/Library/Developer/CoreSimulator/.../
+        let homeDir = NSHomeDirectory()
+        let components = homeDir.split(separator: "/")
+
+        // Get username (should be at index 1: /Users/username/...)
+        guard components.count >= 2, components[0] == "Users" else {
             return nil
         }
-        return docs.appendingPathComponent("plugins.json")
+
+        let username = String(components[1])
+        let realAppSupport = "/Users/\(username)/Library/Application Support/PluginReporter"
+        let appSupportURL = URL(fileURLWithPath: realAppSupport)
+
+        // Create directory if needed
+        try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+
+        return appSupportURL.appendingPathComponent("plugins.json")
         #else
         // Real device: Use Documents (later will be iCloud)
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -49,25 +61,18 @@ public enum SharedStorage {
     /// Load plugins from shared storage
     public static func loadPlugins() throws -> [PluginItem] {
         guard let url = pluginsURL else {
-            AppLogger.error("Could not get plugins URL")
             return []
         }
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            AppLogger.info("No plugins file at \(url.path)")
             return [] // No plugins yet
         }
 
-        AppLogger.info("Loading plugins from: \(url.path)")
         let data = try Data(contentsOf: url)
-        AppLogger.info("Read \(data.count) bytes")
 
         guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            AppLogger.error("Invalid JSON format")
             throw StorageError.invalidFormat
         }
-
-        AppLogger.info("Found \(jsonArray.count) items in JSON")
 
         let plugins = jsonArray.compactMap { dict -> PluginItem? in
             guard let name = dict["Name"] as? String,
@@ -93,11 +98,11 @@ public enum SharedStorage {
             )
         }
 
-        AppLogger.info("Successfully parsed \(plugins.count) plugins")
         return plugins
     }
 
     /// Save plugins to shared storage
+    @MainActor
     public static func savePlugins(_ plugins: [PluginItem]) throws {
         guard let url = pluginsURL else {
             throw StorageError.notFound

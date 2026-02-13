@@ -12,7 +12,8 @@ struct PluginListView: View {
     var onImport: (() -> Void)? = nil
     @Binding var filteredPluginsForExport: [PluginItem]
     @State private var searchText = ""
-    @State private var selectedFormat: String? = nil
+    @State private var selectedFormats: Set<String> = []
+    @State private var selectedStarRatings: Set<Int> = []
     @State private var selectedStyle: String? = nil
     @State private var selectedPublisher: String? = nil
     @State private var sortOrder: SortOrder = .name
@@ -22,14 +23,18 @@ struct PluginListView: View {
     @State private var cachedConsolidated: [ConsolidatedPlugin] = []
     @State private var cachedSectioned: [(key: String, plugins: [ConsolidatedPlugin])] = []
     @State private var cachedFilteredSorted: [PluginItem] = []
-    @State private var lastPluginCount = 0
+    @State private var cachedUniquePublishers: [String] = []
+    @State private var cachedUniqueFormats: [String] = []
+    @State private var cachedUniqueStyles: [String] = []
+    @State private var cachedFormatCounts: [String: Int] = [:]
+    @State private var cachedStyleCounts: [String: Int] = [:]
 
     enum SortOrder {
         case name, publisher, type, style
     }
 
     // Consolidated plugin structure
-    struct ConsolidatedPlugin: Identifiable {
+    struct ConsolidatedPlugin: Identifiable, Hashable {
         let id = UUID()
         let name: String
         let publisher: String
@@ -37,6 +42,15 @@ struct PluginListView: View {
         let types: [String]
         let isObsolete: Bool
         let originalPlugins: [PluginItem]
+
+        // Hashable conformance
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+
+        static func == (lhs: ConsolidatedPlugin, rhs: ConsolidatedPlugin) -> Bool {
+            lhs.id == rhs.id
+        }
     }
 
     // SPEED: Return cached value directly
@@ -58,22 +72,31 @@ struct PluginListView: View {
     private func computeFilteredAndSorted() {
         var result = plugins
 
-        // Apply search filter
+        // Apply search filter - search all fields
         if !searchText.isEmpty {
             let searchLower = searchText.lowercased()
             result = result.filter { plugin in
                 plugin.name.lowercased().contains(searchLower) ||
                 plugin.publisher.lowercased().contains(searchLower) ||
-                plugin.style.lowercased().contains(searchLower)
+                plugin.style.lowercased().contains(searchLower) ||
+                plugin.architectures.lowercased().contains(searchLower) ||
+                plugin.version.lowercased().contains(searchLower) ||
+                plugin.runtimeRequirement.lowercased().contains(searchLower) ||
+                plugin.type.lowercased() == searchLower  // Exact match for type to avoid VST matching VST3
             }
         }
 
-        // Apply format filter
-        if let format = selectedFormat {
-            if format == "OBSLT" {
-                result = result.filter { $0.obsolete }
-            } else {
-                result = result.filter { $0.type.uppercased() == format }
+        // Apply format filter - multi-select with OR logic
+        if !selectedFormats.isEmpty {
+            result = result.filter { plugin in
+                for format in selectedFormats {
+                    if format == "OBSLT" {
+                        if plugin.obsolete { return true }
+                    } else {
+                        if plugin.type.uppercased() == format { return true }
+                    }
+                }
+                return false
             }
         }
 
@@ -85,6 +108,15 @@ struct PluginListView: View {
         // Apply publisher filter
         if let publisher = selectedPublisher {
             result = result.filter { $0.publisher == publisher }
+        }
+
+        // Apply star rating filter
+        if !selectedStarRatings.isEmpty {
+            let ratingsManager = RatingsManager.shared
+            result = result.filter { plugin in
+                let rating = ratingsManager.getRating(for: plugin.path)
+                return selectedStarRatings.contains(rating)
+            }
         }
 
         // Apply sorting
@@ -154,8 +186,9 @@ struct PluginListView: View {
             .sorted { $0.key < $1.key }
     }
 
+    // SPEED: Return cached values instantly
     var uniquePublishers: [String] {
-        Array(Set(plugins.map { $0.publisher })).sorted()
+        cachedUniquePublishers
     }
 
     var sortOrderBadge: String {
@@ -168,32 +201,57 @@ struct PluginListView: View {
     }
 
     var uniqueFormats: [String] {
-        Array(Set(plugins.map { $0.type.uppercased() })).sorted()
+        cachedUniqueFormats
     }
 
     var uniqueStyles: [String] {
-        Array(Set(plugins.map { $0.style }.filter { !$0.isEmpty })).sorted()
+        cachedUniqueStyles
     }
 
     var formatCounts: [String: Int] {
-        var counts: [String: Int] = [:]
-        for plugin in plugins {
-            counts[plugin.type.uppercased(), default: 0] += 1
-            if plugin.obsolete {
-                counts["OBSLT", default: 0] += 1
-            }
-        }
-        return counts
+        cachedFormatCounts
     }
 
     var styleCounts: [String: Int] {
-        var counts: [String: Int] = [:]
+        cachedStyleCounts
+    }
+
+    // SPEED: Compute all metadata once when plugins change
+    private func computeMetadata() {
+        // Publishers
+        cachedUniquePublishers = Array(Set(plugins.map { $0.publisher })).sorted()
+
+        // Formats
+        var types = Set(plugins.map { $0.type.uppercased() })
+        types.insert("OBSLT")
+        let order = ["AU", "VST", "VST3", "AAX", "CLAP", "LV2", "OBSLT"]
+        cachedUniqueFormats = Array(types).sorted { format1, format2 in
+            let index1 = order.firstIndex(of: format1) ?? Int.max
+            let index2 = order.firstIndex(of: format2) ?? Int.max
+            return index1 < index2
+        }
+
+        // Styles
+        cachedUniqueStyles = Array(Set(plugins.map { $0.style }.filter { !$0.isEmpty })).sorted()
+
+        // Format counts
+        var fCounts: [String: Int] = [:]
         for plugin in plugins {
-            if !plugin.style.isEmpty {
-                counts[plugin.style, default: 0] += 1
+            fCounts[plugin.type.uppercased(), default: 0] += 1
+            if plugin.obsolete {
+                fCounts["OBSLT", default: 0] += 1
             }
         }
-        return counts
+        cachedFormatCounts = fCounts
+
+        // Style counts
+        var sCounts: [String: Int] = [:]
+        for plugin in plugins {
+            if !plugin.style.isEmpty {
+                sCounts[plugin.style, default: 0] += 1
+            }
+        }
+        cachedStyleCounts = sCounts
     }
 
     @AppStorage("appearance") private var appearance: String = "space"
@@ -235,8 +293,11 @@ struct PluginListView: View {
                                 SortBadge(title: sortOrderBadge, onRemove: { sortOrder = .name })
                             }
 
-                            if let format = selectedFormat {
-                                FilterChip(title: format, onRemove: { selectedFormat = nil })
+                            ForEach(Array(selectedFormats).sorted(by: { ColorUtilities.formatSortOrder($0) < ColorUtilities.formatSortOrder($1) }), id: \.self) { format in
+                                FilterChip(title: format, onRemove: { selectedFormats.remove(format) }, color: ColorUtilities.colorForFormat(format))
+                            }
+                            ForEach(Array(selectedStarRatings).sorted(by: >), id: \.self) { rating in
+                                FilterChip(title: "\(rating)★", onRemove: { selectedStarRatings.remove(rating) }, color: .yellow)
                             }
                             if let style = selectedStyle {
                                 FilterChip(title: style, onRemove: { selectedStyle = nil })
@@ -274,8 +335,9 @@ struct PluginListView: View {
                                 ForEach(sectionedPlugins, id: \.key) { section in
                                     Section(header: EmptyView()) {
                                         ForEach(section.plugins) { consolidated in
-                                            NavigationLink(destination: ConsolidatedPluginDetailView(consolidated: consolidated)) {
+                                            NavigationLink(value: consolidated) {
                                                 ConsolidatedPluginRow(consolidated: consolidated)
+                                                    .equatable()
                                             }
                                             .listRowBackground(Color.clear)
                                         }
@@ -303,24 +365,22 @@ struct PluginListView: View {
             .background(customBackgroundColor)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: ConsolidatedPlugin.self) { consolidated in
+                ConsolidatedPluginDetailView(consolidated: consolidated)
+            }
             .onChange(of: filteredAndSortedPlugins) { newValue in
                 filteredPluginsForExport = newValue
             }
             .onChange(of: searchText) { _ in computeFilteredAndSorted() }
-            .onChange(of: selectedFormat) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedFormats) { _ in computeFilteredAndSorted() }
+            .onChange(of: selectedStarRatings) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedStyle) { _ in computeFilteredAndSorted() }
             .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
-            .onChange(of: plugins.count) { newCount in
-                if newCount != lastPluginCount {
-                    lastPluginCount = newCount
-                    computeFilteredAndSorted()
-                }
-            }
-            .onAppear {
-                if cachedFilteredSorted.isEmpty {
-                    computeFilteredAndSorted()
-                }
+            .task(id: plugins.count) {
+                // Recompute when plugins change (much faster than .id() view recreation)
+                computeMetadata()
+                computeFilteredAndSorted()
                 filteredPluginsForExport = filteredAndSortedPlugins
             }
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -423,8 +483,8 @@ struct PluginListView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                if selectedFormat != nil {
-                                    Button(action: { selectedFormat = nil }) {
+                                if !selectedFormats.isEmpty {
+                                    Button(action: { selectedFormats.removeAll() }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
@@ -436,23 +496,139 @@ struct PluginListView: View {
                         ) {
                             ForEach(uniqueFormats, id: \.self) { format in
                                 Button(action: {
-                                    selectedFormat = selectedFormat == format ? nil : format
+                                    if selectedFormats.contains(format) {
+                                        selectedFormats.remove(format)
+                                    } else {
+                                        selectedFormats.insert(format)
+                                    }
                                 }) {
-                                    HStack {
+                                    HStack(spacing: 12) {
                                         Text(format)
+                                            .font(.system(size: 15))
+
                                         Spacer()
+
                                         if let count = formatCounts[format] {
                                             Text("\(count)")
                                                 .foregroundColor(.secondary)
                                                 .font(.caption)
                                         }
-                                        if selectedFormat == format {
+
+                                        if selectedFormats.contains(format) {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .foregroundColor(ColorUtilities.colorForFormat(format))
                                         }
                                     }
                                 }
                                 .buttonStyle(.plain)
+                            }
+                        }
+
+                        Section(header:
+                            HStack {
+                                Text("Filter by Stars")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                if !selectedStarRatings.isEmpty {
+                                    Button(action: { selectedStarRatings.removeAll() }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal)
+                        ) {
+                            Button(action: {
+                                if selectedStarRatings.contains(5) {
+                                    selectedStarRatings.remove(5)
+                                } else {
+                                    selectedStarRatings.insert(5)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️⭐️⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(5) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(4) {
+                                    selectedStarRatings.remove(4)
+                                } else {
+                                    selectedStarRatings.insert(4)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(3) {
+                                    selectedStarRatings.remove(3)
+                                } else {
+                                    selectedStarRatings.insert(3)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(3) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(2) {
+                                    selectedStarRatings.remove(2)
+                                } else {
+                                    selectedStarRatings.insert(2)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(2) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                if selectedStarRatings.contains(1) {
+                                    selectedStarRatings.remove(1)
+                                } else {
+                                    selectedStarRatings.insert(1)
+                                }
+                            }) {
+                                HStack {
+                                    Text("⭐️")
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                    if selectedStarRatings.contains(1) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
                             }
                         }
 
@@ -530,7 +706,8 @@ struct PluginListView: View {
                         Section {
                             Button(role: .destructive, action: {
                                 sortOrder = .name
-                                selectedFormat = nil
+                                selectedFormats.removeAll()
+                                selectedStarRatings.removeAll()
                                 selectedStyle = nil
                                 selectedPublisher = nil
                             }) {
@@ -544,17 +721,21 @@ struct PluginListView: View {
                     }
                 }
             }
+            .transaction { transaction in
+                transaction.animation = nil // Disable all List/Form animations
+            }
         }
     }
 
     private var hasActiveFilters: Bool {
-        selectedFormat != nil || selectedStyle != nil || selectedPublisher != nil
+        !selectedFormats.isEmpty || selectedStyle != nil || selectedPublisher != nil
     }
 
     private var statsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .center, spacing: 12) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                Spacer()
+                VStack(alignment: .center, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(hasActiveFilters ? "Filtered Plugins" : "Plugins")
                             .font(.headline)
@@ -592,10 +773,14 @@ struct PluginListView: View {
                         count: item.count,
                         maxCount: counts.max(by: { $0.count < $1.count })?.count ?? 1,
                         color: ColorUtilities.colorForFormat(item.format),
-                        isSelected: selectedFormat == item.format
+                        isSelected: selectedFormats.contains(item.format)
                     )
                     .onTapGesture {
-                        selectedFormat = selectedFormat == item.format ? nil : item.format
+                        if selectedFormats.contains(item.format) {
+                            selectedFormats.remove(item.format)
+                        } else {
+                            selectedFormats.insert(item.format)
+                        }
                     }
                 }
             }
@@ -607,7 +792,7 @@ struct PluginListView: View {
     }
 
     private var dynamicFormatCounts: [(format: String, count: Int)] {
-        let pluginsToCount = selectedFormat != nil || selectedStyle != nil || selectedPublisher != nil ? filteredAndSortedPlugins : plugins
+        let pluginsToCount = !selectedFormats.isEmpty || selectedStyle != nil || selectedPublisher != nil ? filteredAndSortedPlugins : plugins
 
         var counts: [String: Int] = [
             "AU": 0,
@@ -642,7 +827,7 @@ struct SectionIndexView: View {
     @State private var selectedSection: String?
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 8) {
             ForEach(sections, id: \.self) { section in
                 Text(section)
                     .font(.system(size: 10, weight: .medium))

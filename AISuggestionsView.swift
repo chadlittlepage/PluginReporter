@@ -1,6 +1,10 @@
 // AISuggestionsView.swift — UI for AI plugin suggestions
 import SwiftUI
+import Combine
 import Security
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Suggestion Categories
 
@@ -77,7 +81,7 @@ struct AISuggestionsView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             }
-            .background(Color(white: 0.5, opacity: 0.05))
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -139,9 +143,12 @@ struct AISuggestionsView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(Color(white: 0.5, opacity: 0.05))
+            .background(.ultraThinMaterial)
         }
+        .background(.ultraThinMaterial)
+        #if os(macOS)
         .frame(width: 600, height: 550)
+        #endif
         .task {
             await aiService.fetchSuggestions(for: plugin, ownedPlugins: ownedPlugins)
         }
@@ -262,15 +269,25 @@ struct SuggestionRow: View {
         // Try to find direct link, fallback to Google search
         if let directURL = directLinks[suggestion.name], let url = URL(string: directURL) {
             return url
-        } else {
-            let query = suggestion.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.name
-            return URL(string: "https://www.google.com/search?q=\(query)+audio+plugin") ?? URL(string: "https://www.google.com")!
         }
+
+        // Try Google search with encoded query
+        let query = suggestion.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.name
+        if let searchURL = URL(string: "https://www.google.com/search?q=\(query)+audio+plugin") {
+            return searchURL
+        }
+
+        // Final safe fallback - this URL is guaranteed to be valid
+        return URL(string: "https://www.google.com")!
     }
 
     var body: some View {
         Button {
+            #if os(macOS)
             NSWorkspace.shared.open(pluginURL)
+            #else
+            UIApplication.shared.open(pluginURL)
+            #endif
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 // Icon
@@ -291,7 +308,7 @@ struct SuggestionRow: View {
                         Spacer()
                         Image(systemName: "arrow.up.right")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.accentColor)
                     }
                     Text(suggestion.reason)
                         .font(.caption)
@@ -304,21 +321,23 @@ struct SuggestionRow: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(white: 0.5, opacity: 0.05))
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
+            #if os(macOS)
             if hovering {
                 NSCursor.pointingHand.push()
             } else {
                 NSCursor.pop()
             }
+            #endif
         }
     }
 }
@@ -337,23 +356,28 @@ struct CategoryChip: View {
                 .fontWeight(isSelected ? .semibold : .regular)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? Color.accentColor : Color(white: 0.5, opacity: 0.1))
-                )
+                .background {
+                    if isSelected {
+                        Capsule().fill(Color.accentColor)
+                    } else {
+                        Capsule().fill(.ultraThinMaterial)
+                    }
+                }
                 .foregroundColor(isSelected ? .white : .primary)
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.2), lineWidth: 1)
+                        .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.3), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
         .onHover { hovering in
+            #if os(macOS)
             if hovering {
                 NSCursor.pointingHand.push()
             } else {
                 NSCursor.pop()
             }
+            #endif
         }
     }
 }
@@ -370,102 +394,30 @@ struct AISuggestionsButton: View {
             showingSuggestions = true
         } label: {
             Label("AI Suggestions", systemImage: "sparkles")
-                .font(.caption)
+                .font(.system(size: 13))
+                .foregroundColor(.accentColor)
         }
         .buttonStyle(.borderless)
+        #if os(iOS)
+        .popover(isPresented: $showingSuggestions) {
+            NavigationStack {
+                AISuggestionsView(plugin: plugin, ownedPlugins: ownedPlugins)
+            }
+            .frame(
+                width: min(400, UIScreen.main.bounds.width * 0.92),
+                height: min(600, UIScreen.main.bounds.height * 0.75)
+            )
+            .presentationCompactAdaptation(.popover)
+        }
+        #else
         .sheet(isPresented: $showingSuggestions) {
             AISuggestionsView(plugin: plugin, ownedPlugins: ownedPlugins)
         }
+        #endif
     }
 }
 
-// MARK: - Settings Panel for OpenAI API Key
 
-// Helper class to manage API key state
-class APIKeyManager: ObservableObject {
-    @Published var apiKey: String = ""
-
-    init() {
-        self.apiKey = loadAPIKey()
-        migrateAPIKeyToKeychain()
-    }
-
-    private func loadAPIKey() -> String {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "openai_api_key",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let value = String(data: data, encoding: .utf8) else {
-            return ""
-        }
-
-        return value
-    }
-
-    func saveAPIKey(_ value: String) {
-        if value.isEmpty {
-            // Delete from Keychain
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: "openai_api_key"
-            ]
-            SecItemDelete(query as CFDictionary)
-        } else {
-            // Save to Keychain
-            saveToKeychain(key: "openai_api_key", value: value)
-        }
-    }
-
-    private func migrateAPIKeyToKeychain() {
-        // Check if we need to migrate from old UserDefaults storage
-        if let oldKey = UserDefaults.standard.string(forKey: "openai_api_key"), !oldKey.isEmpty {
-            // Only migrate if Keychain doesn't already have a key
-            if !keychainItemExists(key: "openai_api_key") {
-                saveToKeychain(key: "openai_api_key", value: oldKey)
-            }
-            // Remove from UserDefaults for security
-            UserDefaults.standard.removeObject(forKey: "openai_api_key")
-        }
-    }
-
-    private func keychainItemExists(key: String) -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: false
-        ]
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
-        return status == errSecSuccess
-    }
-
-    private func saveToKeychain(key: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
-
-        // Delete any existing item first
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
-        ]
-
-        SecItemAdd(query as CFDictionary, nil)
-    }
-}
 
 struct AISettingsView: View {
     @StateObject private var manager = APIKeyManager()
@@ -473,9 +425,6 @@ struct AISettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("AI Suggestions")
-                .font(.headline)
-
             Text("Optional: Add your OpenAI API key for smarter suggestions. Leave blank to use local AI only.")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -488,12 +437,20 @@ struct AISettingsView: View {
                         .onChange(of: manager.apiKey) { newValue in
                             manager.saveAPIKey(newValue)
                         }
+                        .transaction { transaction in
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
+                        }
                 } else {
                     SecureField("sk-...", text: $manager.apiKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                         .onChange(of: manager.apiKey) { newValue in
                             manager.saveAPIKey(newValue)
+                        }
+                        .transaction { transaction in
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
                         }
                 }
 
@@ -503,6 +460,21 @@ struct AISettingsView: View {
                     Image(systemName: showingKey ? "eye.slash" : "eye")
                 }
                 .buttonStyle(.borderless)
+            }
+            .animation(nil, value: manager.apiKey)
+            .animation(nil, value: showingKey)
+
+            // Validation error message
+            if let error = manager.validationError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .padding(.vertical, 4)
             }
 
             HStack(spacing: 4) {
@@ -535,11 +507,6 @@ struct AISettingsView: View {
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(white: 0.5, opacity: 0.05))
-        )
     }
 }
 

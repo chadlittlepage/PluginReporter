@@ -19,6 +19,11 @@ public extension PluginItem {
         obsolete ? "Yes" : "No"
     }
 
+    /// "Yes"/"No" string for missing flag.
+    var missingString: String {
+        missing ? "Yes" : "No"
+    }
+
     /// Numeric key (seconds since 1970) used for fast/s table sorting and JSON export.
     var dateSortKey: Double {
         date?.timeIntervalSince1970 ?? 0

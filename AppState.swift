@@ -8,13 +8,34 @@
 
 // AppState.swift — FULL REPLACEMENT (shared selection + clipboard actions)
 import Foundation
+import Combine
+#if os(macOS)
 import AppKit
+#endif
 
 final class AppState: ObservableObject {
     @Published var selected: [PluginItem] = []   // currently selected rows in the table
 
+    // Track selected IDs to persist selection across filter changes
+    var selectedIDs: Set<UUID> = []
+
+    // Update ID set when selection changes (called from onChange)
+    func updateSelectionIDs() {
+        selectedIDs = Set(selected.map(\.id))
+    }
+
+    // Restore selection from available plugins based on stored IDs
+    func restoreSelection(from availablePlugins: [PluginItem]) {
+        // Only update if the selection would actually change to avoid loops
+        let restoredSelection = availablePlugins.filter { selectedIDs.contains($0.id) }
+        if Set(restoredSelection.map(\.id)) != Set(selected.map(\.id)) {
+            selected = restoredSelection
+        }
+    }
+
     // MARK: Clipboard
 
+    #if os(macOS)
     func copyPaths() {
         guard !selected.isEmpty else { return }
         let text = selected.map { $0.path }.joined(separator: "\n")
@@ -45,4 +66,5 @@ final class AppState: ObservableObject {
     }
 
     var copyPathsTitle: String { selected.count > 1 ? "Copy Paths" : "Copy Path" }
+    #endif
 }

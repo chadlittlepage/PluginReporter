@@ -18,6 +18,9 @@ class PluginListViewModel: ObservableObject {
     @Published var selectedPublisher: String?
     @Published var sortOrder: SortOrder = .name
 
+    // PAGINATION: For large plugin lists (10,000+)
+    let pagination = PaginationManager<PluginItem>(threshold: 1000, defaultPageSize: 250)
+
     // MARK: - Input
 
     private(set) var plugins: [PluginItem]
@@ -137,7 +140,11 @@ class PluginListViewModel: ObservableObject {
             result.sort { $0.style.localizedCaseInsensitiveCompare($1.style) == .orderedAscending }
         }
 
-        return result
+        // Update pagination with filtered/sorted results
+        pagination.updateItems(result)
+
+        // Return paginated results if enabled, otherwise full results
+        return pagination.isEnabled ? pagination.getCurrentPage() : result
     }
 
     var consolidatedPlugins: [ConsolidatedPlugin] {

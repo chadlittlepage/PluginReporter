@@ -10,10 +10,14 @@ import SwiftUI
 struct ConsolidatedPluginDetailView: View {
     let consolidated: PluginListView.ConsolidatedPlugin
     @State private var showShareSheet = false
+    @StateObject private var notesManager = NotesManager.shared
+    @StateObject private var ratingsManager = RatingsManager.shared
+    @StateObject private var tagsManager = TagsManager.shared
+    @StateObject private var metadataManager = MetadataManager.shared
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(consolidated.name)
                         .font(.largeTitle)
@@ -25,6 +29,53 @@ struct ConsolidatedPluginDetailView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
+
+                // AI Suggestions Button - Top Center
+                HStack {
+                    Spacer()
+                    AISuggestionsButton(
+                        plugin: consolidated.originalPlugins.first ?? PluginItem(
+                            name: consolidated.name,
+                            publisher: consolidated.publisher,
+                            version: "",
+                            type: consolidated.types.first ?? "",
+                            style: consolidated.style,
+                            architectures: "",
+                            date: nil,
+                            sizeBytes: 0,
+                            path: "",
+                            runtimeRequirement: "",
+                            obsolete: false
+                        ),
+                        ownedPlugins: [] // Don't pass all plugins - AI service doesn't need them all
+                    )
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+                // Rating Section (syncs across all formats)
+                if let firstPlugin = consolidated.originalPlugins.first {
+                    PluginRatingSection(
+                        pluginPath: firstPlugin.path,
+                        allFormatPaths: consolidated.originalPlugins.map { $0.path },
+                        ratingsManager: ratingsManager
+                    )
+                    .padding(.horizontal)
+                }
+
+                Divider()
+
+                // Tags Section (syncs across all formats)
+                if let firstPlugin = consolidated.originalPlugins.first {
+                    PluginTagsSection(
+                        plugin: firstPlugin,
+                        tagsManager: tagsManager
+                    )
+                    .padding(.horizontal)
+                }
 
                 Divider()
 
@@ -39,8 +90,7 @@ struct ConsolidatedPluginDetailView: View {
                                 Text(type)
                                     .font(.caption)
                                     .fontWeight(.semibold)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
+                                    .frame(width: 56, height: 24)  // Fixed uniform size (larger for detail view)
                                     .background(ColorUtilities.colorForFormat(type).opacity(0.2))
                                     .foregroundColor(ColorUtilities.colorForFormat(type))
                                     .cornerRadius(8)
@@ -48,39 +98,50 @@ struct ConsolidatedPluginDetailView: View {
                         }
                     }
 
-                    if !consolidated.style.isEmpty {
-                        DetailInfoRow(label: "Style", value: consolidated.style)
+                    if let firstPlugin = consolidated.originalPlugins.first {
+                        DetailInfoRow(label: "Publisher", value: metadataManager.getDisplayPublisher(for: firstPlugin))
                     }
 
-                    // Show details for each format
-                    ForEach(consolidated.originalPlugins) { plugin in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("\(plugin.type) Details")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(ColorUtilities.colorForFormat(plugin.type))
+                    if let firstPlugin = consolidated.originalPlugins.first {
+                        let displayStyle = metadataManager.getDisplayStyle(for: firstPlugin)
+                        if !displayStyle.isEmpty {
+                            DetailInfoRow(label: "Style", value: displayStyle)
+                        }
+                    }
 
-                            DetailInfoRow(label: "Version", value: plugin.version.isEmpty ? "Unknown" : plugin.version)
-                            DetailInfoRow(label: "Architecture", value: plugin.architectures.isEmpty ? "Unknown" : plugin.architectures)
-                            DetailInfoRow(label: "Size", value: plugin.displaySize)
+                    // Show details for each format - LAZY loading for speed
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(consolidated.originalPlugins) { plugin in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("\(plugin.type) Details")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(ColorUtilities.colorForFormat(plugin.type))
 
-                            if !plugin.path.isEmpty {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Path")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    ScrollView(.horizontal, showsIndicators: false) {
+                                DetailInfoRow(label: "Version", value: metadataManager.getDisplayVersion(for: plugin))
+                                DetailInfoRow(label: "Architecture", value: plugin.architectures.isEmpty ? "Unknown" : plugin.architectures)
+                                DetailInfoRow(label: "Size", value: plugin.displaySize)
+
+                                if !plugin.path.isEmpty {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Path")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
                                         Text(plugin.path)
                                             .font(.caption)
                                             .fontWeight(.medium)
                                             .padding(10)
                                             .background(Color(.systemGray6).opacity(0.5))
                                             .cornerRadius(8)
+                                            .lineLimit(2)
                                     }
                                 }
-                            }
 
-                            Divider()
+                                // Notes Section for this format
+                                PluginNotesSection(pluginPath: plugin.path, notesManager: notesManager)
+
+                                Divider()
+                            }
                         }
                     }
                 }
@@ -116,10 +177,14 @@ struct ConsolidatedPluginDetailView: View {
 struct PluginDetailView: View {
     let plugin: PluginItem
     @State private var showShareSheet = false
+    @StateObject private var notesManager = NotesManager.shared
+    @StateObject private var ratingsManager = RatingsManager.shared
+    @StateObject private var tagsManager = TagsManager.shared
+    @StateObject private var metadataManager = MetadataManager.shared
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(plugin.name)
                         .font(.largeTitle)
@@ -132,12 +197,44 @@ struct PluginDetailView: View {
                 .padding(.horizontal)
                 .padding(.top)
 
+                // AI Suggestions Button - Top Center
+                HStack {
+                    Spacer()
+                    AISuggestionsButton(
+                        plugin: plugin,
+                        ownedPlugins: [plugin]
+                    )
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+                // Rating Section
+                PluginRatingSection(
+                    pluginPath: plugin.path,
+                    allFormatPaths: [plugin.path],
+                    ratingsManager: ratingsManager
+                )
+                .padding(.horizontal)
+
+                Divider()
+
+                // Tags Section
+                PluginTagsSection(
+                    plugin: plugin,
+                    tagsManager: tagsManager
+                )
+                .padding(.horizontal)
+
                 Divider()
 
                 VStack(spacing: 12) {
+                    DetailInfoRow(label: "Publisher", value: metadataManager.getDisplayPublisher(for: plugin))
                     DetailInfoRow(label: "Type", value: plugin.type, color: ColorUtilities.colorForFormat(plugin.type))
-                    DetailInfoRow(label: "Style", value: plugin.style)
-                    DetailInfoRow(label: "Version", value: plugin.version.isEmpty ? "Unknown" : plugin.version)
+                    DetailInfoRow(label: "Style", value: metadataManager.getDisplayStyle(for: plugin))
+                    DetailInfoRow(label: "Version", value: metadataManager.getDisplayVersion(for: plugin))
                     DetailInfoRow(label: "Architecture", value: plugin.architectures.isEmpty ? "Unknown" : plugin.architectures)
                     DetailInfoRow(label: "Date", value: plugin.displayDate)
                     DetailInfoRow(label: "Size", value: plugin.displaySize)
@@ -147,16 +244,18 @@ struct PluginDetailView: View {
                             Text("Path")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                Text(plugin.path)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .padding(10)
-                                    .background(Color(.systemGray6).opacity(0.5))
-                                    .cornerRadius(8)
-                            }
+                            Text(plugin.path)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .padding(10)
+                                .background(Color(.systemGray6).opacity(0.5))
+                                .cornerRadius(8)
+                                .lineLimit(2)
                         }
                     }
+
+                    // Notes Section
+                    PluginNotesSection(pluginPath: plugin.path, notesManager: notesManager)
                 }
                 .padding(.horizontal)
             }
@@ -223,5 +322,274 @@ struct DetailInfoRow: View {
         .padding(.horizontal, 12)
         .background(Color(.systemGray6).opacity(0.5))
         .cornerRadius(8)
+    }
+}
+
+// MARK: - Plugin Notes Section
+
+struct PluginNotesSection: View {
+    let pluginPath: String
+    @ObservedObject var notesManager: NotesManager
+    @State private var noteText: String = ""
+    @State private var isEditing: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Notes", systemImage: "note.text")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                if !noteText.isEmpty && !isEditing {
+                    Button(action: {
+                        isEditing = true
+                    }) {
+                        Image(systemName: "pencil")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+
+            if isEditing || !noteText.isEmpty {
+                TextEditor(text: $noteText)
+                    .frame(minHeight: 80, maxHeight: 200)
+                    .padding(8)
+                    .background(Color(.systemGray6).opacity(0.5))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isEditing ? Color.blue : Color.clear, lineWidth: 1)
+                    )
+                    .onChange(of: noteText) { newValue in
+                        notesManager.setNote(for: pluginPath, note: newValue)
+                    }
+                    .onTapGesture {
+                        isEditing = true
+                    }
+
+                if isEditing {
+                    Button("Done") {
+                        isEditing = false
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .font(.subheadline)
+                    .buttonStyle(.borderedProminent)
+                }
+            } else {
+                Button(action: {
+                    isEditing = true
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Add notes")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+                    .background(Color(.systemGray6).opacity(0.5))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text("Keep track of your favorite presets, techniques, tricks, etc.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .italic()
+        }
+        .padding(.top, 8)
+        .onAppear {
+            noteText = notesManager.getNote(for: pluginPath)
+        }
+    }
+}
+
+// MARK: - Plugin Rating Section
+
+struct PluginRatingSection: View {
+    let pluginPath: String
+    let allFormatPaths: [String]
+    @ObservedObject var ratingsManager: RatingsManager
+
+    var body: some View {
+        let currentRating = ratingsManager.getRating(for: pluginPath)
+
+        VStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { star in
+                    Button(action: {
+                        // Get the current rating
+                        let current = ratingsManager.getRating(for: pluginPath)
+                        let newRating = (current == star) ? 0 : star
+
+                        // Set rating for all formats
+                        for path in allFormatPaths {
+                            ratingsManager.setRating(for: path, rating: newRating)
+                        }
+                    }) {
+                        Image(systemName: star <= currentRating ? "star.fill" : "star")
+                            .font(.system(size: 21))
+                            .foregroundColor(star <= currentRating ? .yellow : .gray.opacity(0.3))
+                    }
+                }
+            }
+
+            if currentRating > 0 {
+                Text("\(currentRating) star\(currentRating == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Text("Tap to rate")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(Color(.systemGray6).opacity(0.3))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Plugin Tags Section
+
+struct PluginTagsSection: View {
+    let plugin: PluginItem
+    @ObservedObject var tagsManager: TagsManager
+    @State private var newTagText = ""
+    @State private var showAddTag = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Tags", systemImage: "tag.fill")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Button(action: {
+                    showAddTag.toggle()
+                }) {
+                    Image(systemName: showAddTag ? "xmark.circle.fill" : "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.accentColor)
+                }
+            }
+
+            let currentTags = tagsManager.getTags(for: plugin.path)
+
+            // Current tags
+            if !currentTags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(currentTags).sorted(), id: \.self) { tag in
+                            HStack(spacing: 6) {
+                                Text(tag.uppercased())
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+
+                                Button(action: {
+                                    tagsManager.removeTag(tag, from: plugin.path)
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.accentColor, Color.accentColor.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            } else {
+                Text("No tags yet. Tap + to add tags.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+
+            // Add tag field
+            if showAddTag {
+                VStack(spacing: 8) {
+                    TextField("Enter tag name", text: $newTagText)
+                        .textFieldStyle(.roundedBorder)
+                        .autocapitalization(.none)
+                        .onSubmit {
+                            addTag()
+                        }
+
+                    HStack(spacing: 12) {
+                        Button("Add") {
+                            addTag()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(newTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                        Button("Cancel") {
+                            newTagText = ""
+                            showAddTag = false
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    // Suggested tags
+                    let suggestions = tagsManager.getSuggestedTags(for: plugin)
+                    if !suggestions.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Suggested Tags")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(suggestions.prefix(10), id: \.self) { suggestion in
+                                        Button(action: {
+                                            tagsManager.addTag(suggestion, to: plugin.path)
+                                        }) {
+                                            Text(suggestion.uppercased())
+                                                .font(.caption2)
+                                                .fontWeight(.medium)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 6)
+                                                .background(Color(.systemGray5))
+                                                .foregroundColor(.primary)
+                                                .cornerRadius(8)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color(.systemGray6).opacity(0.5))
+                .cornerRadius(12)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func addTag() {
+        let trimmed = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            tagsManager.addTag(trimmed, to: plugin.path)
+            newTagText = ""
+            showAddTag = false
+        }
     }
 }

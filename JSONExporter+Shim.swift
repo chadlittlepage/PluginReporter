@@ -7,7 +7,9 @@
 //
 
 import Foundation
+#if os(macOS)
 import AppKit
+#endif
 
 extension JSONExporter {
     /// Shim to match the exporters that take (`rows:to:`).
@@ -31,7 +33,9 @@ extension JSONExporter {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted])
             try data.write(to: url, options: .atomic)
         } catch {
+            #if os(macOS)
             NSSound.beep()
+            #endif
             AppLogger.error("JSONExporter shim failed: \(error.localizedDescription)")
         }
     }

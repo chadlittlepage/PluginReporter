@@ -1,0 +1,62 @@
+{
+  "color-space-for-untagged-svg-colors" : "display-p3",
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.46951,0.06989,1.00000,1.00000",
+      "display-p3:0.96611,0.35973,0.00000,1.00000"
+    ]
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "blend-mode" : "overlay",
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "PR Only.png",
+          "name" : "PR Only",
+          "opacity" : 0.9,
+          "position" : {
+            "scale" : 0.8,
+            "translation-in-points" : [
+              17.4,
+              17.723328031261026
+            ]
+          }
+        },
+        {
+          "blend-mode" : "normal",
+          "fill" : {
+            "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+          },
+          "glass" : true,
+          "hidden" : true,
+          "image-name" : "image.png",
+          "name" : "image",
+          "opacity" : 0.2,
+          "position" : {
+            "scale" : 0.8,
+            "translation-in-points" : [
+              17.75,
+              9.21875
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

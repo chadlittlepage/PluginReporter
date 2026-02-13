@@ -3,18 +3,41 @@
 //  Renders a simple monospaced table and writes it directly to a PDF file.
 //
 import Foundation
+#if os(macOS)
 import AppKit
 
 /// Writes the current plugin list to a PDF file.
 enum PDFExporter {
+
+    @MainActor
+    private static func getLicenseType(for plugin: PluginItem) -> String {
+        let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
+            .replacingOccurrences(of: " ", with: "_")
+
+        if let license = LicenseManager.shared.getLicense(for: pluginID) {
+            // Check if it mentions iLok anywhere (imported from iLok)
+            if let notes = license.notes?.lowercased(), notes.contains("ilok") {
+                return "iLok"
+            }
+            if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
+                return "iLok"
+            }
+            // Check if it has a serial number or license key
+            if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
+                return "Serial"
+            }
+        }
+        return ""
+    }
 
     /// Export rows to a PDF.
     /// - Parameters:
     ///   - rows: Plugins to export.
     ///   - url: Destination URL (e.g. chosen from NSSavePanel).
     ///   - landscape: When true, rotates the page to landscape for wider tables.
+    @MainActor
     static func write(rows: [PluginItem], to url: URL, landscape: Bool = true) {
-        // 1) Build the monospaced text table
+        // 1) Build the monospaced text table using MetadataManager for display values
         let text = buildTableText(from: rows)
 
         // 2) Lay text into an NSTextView so we can capture a PDF of its contents
@@ -75,10 +98,11 @@ enum PDFExporter {
     // MARK: - Table builder
 
     /// Produces a simple monospaced table string (header + rows).
+    @MainActor
     private static func buildTableText(from rows: [PluginItem]) -> String {
         // Column titles (no Path column)
         let header = [
-            "Name", "Publisher", "Version", "Type", "Style",
+            "Name", "Publisher", "Version", "License", "Type", "Style",
             "Architectures", "Date", "Size",
             "Requirement", "Obsolete"
         ]
@@ -86,16 +110,17 @@ enum PDFExporter {
         // NOTE: These widths are tuned for A4 landscape with 11pt mono & 24pt margins.
         // Adjust if your table gets too tight.
         var widths = [
-            32, // Name
-            18, // Publisher
-            10, // Version
+            30, // Name
+            16, // Publisher
+            9,  // Version
+            7,  // License
             8,  // Type
-            12, // Style
-            20, // Architectures
-            12, // Date
-            10, // Size
-            14, // Requirement
-            8   // Obsolete
+            11, // Style
+            18, // Architectures
+            11, // Date
+            9,  // Size
+            13, // Requirement
+            7   // Obsolete
         ]
 
         // Helper to pad/clip a string to a fixed width
@@ -106,15 +131,17 @@ enum PDFExporter {
             return String(s.prefix(max(0, n - 1))) + "…"
         }
 
-        // Convert one row to column strings (using convenience columns on PluginItem)
+        // Convert one row to column strings (using MetadataManager for edited values)
         // Note: Path column removed per user request
+        let metadataManager = MetadataManager.shared
         func columns(for i: PluginItem) -> [String] {
             [
                 i.name,
-                i.publisher,
-                i.version,
+                metadataManager.getDisplayPublisher(for: i),
+                metadataManager.getDisplayVersion(for: i),
+                getLicenseType(for: i),
                 i.type,
-                i.style,
+                metadataManager.getDisplayStyle(for: i),
                 i.architectures,
                 i.dateString,
                 i.sizeString,
@@ -153,3 +180,4 @@ enum PDFExporter {
         """
     }
 }
+#endif

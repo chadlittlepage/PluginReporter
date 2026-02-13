@@ -184,7 +184,7 @@ struct InfoRow: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         PluginDetailView(
             plugin: PluginItem(
                 name: "2016 Stereo Room",

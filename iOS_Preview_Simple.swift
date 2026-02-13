@@ -41,7 +41,7 @@ struct PluginListPreview: View {
     ]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Stats Card
                 VStack(alignment: .leading, spacing: 12) {
@@ -139,7 +139,7 @@ struct BarRow: View {
 
 struct StatsPreview: View {
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Total

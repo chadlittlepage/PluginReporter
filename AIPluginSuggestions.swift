@@ -1,5 +1,6 @@
 // AIPluginSuggestions.swift — Hybrid AI suggestion system (OpenAI + Local fallback)
 import Foundation
+import Combine
 
 /// AI-powered plugin suggestion service
 @MainActor
@@ -12,9 +13,9 @@ class AIPluginSuggestions: ObservableObject {
     private var previouslyShownSuggestions: Set<String> = []
 
     // OpenAI API key (optional - falls back to local if not set)
+    // Stored securely in Keychain
     private var openAIKey: String? {
-        // User can set this in Settings or leave empty for local-only mode
-        UserDefaults.standard.string(forKey: "openai_api_key")
+        KeychainHelper.load(key: "openai_api_key")
     }
 
     /// Reset tracking (call when switching plugins or categories)
@@ -27,6 +28,9 @@ class AIPluginSuggestions: ObservableObject {
         isLoading = true
         errorMessage = nil
 
+        // Track AI request for dashboard reporting
+        dashboardTrackAIRequest()
+
         // Combine owned plugins + previously shown suggestions to exclude
         let excludedPlugins = ownedPlugins + previouslyShownSuggestions.map { name in
             PluginItem(name: name, publisher: "", version: "", type: "", style: "",
@@ -37,7 +41,7 @@ class AIPluginSuggestions: ObservableObject {
         // Try OpenAI first if API key is available (uses GPT's extensive plugin knowledge)
         if let apiKey = openAIKey, !apiKey.isEmpty {
             do {
-                var newSuggestions = try await fetchFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
+                let newSuggestions = try await fetchFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
 
                 // If OpenAI returns good suggestions, use them
                 if newSuggestions.count >= 3 {
@@ -58,12 +62,13 @@ class AIPluginSuggestions: ObservableObject {
                 }
             } catch {
                 AppLogger.warning("OpenAI API failed, using local suggestions: \(error.localizedDescription)")
+                dashboardLogError(message: "OpenAI API failed: \(error.localizedDescription)", severity: "warning", context: "AI Suggestions")
                 // Fall through to local AI
             }
         }
 
         // Fallback to local AI (comprehensive database)
-        var newSuggestions = await fetchFromLocal(plugin: plugin, ownedPlugins: excludedPlugins)
+        let newSuggestions = await fetchFromLocal(plugin: plugin, ownedPlugins: excludedPlugins)
 
         // Limit to 5 suggestions per request (so "More" has more to show)
         let limitedSuggestions = Array(newSuggestions.prefix(5))
@@ -88,6 +93,9 @@ class AIPluginSuggestions: ObservableObject {
         isLoading = true
         errorMessage = nil
 
+        // Track AI request for dashboard reporting
+        dashboardTrackAIRequest()
+
         // Combine owned plugins + previously shown suggestions to exclude
         let excludedPlugins = ownedPlugins + previouslyShownSuggestions.map { name in
             PluginItem(name: name, publisher: "", version: "", type: "", style: "",
@@ -100,7 +108,7 @@ class AIPluginSuggestions: ObservableObject {
             // Try OpenAI for free plugin suggestions if API key is available
             if let apiKey = openAIKey, !apiKey.isEmpty {
                 do {
-                    var newSuggestions = try await fetchFreePluginsFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
+                    let newSuggestions = try await fetchFreePluginsFromOpenAI(plugin: plugin, apiKey: apiKey, ownedPlugins: excludedPlugins)
 
                     if newSuggestions.count >= 3 {
                         for suggestion in newSuggestions {
@@ -118,12 +126,13 @@ class AIPluginSuggestions: ObservableObject {
                     }
                 } catch {
                     AppLogger.warning("OpenAI free plugins API failed, using local suggestions: \(error.localizedDescription)")
+                    dashboardLogError(message: "OpenAI free plugins API failed: \(error.localizedDescription)", severity: "warning", context: "AI Suggestions - Free")
                 }
             }
 
             // Fallback to local free plugins
-            var newSuggestions = CategoryPluginKnowledge.getFreeSuggestions(pluginStyle: plugin.style)
-            newSuggestions = filterOwnedPlugins(newSuggestions, ownedPlugins: excludedPlugins)
+            let rawSuggestions = CategoryPluginKnowledge.getFreeSuggestions(pluginStyle: plugin.style)
+            let newSuggestions = filterOwnedPlugins(rawSuggestions, ownedPlugins: excludedPlugins)
 
             let limitedSuggestions = Array(newSuggestions.prefix(5))
 
@@ -142,8 +151,8 @@ class AIPluginSuggestions: ObservableObject {
         }
 
         // Use local knowledge base for category suggestions, filtered by plugin style
-        var newSuggestions = CategoryPluginKnowledge.getSuggestions(for: category, pluginStyle: plugin.style)
-        newSuggestions = filterOwnedPlugins(newSuggestions, ownedPlugins: excludedPlugins)
+        let rawSuggestions = CategoryPluginKnowledge.getSuggestions(for: category, pluginStyle: plugin.style)
+        let newSuggestions = filterOwnedPlugins(rawSuggestions, ownedPlugins: excludedPlugins)
 
         // Limit to 5 suggestions per request (so "More" has more to show)
         let limitedSuggestions = Array(newSuggestions.prefix(5))
@@ -409,7 +418,6 @@ private struct OpenAIResponse: Codable {
 struct LocalPluginKnowledge {
     static func getSuggestions(for plugin: PluginItem) -> [PluginSuggestion] {
         let name = plugin.name.lowercased()
-        let type = plugin.type.uppercased()
         let publisher = plugin.publisher.lowercased()
         let style = plugin.style.lowercased()
 

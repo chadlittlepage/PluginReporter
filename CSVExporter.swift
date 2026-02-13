@@ -2,6 +2,7 @@
 import Foundation
 
 enum CSVExporter {
+    @MainActor
     static func write(rows: [PluginItem], to url: URL) {
         // Formatters (cheap to set up once per export)
         let dateFormatter = DateFormatter()
@@ -12,8 +13,11 @@ enum CSVExporter {
         sizeFormatter.allowedUnits = [.useBytes, .useKB, .useMB, .useGB]
         sizeFormatter.countStyle = .file
 
+        // Use MetadataManager for edited metadata values
+        let metadataManager = MetadataManager.shared
+
         // CSV header
-        let header = "Name,Publisher,Version,Type,Style,Architectures,Date,Size,Path,Requirement,Obsolete\n"
+        let header = "Name,Publisher,Version,License,Type,Style,Architectures,Date,Size,Path,Requirement,Obsolete\n"
 
         // Build body rows, escaping quotes and wrapping fields in quotes
         let body = rows.map { r -> String in
@@ -21,12 +25,20 @@ enum CSVExporter {
             let sizeStr = sizeFormatter.string(fromByteCount: r.sizeBytes)
             let obsoleteStr = r.obsolete ? "Yes" : "No"
 
+            // Get license type (macOS only, LicenseManager not available on iOS)
+            #if os(macOS)
+            let licenseType = LicenseTypeHelper.getCachedLicenseType(for: r)
+            #else
+            let licenseType = ""
+            #endif
+
             let fields = [
                 r.name,
-                r.publisher,
-                r.version,
+                metadataManager.getDisplayPublisher(for: r),
+                metadataManager.getDisplayVersion(for: r),
+                licenseType,
                 r.type,
-                r.style,
+                metadataManager.getDisplayStyle(for: r),
                 r.architectures,
                 dateStr,
                 sizeStr,

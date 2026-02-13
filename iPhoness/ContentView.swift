@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var showImportAlert = false
     @State private var debugMessage = ""
     @State private var showDebugAlert = false
+    @State private var hasLoadedOnce = false
     @AppStorage("appearance") private var appearance: String = "space"
 
     var colorScheme: ColorScheme? {
@@ -30,29 +31,72 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
+        GeometryReader { geometry in
+            TabView(selection: $selectedTab) {
+                Group {
+                    if selectedTab == 0 {
+                        PluginListView(plugins: plugins, filteredPluginsForExport: $filteredPlugins)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height) // Fixed size from parent
+                .ignoresSafeArea(.keyboard) // Don't resize for keyboard
                 .tabItem {
                     Label("Plugins", systemImage: "music.note.list")
                 }
                 .tag(0)
 
-            SettingsView(onImport: loadPluginsFromFile)
+                Group {
+                    if selectedTab == 1 {
+                        SettingsView(onImport: loadPluginsFromFile)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height) // Fixed size from parent
+                .ignoresSafeArea(.keyboard) // Don't resize for keyboard
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
                 .tag(1)
 
-            ExportView(plugins: filteredPlugins)
+                Group {
+                    if selectedTab == 2 {
+                        ExportView(plugins: filteredPlugins)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height) // Fixed size from parent
+                .ignoresSafeArea(.keyboard) // Don't resize for keyboard
                 .tabItem {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
                 .tag(2)
+            }
+            .tabViewStyle(.automatic) // Use system default WITHOUT page animation
+            .frame(width: geometry.size.width, height: geometry.size.height) // Lock TabView size
+            .ignoresSafeArea(.keyboard, edges: .bottom) // Ignore keyboard throughout
+            .transaction { transaction in
+                transaction.animation = nil // Kill ALL animations
+                transaction.disablesAnimations = true // FORCE disable
+            }
+            .preferredColorScheme(colorScheme)
+            .animation(.linear(duration: 0), value: appearance) // Instant transition
+            .animation(.linear(duration: 0), value: selectedTab) // Instant tab change
+            .onChange(of: selectedTab) { _ in
+                // Suppress only the bounce/resize animation
+                UIView.animate(withDuration: 0) {
+                    // Instant layout change
+                }
+            }
         }
-        .preferredColorScheme(colorScheme)
+        .ignoresSafeArea() // GeometryReader ignores all safe areas
         .onAppear {
-            // Auto-load plugins on launch (simulating iCloud sync)
-            if plugins.isEmpty {
+            // INSTANT LOAD - Load plugins immediately without async delay
+            if !hasLoadedOnce {
+                hasLoadedOnce = true
                 loadPluginsSilently()
             }
         }
@@ -68,14 +112,14 @@ struct ContentView: View {
         }
     }
 
+    @MainActor
     func loadPlugins() {
         // Load from shared storage (same location as macOS)
         isLoading = true
 
-        // Debug: Show what URL we're trying to read
         guard let url = SharedStorage.pluginsURL else {
             debugMessage = "❌ Could not determine plugins URL"
-            print("📱 ERROR: Could not get plugins URL")
+            AppLogger.error("Could not get plugins URL")
             showDebugAlert = true
             isLoading = false
             return
@@ -88,13 +132,12 @@ struct ContentView: View {
             fileInfo = "\nFile size: \(size) bytes"
         }
 
+        AppLogger.debug("iPhone loading from: \(url.path), exists: \(exists)")
         debugMessage = "📍 Loading from:\n\(url.path)\n\n✅ Exists: \(exists)\(fileInfo)"
-        print("📱 iPhone trying to load from: \(url.path)")
-        print("📱 File exists: \(exists)")
 
         do {
             let loadedPlugins = try SharedStorage.loadPlugins()
-            print("📱 Loaded \(loadedPlugins.count) plugins")
+            AppLogger.info("Loaded \(loadedPlugins.count) plugins on iPhone")
 
             plugins = loadedPlugins
             isLoading = false
@@ -117,12 +160,13 @@ struct ContentView: View {
         }
     }
 
+    @MainActor
     func loadPluginsFromFile() {
-        // Reload from shared storage with debug info
-        print("📱 loadPluginsFromFile() called")
+        AppLogger.debug("iPhone loadPluginsFromFile called")
         loadPlugins()
     }
 
+    @MainActor
     func loadPluginsSilently() {
         // Auto-load on launch without showing alerts
         do {
@@ -137,6 +181,7 @@ struct ContentView: View {
         }
     }
 
+    @MainActor
     func loadPluginsFromURL(_ url: URL) {
         do {
             // Validate file exists and is readable

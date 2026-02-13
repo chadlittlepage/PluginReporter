@@ -3,9 +3,12 @@
 //  PluginReporter (iPad)
 //
 //  iPad-optimized export view
+//  Note: Uses ExportViewModel from iPad/ExportViewModel.swift (shared with iPhone)
 //
 
 import SwiftUI
+import UIKit
+import Combine
 
 struct ExportView: View {
     let plugins: [PluginItem]
@@ -22,7 +25,7 @@ struct ExportView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {
@@ -83,12 +86,14 @@ struct ExportView: View {
             .background(customBackgroundColor)
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)
+            .transaction { transaction in
+                transaction.animation = nil // Disable all Form animations
+            }
             .sheet(isPresented: $viewModel.showShareSheet) {
                 if let url = viewModel.exportURL {
                     ShareSheet(items: [url])
                 }
             }
         }
-        .navigationViewStyle(.stack)
     }
 }

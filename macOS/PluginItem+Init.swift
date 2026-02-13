@@ -15,7 +15,9 @@ extension PluginItem {
             sizeBytes: s.sizeBytes,
             path: s.path,
             runtimeRequirement: s.runtimeRequirement,
-            obsolete: s.obsolete
+            obsolete: s.obsolete,
+            trackName: nil,
+            missing: false
         )
     }
 }

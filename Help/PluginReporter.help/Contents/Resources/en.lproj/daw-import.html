@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importing DAW Projects - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Importing DAW Projects</h1>
+        <p class="subtitle">Analyze which plugins are used in your sessions</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Overview</h2>
+            <p>Plugin Reporter can import project files from 17+ popular DAWs and extract a complete list of plugins used in each session. This powerful feature helps you:</p>
+            <ul>
+                <li>See which plugins are used in each project</li>
+                <li>Find missing plugins before opening a session</li>
+                <li>Organize projects into playlists</li>
+                <li>Track plugin usage across your entire catalog</li>
+                <li>Plan plugin installations when moving to a new computer</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Supported DAWs</h2>
+            <p>Plugin Reporter supports the following digital audio workstations:</p>
+
+            <table>
+                <tr>
+                    <th>DAW</th>
+                    <th>File Extension</th>
+                    <th>Notes</th>
+                </tr>
+                <tr>
+                    <td>Ableton Live</td>
+                    <td>.als</td>
+                    <td>Full support for all plugin types</td>
+                </tr>
+                <tr>
+                    <td>Logic Pro</td>
+                    <td>.logicx</td>
+                    <td>Package format, full support</td>
+                </tr>
+                <tr>
+                    <td>Pro Tools</td>
+                    <td>.ptx, .txt</td>
+                    <td>Binary and text session exports</td>
+                </tr>
+                <tr>
+                    <td>Cubase</td>
+                    <td>.cpr</td>
+                    <td>Tracks and insert effects</td>
+                </tr>
+                <tr>
+                    <td>Nuendo</td>
+                    <td>.npr</td>
+                    <td>Full Cubase compatibility</td>
+                </tr>
+                <tr>
+                    <td>Studio One</td>
+                    <td>.song</td>
+                    <td>Tracks, inserts, and sends</td>
+                </tr>
+                <tr>
+                    <td>FL Studio</td>
+                    <td>.flp</td>
+                    <td>Plugin channel detection</td>
+                </tr>
+                <tr>
+                    <td>Reaper</td>
+                    <td>.rpp</td>
+                    <td>Text-based, full support</td>
+                </tr>
+                <tr>
+                    <td>Bitwig Studio</td>
+                    <td>.bwproject</td>
+                    <td>Track devices and chains</td>
+                </tr>
+                <tr>
+                    <td>Reason</td>
+                    <td>.reason</td>
+                    <td>Rack devices and instruments</td>
+                </tr>
+                <tr>
+                    <td>GarageBand</td>
+                    <td>.band</td>
+                    <td>Apple format, full support</td>
+                </tr>
+                <tr>
+                    <td>MainStage</td>
+                    <td>.concert</td>
+                    <td>Concert patches and channel strips</td>
+                </tr>
+                <tr>
+                    <td>Digital Performer</td>
+                    <td>.motu</td>
+                    <td>MOTU format</td>
+                </tr>
+                <tr>
+                    <td>Tracktion Waveform</td>
+                    <td>.tracktionedit</td>
+                    <td>XML-based projects</td>
+                </tr>
+                <tr>
+                    <td>Ardour</td>
+                    <td>.ardour</td>
+                    <td>Open-source DAW support</td>
+                </tr>
+                <tr>
+                    <td>Renoise</td>
+                    <td>.xrns</td>
+                    <td>Tracker-style projects</td>
+                </tr>
+                <tr>
+                    <td>DaVinci Resolve (Fairlight)</td>
+                    <td>.drp</td>
+                    <td>Audio post-production</td>
+                </tr>
+            </table>
+        </section>
+
+        <section>
+            <h2>How to Import Projects</h2>
+
+            <h3>Method 1: File Menu</h3>
+            <ol class="step-list">
+                <li>Choose <strong>File > Import DAW Project</strong> (or press <kbd>⌘I</kbd>)</li>
+                <li>Navigate to your project file(s)</li>
+                <li>Select one or multiple project files</li>
+                <li>Click <strong>Open</strong></li>
+                <li>Wait for parsing to complete</li>
+                <li>The Playlist sidebar will open automatically showing the imported project(s)</li>
+            </ol>
+
+            <div class="tip">
+                <strong>Tip:</strong> You can select multiple projects at once to import them in batch. Plugin Reporter will process them in parallel for maximum speed.
+            </div>
+
+            <h3>Method 2: Drag and Drop</h3>
+            <p>The fastest way to import projects:</p>
+            <ol class="step-list">
+                <li>Open Finder and locate your DAW project file</li>
+                <li>Drag the project file(s) directly onto the Plugin Reporter window</li>
+                <li>The project will be imported automatically</li>
+            </ol>
+
+            <div class="note">
+                <strong>Note:</strong> Drag and drop works with all supported file formats. You can even drag entire folders of projects!
+            </div>
+        </section>
+
+        <section>
+            <h2>Understanding Import Results</h2>
+
+            <h3>What Gets Imported</h3>
+            <p>When you import a DAW project, Plugin Reporter extracts:</p>
+            <ul>
+                <li><strong>Project Name</strong> - The session/project name</li>
+                <li><strong>Track Names</strong> - All audio, MIDI, and instrument tracks</li>
+                <li><strong>Plugin List</strong> - Every plugin used in the project</li>
+                <li><strong>Plugin Locations</strong> - Which track each plugin is on</li>
+                <li><strong>Plugin Order</strong> - Device/slot index in the signal chain</li>
+                <li><strong>Plugin Format</strong> - AU, VST, VST3, AAX, etc.</li>
+                <li><strong>Project Metadata</strong> - Tempo, sample rate, version (when available)</li>
+            </ul>
+
+            <h3>Plugin Status Indicators</h3>
+            <p>After importing, plugins are marked with status indicators:</p>
+
+            <table>
+                <tr>
+                    <th>Status</th>
+                    <th>Meaning</th>
+                    <th>Action</th>
+                </tr>
+                <tr>
+                    <td>✅ Installed</td>
+                    <td>Plugin is on your system</td>
+                    <td>Ready to use!</td>
+                </tr>
+                <tr>
+                    <td>❌ Missing</td>
+                    <td>Plugin not found on your system</td>
+                    <td>Install before opening project</td>
+                </tr>
+                <tr>
+                    <td>🏷️ Track Name</td>
+                    <td>Shows which track(s) use this plugin</td>
+                    <td>Helps understand project structure</td>
+                </tr>
+            </table>
+        </section>
+
+        <section>
+            <h2>Working with Imported Projects</h2>
+
+            <h3>Viewing Project Details</h3>
+            <p>After importing, you can:</p>
+            <ul>
+                <li>Click on the playlist name in the sidebar to activate the filter</li>
+                <li>See only plugins used in that specific project</li>
+                <li>View which tracks use each plugin (shown in the "Track" column)</li>
+                <li>Identify missing plugins that need to be installed</li>
+            </ul>
+
+            <h3>Multiple Project Selection</h3>
+            <p>Select multiple playlists to see plugins used across all selected projects:</p>
+            <ol class="step-list">
+                <li>Hold <kbd>⌘</kbd> while clicking playlist names</li>
+                <li>Plugin Reporter will show plugins from all selected projects</li>
+                <li>Missing plugins will be highlighted in red</li>
+            </ol>
+
+            <h3>Editing Playlist Metadata</h3>
+            <p>Add context to your imported projects:</p>
+            <ol class="step-list">
+                <li>Right-click on a playlist name</li>
+                <li>Choose <strong>Edit Metadata</strong></li>
+                <li>Add notes, tags, or change the display name</li>
+                <li>Set a color for easy visual identification</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Finding Missing Plugins</h2>
+
+            <p>One of the most valuable features when importing projects is identifying missing plugins before you open the session in your DAW.</p>
+
+            <h3>Viewing Missing Plugins</h3>
+            <ol class="step-list">
+                <li>Import your project</li>
+                <li>Select the playlist from the sidebar</li>
+                <li>Missing plugins appear in red with a ❌ icon</li>
+                <li>The "Track" column shows which tracks need these plugins</li>
+            </ol>
+
+            <h3>Creating a Missing Plugin Report</h3>
+            <p>Export a list of missing plugins to install:</p>
+            <ol class="step-list">
+                <li>Filter to show only the project playlist</li>
+                <li>Choose <strong>File > Export</strong></li>
+                <li>Select CSV or PDF format</li>
+                <li>Use this list to install missing plugins before opening your project</li>
+            </ol>
+
+            <div class="tip">
+                <strong>Pro Tip:</strong> Before migrating to a new computer, import all your projects into Plugin Reporter, export the complete plugin list, and use it as a checklist when installing plugins on your new system.
+            </div>
+        </section>
+
+        <section>
+            <h2>Playlist Management</h2>
+
+            <h3>Organizing Playlists</h3>
+            <p>Keep your imported projects organized:</p>
+            <ul>
+                <li><strong>Rename</strong> - Right-click and choose "Rename Playlist"</li>
+                <li><strong>Delete</strong> - Remove playlists you no longer need</li>
+                <li><strong>Duplicate</strong> - Create variants of existing playlists</li>
+                <li><strong>Color Code</strong> - Assign colors to playlists for visual organization</li>
+                <li><strong>Add Tags</strong> - Tag playlists by client, genre, or status</li>
+            </ul>
+
+            <h3>Custom Playlists</h3>
+            <p>You can also create manual playlists:</p>
+            <ol class="step-list">
+                <li>Choose <strong>Playlist > New Custom Playlist</strong></li>
+                <li>Name your playlist (e.g., "Mix Bus Chains", "Vocal Plugins")</li>
+                <li>Drag and drop plugins from the main table into your playlist</li>
+                <li>Or select plugins and choose "Add to Playlist"</li>
+            </ol>
+
+            <p><a href="custom-playlists.html">Learn more about Custom Playlists →</a></p>
+        </section>
+
+        <section>
+            <h2>Batch Importing</h2>
+
+            <p>Import an entire folder of projects at once:</p>
+
+            <ol class="step-list">
+                <li>Choose <strong>File > Import DAW Project</strong></li>
+                <li>Hold <kbd>⌘A</kbd> to select all files in a folder</li>
+                <li>Or drag an entire folder onto Plugin Reporter</li>
+                <li>All supported project files will be imported</li>
+                <li>Progress is shown in the status bar</li>
+            </ol>
+
+            <div class="note">
+                <strong>Performance Note:</strong> Plugin Reporter processes multiple projects in parallel for maximum speed. Importing 16 projects takes about the same time as importing one!
+            </div>
+        </section>
+
+        <section>
+            <h2>Export Format Support</h2>
+
+            <h3>Pro Tools Session Text Export</h3>
+            <p>If you have a Pro Tools session (.ptx), you can also export the session info as text:</p>
+            <ol>
+                <li>Open the session in Pro Tools</li>
+                <li>Choose <strong>File > Export > Session Info as Text</strong></li>
+                <li>Save as a .txt file</li>
+                <li>Import the .txt file into Plugin Reporter</li>
+            </ol>
+            <p>Text exports provide more detailed information than binary .ptx files.</p>
+
+            <h3>Logic Pro Alternatives</h3>
+            <p>For Logic Pro projects, you can also use:</p>
+            <ul>
+                <li><strong>.logicx</strong> - Standard Logic project package</li>
+                <li><strong>.band</strong> - GarageBand projects (compatible)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Troubleshooting Import Issues</h2>
+
+            <h3>Project Won't Import</h3>
+            <p>If a project file won't import:</p>
+            <ul>
+                <li>Verify the file extension is supported (see table above)</li>
+                <li>Check that the file isn't corrupted (try opening in the DAW first)</li>
+                <li>For package formats (.logicx, .band), make sure the package is complete</li>
+                <li>Check Console.app for detailed error messages</li>
+            </ul>
+
+            <h3>Missing Plugin Information</h3>
+            <p>If plugins aren't detected:</p>
+            <ul>
+                <li>Some DAW formats have limited plugin metadata</li>
+                <li>Binary formats may not store all plugin details</li>
+                <li>Try exporting as text/XML if your DAW supports it</li>
+            </ul>
+
+            <h3>Slow Imports</h3>
+            <p>If importing is slow:</p>
+            <ul>
+                <li>Very large projects (100+ tracks) may take a few seconds</li>
+                <li>Binary formats are slower to parse than text/XML</li>
+                <li>This is normal - batch importing still benefits from parallel processing</li>
+            </ul>
+
+            <p><a href="common-issues.html">View more troubleshooting tips →</a></p>
+        </section>
+
+        <section>
+            <h2>Best Practices</h2>
+
+            <div class="tip">
+                <h3>Tips for Maximum Efficiency</h3>
+                <ul>
+                    <li>Import all your projects to build a complete plugin usage database</li>
+                    <li>Use playlists to organize projects by client, genre, or date</li>
+                    <li>Export missing plugin lists before opening old projects</li>
+                    <li>Tag playlists for easy filtering (e.g., "Active", "Archived", "Client Work")</li>
+                    <li>Create custom playlists of your most-used plugins per genre</li>
+                    <li>Regularly backup your playlist data using Archive & Restore</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Related Topics</h2>
+            <ul>
+                <li><a href="playlists.html">Working with Playlists</a></li>
+                <li><a href="missing-plugins.html">Finding Missing Plugins</a></li>
+                <li><a href="custom-playlists.html">Creating Custom Playlists</a></li>
+                <li><a href="exporting.html">Exporting Plugin Lists</a></li>
+                <li><a href="supported-daws.html">Complete DAW Support Reference</a></li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Home</a></p>
+        <p>&copy; 2025 Chad Littlepage. All rights reserved.</p>
+    </footer>
+</body>
+</html>

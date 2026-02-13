@@ -80,6 +80,7 @@ struct SortBadge: View {
 struct FilterChip: View {
     let title: String
     let onRemove: () -> Void
+    var color: Color = .blue  // Default to blue for non-format filters
 
     var body: some View {
         HStack(spacing: 4) {
@@ -93,8 +94,8 @@ struct FilterChip: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color.blue.opacity(0.15))
-        .foregroundColor(.blue)
+        .background(color.opacity(0.15))
+        .foregroundColor(color)
         .cornerRadius(12)
     }
 }

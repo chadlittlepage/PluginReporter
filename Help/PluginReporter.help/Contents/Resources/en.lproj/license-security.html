@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security & Keychain - Plugin Reporter Help</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Security & Keychain</h1>
+        <p class="subtitle">How your license data is protected</p>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>Overview</h2>
+            <p>Plugin Reporter takes security seriously. Your license information - especially passwords - is protected using industry-standard encryption and Apple's built-in security frameworks.</p>
+
+            <div class="tip">
+                <h4>🔒 Bank-Level Security</h4>
+                <p>Passwords are stored using the same macOS Keychain system that protects your banking credentials in Safari, Mail, and other trusted apps.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>macOS Keychain Integration</h2>
+
+            <h3>What is Keychain?</h3>
+            <p>Keychain is Apple's secure password management system built into macOS. It:</p>
+            <ul>
+                <li>Encrypts all passwords automatically</li>
+                <li>Requires your login password to access</li>
+                <li>Uses AES-256 encryption</li>
+                <li>Is maintained and updated by Apple</li>
+                <li>Has been battle-tested for decades</li>
+            </ul>
+
+            <h3>How Plugin Reporter Uses Keychain</h3>
+            <p>When you save a password in the License Vault:</p>
+            <ol>
+                <li>Password is encrypted by macOS Keychain</li>
+                <li>Stored in secure system-level storage</li>
+                <li>Only accessible with your Mac login password</li>
+                <li>Protected from unauthorized access</li>
+                <li>Automatically backed up (if iCloud Keychain enabled)</li>
+            </ol>
+
+            <h3>Keychain Service Identifier</h3>
+            <p>Plugin Reporter uses the service identifier:</p>
+            <pre>com.chadlittlepage.PluginReporter.licenses</pre>
+            <p>You can verify this in the Keychain Access app.</p>
+        </section>
+
+        <section>
+            <h2>What's Stored Where</h2>
+
+            <table>
+                <tr>
+                    <th>Data Type</th>
+                    <th>Storage Location</th>
+                    <th>Encryption</th>
+                </tr>
+                <tr>
+                    <td>Passwords</td>
+                    <td>macOS Keychain</td>
+                    <td>AES-256 (automatic)</td>
+                </tr>
+                <tr>
+                    <td>Serial Numbers</td>
+                    <td>CloudSyncStorage</td>
+                    <td>Optional (archives)</td>
+                </tr>
+                <tr>
+                    <td>Email Addresses</td>
+                    <td>CloudSyncStorage</td>
+                    <td>Optional (archives)</td>
+                </tr>
+                <tr>
+                    <td>Activation Info</td>
+                    <td>CloudSyncStorage</td>
+                    <td>Optional (archives)</td>
+                </tr>
+                <tr>
+                    <td>Notes</td>
+                    <td>CloudSyncStorage</td>
+                    <td>Optional (archives)</td>
+                </tr>
+                <tr>
+                    <td>Vendor URLs</td>
+                    <td>CloudSyncStorage</td>
+                    <td>Optional (archives)</td>
+                </tr>
+            </table>
+
+            <h3>CloudSyncStorage</h3>
+            <p>License metadata (everything except passwords) is stored in:</p>
+            <ul>
+                <li>Local file storage</li>
+                <li>Optional iCloud Key-Value Store sync</li>
+                <li>Protected by macOS file permissions</li>
+                <li>Accessible only to Plugin Reporter</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Archive Encryption</h2>
+
+            <h3>Two Types of Archives</h3>
+
+            <h4>Unencrypted Archives</h4>
+            <ul>
+                <li>Include serial numbers and license metadata</li>
+                <li><strong>Do NOT include passwords</strong> (for security)</li>
+                <li>Useful for sharing plugin lists without sensitive data</li>
+                <li>Not recommended for backups containing licenses</li>
+            </ul>
+
+            <h4>Encrypted Archives (Recommended)</h4>
+            <ul>
+                <li>Include ALL license data including passwords</li>
+                <li>Encrypted with AES-256-GCM</li>
+                <li>Password-protected</li>
+                <li>Complete backup of your license vault</li>
+            </ul>
+
+            <div class="tip">
+                <h4>✅ Always Use Encrypted Archives</h4>
+                <p>When backing up license data, always choose encryption. Unencrypted archives deliberately exclude passwords for your protection.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Encryption Details</h2>
+
+            <h3>Archive Encryption (AES-256-GCM)</h3>
+            <p>Encrypted archives use:</p>
+            <ul>
+                <li><strong>Algorithm:</strong> AES-256-GCM</li>
+                <li><strong>Key Derivation:</strong> PBKDF2 with 100,000 iterations</li>
+                <li><strong>Salt:</strong> Random 16-byte salt per archive</li>
+                <li><strong>Authentication:</strong> Built-in authentication tag (GCM mode)</li>
+                <li><strong>Industry Standard:</strong> Used by governments and financial institutions</li>
+            </ul>
+
+            <h3>Keychain Encryption</h3>
+            <p>macOS Keychain uses:</p>
+            <ul>
+                <li><strong>Algorithm:</strong> AES-256</li>
+                <li><strong>Protection:</strong> Tied to your login password</li>
+                <li><strong>Hardware:</strong> Can use Secure Enclave (on supported Macs)</li>
+                <li><strong>Updates:</strong> Maintained by Apple security team</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Access Control</h2>
+
+            <h3>Who Can Access Your License Data?</h3>
+
+            <h4>Passwords (Keychain)</h4>
+            <ul>
+                <li><strong>You</strong> - When logged into your Mac</li>
+                <li><strong>Plugin Reporter</strong> - Only with your Mac unlocked</li>
+                <li><strong>Nobody else</strong> - Protected by macOS security</li>
+            </ul>
+
+            <h4>License Metadata</h4>
+            <ul>
+                <li><strong>You</strong> - Full access</li>
+                <li><strong>Plugin Reporter</strong> - Full access</li>
+                <li><strong>Other apps</strong> - No access (sandboxed)</li>
+                <li><strong>Other users</strong> - No access (file permissions)</li>
+            </ul>
+
+            <h3>When Locked</h3>
+            <p>When your Mac is locked:</p>
+            <ul>
+                <li>Keychain passwords are inaccessible</li>
+                <li>Files are protected by FileVault (if enabled)</li>
+                <li>Plugin Reporter cannot access sensitive data</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>iCloud Sync Security</h2>
+
+            <h3>What Syncs to iCloud</h3>
+            <p>If iCloud sync is enabled:</p>
+            <ul>
+                <li>License metadata (serial numbers, notes, etc.)</li>
+                <li>Stored in iCloud Key-Value Store</li>
+                <li>Encrypted in transit and at rest</li>
+                <li>Apple's standard iCloud security applies</li>
+            </ul>
+
+            <h3>What Does NOT Sync</h3>
+            <ul>
+                <li><strong>Passwords</strong> - Only in Keychain (optionally via iCloud Keychain)</li>
+                <li>Passwords sync separately through iCloud Keychain (if enabled)</li>
+                <li>This is Apple's design for maximum security</li>
+            </ul>
+
+            <h3>iCloud Keychain</h3>
+            <p>If you enable iCloud Keychain (separate from Plugin Reporter):</p>
+            <ul>
+                <li>Keychain passwords sync across your Macs</li>
+                <li>End-to-end encrypted</li>
+                <li>Not accessible to Apple</li>
+                <li>Plugin Reporter passwords included automatically</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Best Practices</h2>
+
+            <h3>For Maximum Security</h3>
+            <div class="tip">
+                <h4>✅ Recommended</h4>
+                <ul>
+                    <li><strong>Use strong Mac login password</strong> - Protects Keychain</li>
+                    <li><strong>Enable FileVault</strong> - Full-disk encryption</li>
+                    <li><strong>Create encrypted archives</strong> - Complete backups</li>
+                    <li><strong>Use strong archive passwords</strong> - 12+ characters, mixed case, numbers, symbols</li>
+                    <li><strong>Store archives securely</strong> - Password manager or encrypted drive</li>
+                    <li><strong>Enable iCloud Keychain</strong> - Sync passwords securely</li>
+                    <li><strong>Lock your Mac</strong> when away (Control-Command-Q)</li>
+                </ul>
+            </div>
+
+            <h3>Password Guidelines</h3>
+            <p>For archive passwords:</p>
+            <ul>
+                <li><strong>Length:</strong> Minimum 12 characters (16+ recommended)</li>
+                <li><strong>Complexity:</strong> Mix of uppercase, lowercase, numbers, symbols</li>
+                <li><strong>Uniqueness:</strong> Don't reuse passwords</li>
+                <li><strong>Storage:</strong> Use a password manager (1Password, LastPass, etc.)</li>
+                <li><strong>Recovery:</strong> Store backup of password in safe location</li>
+            </ul>
+
+            <div class="warning">
+                <h4>⚠️ Important</h4>
+                <p><strong>Archive passwords cannot be recovered!</strong> If you forget the password, the encrypted archive cannot be opened. Store passwords safely!</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Viewing Keychain Items</h2>
+
+            <h3>How to View in Keychain Access</h3>
+            <ol>
+                <li>Open <strong>Keychain Access</strong> app (in /Applications/Utilities)</li>
+                <li>Select <strong>"login"</strong> keychain in the left sidebar</li>
+                <li>Search for: <code>PluginReporter</code></li>
+                <li>You'll see entries like: <code>com.chadlittlepage.PluginReporter.licenses: {plugin-id}</code></li>
+                <li>Double-click to view details</li>
+                <li>Click "Show password" (requires Mac password)</li>
+            </ol>
+
+            <h3>Keychain Entry Details</h3>
+            <p>Each password entry contains:</p>
+            <ul>
+                <li><strong>Service:</strong> com.chadlittlepage.PluginReporter.licenses</li>
+                <li><strong>Account:</strong> Unique plugin ID (publisher_name)</li>
+                <li><strong>Where:</strong> Login keychain</li>
+                <li><strong>Access:</strong> Plugin Reporter only</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Data Retention & Deletion</h2>
+
+            <h3>When You Delete a License</h3>
+            <p>When you delete license info in Plugin Reporter:</p>
+            <ol>
+                <li>License metadata removed immediately</li>
+                <li>Keychain password deleted automatically</li>
+                <li>Changes sync to iCloud (if enabled)</li>
+                <li>Data removed from future archives</li>
+            </ol>
+
+            <h3>When You Uninstall Plugin Reporter</h3>
+            <p>If you uninstall the app:</p>
+            <ul>
+                <li>Keychain items remain (safe default)</li>
+                <li>To fully remove, manually delete from Keychain Access</li>
+                <li>Or use Settings → Delete All Data before uninstalling</li>
+            </ul>
+
+            <h3>Complete Data Removal</h3>
+            <p>To completely remove all license data:</p>
+            <ol>
+                <li>Open Keychain Access</li>
+                <li>Search for "PluginReporter"</li>
+                <li>Delete all matching items</li>
+                <li>Delete CloudSyncStorage data</li>
+                <li>Uninstall Plugin Reporter</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Privacy Policy</h2>
+
+            <h3>What Plugin Reporter Does</h3>
+            <ul>
+                <li>Stores data locally on your Mac</li>
+                <li>Optionally syncs via your personal iCloud</li>
+                <li>Uses macOS Keychain for passwords</li>
+            </ul>
+
+            <h3>What Plugin Reporter Does NOT Do</h3>
+            <ul>
+                <li><strong>No analytics</strong> - We don't track usage</li>
+                <li><strong>No telemetry</strong> - No data sent to servers</li>
+                <li><strong>No third parties</strong> - Your data stays with you</li>
+                <li><strong>No ads</strong> - No tracking for advertising</li>
+                <li><strong>No selling data</strong> - We have no access to your data</li>
+            </ul>
+
+            <h3>Your Control</h3>
+            <ul>
+                <li>You own all your data</li>
+                <li>You control iCloud sync (on/off)</li>
+                <li>You can export and delete at any time</li>
+                <li>You can inspect Keychain entries</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Troubleshooting</h2>
+
+            <h3>Keychain Access Denied</h3>
+            <p><strong>Symptom:</strong> Plugin Reporter asks for Keychain access repeatedly.</p>
+            <p><strong>Solution:</strong></p>
+            <ol>
+                <li>Open Keychain Access</li>
+                <li>Find Plugin Reporter password entries</li>
+                <li>Right-click → Get Info</li>
+                <li>Access Control tab</li>
+                <li>Add Plugin Reporter to allowed apps</li>
+            </ol>
+
+            <h3>Password Not Saving</h3>
+            <p><strong>Symptom:</strong> Password doesn't appear after saving.</p>
+            <p><strong>Solution:</strong></p>
+            <ul>
+                <li>Check Keychain Access for the entry</li>
+                <li>Verify you approved the Keychain permission</li>
+                <li>Restart Plugin Reporter</li>
+                <li>Check macOS System Preferences → Security</li>
+            </ul>
+
+            <h3>Cannot Decrypt Archive</h3>
+            <p><strong>Symptom:</strong> "Wrong password" error when importing archive.</p>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Verify password (check caps lock, etc.)</li>
+                <li>Try the password you think it is</li>
+                <li>Check if you have password stored in password manager</li>
+                <li>If truly lost, archive cannot be recovered</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Frequently Asked Questions</h2>
+
+            <h3>Q: Is my license data sent to any servers?</h3>
+            <p><strong>A:</strong> No. All data stays on your Mac and (optionally) your personal iCloud. Plugin Reporter has no servers and sends no data anywhere.</p>
+
+            <h3>Q: Can the developer see my passwords?</h3>
+            <p><strong>A:</strong> No. Passwords are encrypted by macOS Keychain. Only you can access them with your Mac login password. The developer has no access to your data.</p>
+
+            <h3>Q: What if I forget my archive password?</h3>
+            <p><strong>A:</strong> Encrypted archives cannot be recovered without the password. This is by design for security. Always store archive passwords safely!</p>
+
+            <h3>Q: Are passwords included in iCloud sync?</h3>
+            <p><strong>A:</strong> Passwords sync separately via iCloud Keychain (if you have it enabled). License metadata syncs via Plugin Reporter's iCloud sync. Both are encrypted.</p>
+
+            <h3>Q: Is it safe to share an archive with someone?</h3>
+            <p><strong>A:</strong> Only share encrypted archives if you trust the person with your serial numbers and passwords. Unencrypted archives don't contain passwords but do contain serial numbers.</p>
+
+            <h3>Q: How do I backup my Keychain passwords?</h3>
+            <p><strong>A:</strong> Use Plugin Reporter's encrypted archive export. This includes both license data AND Keychain passwords in one secure file.</p>
+        </section>
+
+        <section>
+            <h2>Related Topics</h2>
+            <ul>
+                <li><a href="license-vault.html">License Vault Overview</a> - Main features</li>
+                <li><a href="adding-licenses.html">Adding License Information</a> - How to store licenses</li>
+                <li><a href="archive.html">Archive & Restore</a> - Creating encrypted backups</li>
+                <li><a href="ilok-import.html">Importing from iLok</a> - Bulk import licenses</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p><a href="index.html">← Back to Help Index</a></p>
+    </footer>
+</body>
+</html>

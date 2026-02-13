@@ -71,6 +71,16 @@ struct iOS_SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+
+                // High Contrast Mode
+                Toggle("High Contrast Mode", isOn: $prefs.highContrastMode)
+                    .accessibilityLabel("High contrast mode")
+                    .accessibilityHint("Increases contrast ratios and uses bolder text for improved visibility")
+                    .accessibilityValue(prefs.highContrastMode ? "On" : "Off")
+            } footer: {
+                if prefs.highContrastMode {
+                    Text("High contrast mode is enabled. Text will appear bolder with enhanced visual separation for better accessibility.")
+                }
             }
 
             // AI Suggestions Section
@@ -81,14 +91,20 @@ struct iOS_SettingsView: View {
                         .foregroundColor(.secondary)
 
                     SecureField("Enter API key (optional)", text: Binding(
-                        get: { UserDefaults.standard.string(forKey: "openai_api_key") ?? "" },
-                        set: { UserDefaults.standard.set($0, forKey: "openai_api_key") }
+                        get: { KeychainHelper.load(key: "openai_api_key") ?? "" },
+                        set: { newValue in
+                            if newValue.isEmpty {
+                                KeychainHelper.delete(key: "openai_api_key")
+                            } else {
+                                KeychainHelper.save(key: "openai_api_key", value: newValue)
+                            }
+                        }
                     ))
                     .textFieldStyle(.roundedBorder)
                     .autocapitalization(.none)
                     .autocorrectionDisabled()
 
-                    Text("For enhanced AI plugin suggestions. Leave empty to use local database.")
+                    Text("For enhanced AI plugin suggestions. Stored securely in Keychain.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -112,8 +128,12 @@ struct iOS_SettingsView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Link("Privacy Policy", destination: URL(string: "https://example.com/privacy")!)
-                Link("Support", destination: URL(string: "https://example.com/support")!)
+                if let url = URL(string: SentryConfig.privacyPolicyURL) {
+                    Link("Privacy Policy", destination: url)
+                }
+                if let url = URL(string: SentryConfig.supportURL) {
+                    Link("Support", destination: url)
+                }
             }
 
             // App Info
@@ -121,7 +141,7 @@ struct iOS_SettingsView: View {
                 VStack(alignment: .center, spacing: 8) {
                     Text("Plugin Reporter")
                         .font(.headline)
-                    Text("© 2025 All Rights Reserved")
+                    Text("© 2025 Chad Littlepage")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -137,6 +157,7 @@ struct iOS_SettingsView: View {
         case .system: return "System"
         case .light: return "Light"
         case .dark: return "Dark"
+        case .space: return "Space"
         }
     }
 
@@ -150,7 +171,7 @@ struct iOS_SettingsView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         iOS_SettingsView(prefs: Preferences(), cloudSync: CloudSyncManager())
     }
 }

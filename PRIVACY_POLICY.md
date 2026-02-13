@@ -1,6 +1,6 @@
 # Privacy Policy for Plugin Reporter
 
-**Last Updated: January 2025**
+**Last Updated: October 14, 2024**
 
 ## Introduction
 
@@ -8,23 +8,42 @@ Plugin Reporter ("the App") is committed to protecting your privacy. This Privac
 
 ## Information Collection and Use
 
-### What We Collect
+### What We Collect Automatically
 
-Plugin Reporter collects **NO personal information**. The App operates entirely locally on your device and performs the following actions:
+Plugin Reporter collects **minimal information** and operates primarily locally on your device:
 
 - **File System Scanning**: The App scans your Audio Plug-Ins folders to catalog installed plugins (VST, AU, VST3, AAX, CLAP formats)
 - **Local Data Storage**: Plugin information (names, publishers, versions, file sizes) is stored locally on your device
 - **Optional iCloud Sync**: If you enable iCloud sync, plugin catalog data is stored in your private iCloud account
+- **Crash Reports**: We use Sentry.io to collect anonymous crash reports to improve app stability (device model, OS version, stack traces - NO personal information)
+
+### Optional Features You Control
+
+**Dashboard Reporting (OFF by default)**
+If you choose to enable Dashboard Reporting and provide a server endpoint:
+- Device model and OS version
+- App version and build number
+- Plugin statistics (count, publishers, formats)
+- Usage metrics (scan count, export count, session duration)
+- Error logs (crash details, error messages)
+- **You control**: whether enabled, where data is sent, and can disable anytime
+
+**AI Plugin Suggestions (Requires your API key)**
+If you provide your own OpenAI API key:
+- Plugin names and metadata may be sent to OpenAI's API
+- Your API key is stored securely in device Keychain
+- Subject to OpenAI's privacy policy: https://openai.com/privacy
+- Can be disabled by removing your API key
 
 ### What We DO NOT Collect
 
-- ❌ Personal identifying information
+- ❌ Personal identifying information (name, email, phone)
 - ❌ Location data
 - ❌ Contact information
-- ❌ Usage analytics
-- ❌ Crash reports (unless you explicitly opt-in via TestFlight)
 - ❌ Advertising identifiers (IDFA)
-- ❌ Device identifiers for tracking
+- ❌ Cross-app tracking
+- ❌ Browsing history
+- ❌ Financial information
 
 ## Data Storage
 
@@ -67,11 +86,25 @@ When you export plugin catalogs:
 
 ## Third-Party Services
 
-Plugin Reporter **does not use any third-party services**, including:
+Plugin Reporter integrates with the following third-party services:
+
+**Sentry.io** (Crash Reporting - Automatic)
+- Purpose: Collect anonymous crash reports to fix bugs
+- Data Collected: Device model, OS version, app version, stack traces
+- Privacy Policy: https://sentry.io/privacy/
+- Cannot be disabled (essential for app stability)
+
+**OpenAI API** (AI Suggestions - Optional, requires your API key)
+- Purpose: Provide AI-powered plugin recommendations
+- Data Sent: Plugin names and metadata
+- Privacy Policy: https://openai.com/privacy/
+- Your control: Disabled unless you add your own API key
+
+**No Other Third-Party Services:**
 - ❌ No advertising SDKs
-- ❌ No analytics frameworks
-- ❌ No crash reporting (outside of Apple's TestFlight, if you opt-in)
+- ❌ No analytics frameworks beyond crash reporting
 - ❌ No social media integrations
+- ❌ No data brokers
 
 ## Children's Privacy
 
@@ -94,8 +127,11 @@ We may update this Privacy Policy from time to time. Changes will be posted on t
 If you have questions about this Privacy Policy, please contact:
 
 **Chad Littlepage**
-Email: [your-email@example.com]
-Website: [https://yourwebsite.com]
+Email: chad.littlepage@example.com
+Website: https://yourwebsite.com/pluginreporter
+Support: https://yourwebsite.com/pluginreporter/support
+
+**Note**: Update these URLs before publishing to App Store
 
 ## App Store Compliance
 

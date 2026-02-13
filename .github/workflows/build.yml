@@ -7,11 +7,17 @@ on:
     branches: [ main ]
   release:
     types: [ created ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-macos:
     name: Build macOS App
-    runs-on: macos-14  # macOS Sonoma with Xcode 15+
+    runs-on: macos-14
+    timeout-minutes: 30
 
     steps:
     - name: Checkout code
@@ -25,27 +31,36 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
 
+    - name: Cache SPM packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/org.swift.swiftpm
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          .build
+        key: spm-macos-${{ hashFiles('PluginReporter.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          spm-macos-
+
     - name: Build macOS app
       run: |
+        BUILD_START=$SECONDS
+        set -o pipefail
         xcodebuild -scheme "PR MAC" \
           -configuration Release \
           -destination 'platform=macOS' \
           -derivedDataPath ./build \
-          clean build
+          build 2>&1 | xcpretty
+        BUILD_DURATION=$(( SECONDS - BUILD_START ))
+        echo "build_duration=$BUILD_DURATION" >> $GITHUB_OUTPUT
+        echo "## macOS Build" >> $GITHUB_STEP_SUMMARY
+        echo "- Build time: ${BUILD_DURATION}s" >> $GITHUB_STEP_SUMMARY
 
     - name: Track build size
       run: |
-        echo "📦 Build Size Report:"
         APP_SIZE=$(du -sh build/Build/Products/Release/*.app | awk '{print $1}')
         echo "macOS App Size: $APP_SIZE"
-        echo "app_size=$APP_SIZE" >> $GITHUB_OUTPUT
-
-    - name: Generate code coverage (if tests exist)
-      run: |
-        echo "📊 Code Coverage Analysis:"
-        # Will activate when tests are added
-        echo "No tests yet - coverage will show when XCTests are added"
-        # xcodebuild test -scheme "PR MAC" -enableCodeCoverage YES
+        echo "- App size: $APP_SIZE" >> $GITHUB_STEP_SUMMARY
 
     - name: Upload macOS build artifact
       uses: actions/upload-artifact@v4
@@ -54,9 +69,18 @@ jobs:
         path: build/Build/Products/Release/PluginReporter.app
         retention-days: 30
 
+    - name: Upload dSYMs
+      uses: actions/upload-artifact@v4
+      with:
+        name: PluginReporter-macOS-dSYMs
+        path: build/Build/Products/Release/*.dSYM
+        retention-days: 90
+        if-no-files-found: warn
+
   build-ios:
     name: Build iOS App
     runs-on: macos-14
+    timeout-minutes: 30
 
     steps:
     - name: Checkout code
@@ -67,8 +91,21 @@ jobs:
       with:
         xcode-version: latest-stable
 
+    - name: Cache SPM packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/org.swift.swiftpm
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          .build
+        key: spm-ios-${{ hashFiles('PluginReporter.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          spm-ios-
+
     - name: Build iOS app (simulator)
       run: |
+        BUILD_START=$SECONDS
+        set -o pipefail
         xcodebuild -scheme "PR iPHONE" \
           -configuration Debug \
           -destination 'generic/platform=iOS Simulator' \
@@ -76,50 +113,22 @@ jobs:
           -sdk iphonesimulator \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
-          clean build
+          build 2>&1 | xcpretty
+        BUILD_DURATION=$(( SECONDS - BUILD_START ))
+        echo "## iOS Build" >> $GITHUB_STEP_SUMMARY
+        echo "- Build time: ${BUILD_DURATION}s" >> $GITHUB_STEP_SUMMARY
 
     - name: Upload iOS build artifact
       uses: actions/upload-artifact@v4
       with:
         name: PluginReporter-iOS
-        path: build/Build/Products/Release-iphonesimulator/
+        path: build/Build/Products/Debug-iphonesimulator/
         retention-days: 30
 
-  build-ipados:
-    name: Build iPadOS App
-    runs-on: macos-14
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
-
-    - name: Build iPadOS app (simulator)
-      run: |
-        xcodebuild -scheme "PR iPHONE" \
-          -configuration Debug \
-          -destination 'generic/platform=iOS Simulator' \
-          -derivedDataPath ./build \
-          -sdk iphonesimulator \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGNING_REQUIRED=NO \
-          clean build
-
-    - name: Upload iPadOS build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: PluginReporter-iPadOS
-        path: build/Build/Products/Release-iphonesimulator/
-        retention-days: 30
-
-  # Run tests (when you add them)
   test:
     name: Run Tests
     runs-on: macos-14
+    timeout-minutes: 15
 
     steps:
     - name: Checkout code
@@ -129,17 +138,30 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: latest-stable
+
+    - name: Cache SPM packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/org.swift.swiftpm
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          .build
+        key: spm-test-${{ hashFiles('PluginReporter.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          spm-test-
 
     - name: Run tests
       run: |
         # Currently no tests - this will be ready when you add them
-        echo "✅ No tests to run yet - add XCTest files to enable testing"
-        # xcodebuild test -scheme PluginReporter -destination 'platform=macOS'
+        echo "No tests to run yet - add XCTest files to enable testing"
+        echo "## Tests" >> $GITHUB_STEP_SUMMARY
+        echo "- Status: No test targets yet" >> $GITHUB_STEP_SUMMARY
+        # xcodebuild test -scheme PluginReporter -destination 'platform=macOS' 2>&1 | xcpretty
 
-  # Code quality checks with SwiftLint
   lint:
     name: Code Quality
     runs-on: macos-14
+    timeout-minutes: 10
 
     steps:
     - name: Checkout code
@@ -150,22 +172,23 @@ jobs:
 
     - name: Run SwiftLint
       run: |
-        echo "📝 Running SwiftLint code quality checks..."
-        swiftlint lint --reporter github-actions-logging || true
-        echo "✅ SwiftLint analysis complete"
+        swiftlint lint --strict --reporter github-actions-logging
+        echo "## Code Quality" >> $GITHUB_STEP_SUMMARY
+        echo "- SwiftLint: Passed" >> $GITHUB_STEP_SUMMARY
 
     - name: Count lines of code
       run: |
-        echo "📊 Project Statistics:"
-        echo "Swift files: $(find . -name '*.swift' | wc -l)"
-        echo "Lines of code: $(find . -name '*.swift' -exec wc -l {} + | tail -1)"
+        SWIFT_FILES=$(find . -name '*.swift' -not -path './.build/*' -not -path './build/*' | wc -l | tr -d ' ')
+        LOC=$(find . -name '*.swift' -not -path './.build/*' -not -path './build/*' -exec wc -l {} + | tail -1 | awk '{print $1}')
+        echo "- Swift files: $SWIFT_FILES" >> $GITHUB_STEP_SUMMARY
+        echo "- Lines of code: $LOC" >> $GITHUB_STEP_SUMMARY
 
-  # Create release when version tag is pushed
   release:
     name: Create Release
     runs-on: macos-14
+    timeout-minutes: 20
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-macos, build-ios, build-ipados, test]
+    needs: [build-macos, build-ios, test]
 
     steps:
     - name: Checkout code
@@ -173,21 +196,13 @@ jobs:
 
     - name: Auto-increment build number
       run: |
-        echo "🔢 Auto-incrementing build number for release..."
-        # Extract version from tag (e.g., v006 -> 6)
         VERSION=${GITHUB_REF#refs/tags/v}
         echo "Release version: $VERSION"
-
-        # Find and update Info.plist files
         find . -name "Info.plist" -not -path "./build/*" | while read plist; do
           if [ -f "$plist" ]; then
             echo "Updating build number in: $plist"
-            # This will be used when you have proper Info.plist files
-            # /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$plist"
           fi
         done
-
-        echo "✅ Build numbers updated to: $VERSION"
 
     - name: Download macOS artifact
       uses: actions/download-artifact@v4
@@ -201,14 +216,31 @@ jobs:
         name: PluginReporter-iOS
         path: ./release/iOS
 
-    - name: Download iPadOS artifact
+    - name: Download macOS dSYMs
       uses: actions/download-artifact@v4
       with:
-        name: PluginReporter-iPadOS
-        path: ./release/iPadOS
+        name: PluginReporter-macOS-dSYMs
+        path: ./release/dSYMs
+      continue-on-error: true
+
+    - name: Upload dSYMs to Sentry
+      if: env.SENTRY_AUTH_TOKEN != ''
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      run: |
+        if [ -d "./release/dSYMs" ]; then
+          brew install getsentry/tools/sentry-cli
+          sentry-cli debug-files upload --include-sources ./release/dSYMs
+          echo "## Sentry" >> $GITHUB_STEP_SUMMARY
+          echo "- dSYMs uploaded successfully" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "No dSYMs found to upload"
+        fi
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           release/macOS/**/*

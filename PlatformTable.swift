@@ -6,9 +6,10 @@ import Foundation
 import AppKit
 #endif
 
-// Helper to enable sorting on the Obsolete column (String is Comparable; Bool is not)
+// Helper to enable sorting on the Obsolete/Missing columns (String is Comparable; Bool is not)
 extension PluginItem {
     var obsoleteText: String { obsolete ? "Yes" : "No" }
+    var missingText: String { missing ? "Yes" : "No" }
 
     var versionSortKey: String {
         // Use a zero-padded numeric-aware key so 1.10 > 1.2
@@ -80,15 +81,27 @@ struct PlatformTable: View {
     let rows: [PluginItem]
     @Binding var selection: [PluginItem]
     @Binding var sortStatus: String
+    @Binding var showDetailPanel: Bool
+    @Binding var detailPanelTab: DetailTab
 
     /// True while a scan is in progress. When false, the progress bar is hidden.
     @Binding var isScanning: Bool
     /// 0.0...1.0 progress for the current scan. Use any value outside this range for indeterminate.
     @Binding var scanProgress: Double
 
+    /// Callback when plugins are deleted/uninstalled
+    var onPluginsDeleted: (() -> Void)? = nil
+
     #if os(macOS)
     private var macTable: some View {
-        MacPluginTable(rows: rows, selection: $selection, sortStatus: $sortStatus)
+        MacPluginTable(
+            rows: rows,
+            selection: $selection,
+            sortStatus: $sortStatus,
+            showDetailPanel: $showDetailPanel,
+            detailPanelTab: $detailPanelTab,
+            onPluginsDeleted: onPluginsDeleted
+        )
     }
     #endif
 
@@ -96,14 +109,20 @@ struct PlatformTable: View {
         rows: [PluginItem],
         selection: Binding<[PluginItem]>,
         sortStatus: Binding<String> = .constant(""),
+        showDetailPanel: Binding<Bool> = .constant(false),
+        detailPanelTab: Binding<DetailTab> = .constant(.metadata),
         isScanning: Binding<Bool> = .constant(false),
-        scanProgress: Binding<Double> = .constant(0)
+        scanProgress: Binding<Double> = .constant(0),
+        onPluginsDeleted: (() -> Void)? = nil
     ) {
         self.rows = rows
         self._selection = selection
         self._sortStatus = sortStatus
+        self._showDetailPanel = showDetailPanel
+        self._detailPanelTab = detailPanelTab
         self._isScanning = isScanning
         self._scanProgress = scanProgress
+        self.onPluginsDeleted = onPluginsDeleted
     }
 
     var body: some View {

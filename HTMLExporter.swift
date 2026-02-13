@@ -1,7 +1,11 @@
 // HTMLExporter.swift
 import Foundation
 enum HTMLExporter {
+    @MainActor
     static func write(rows: [PluginItem], to url: URL) {
+        // Use MetadataManager for edited metadata values
+        let metadataManager = MetadataManager.shared
+
         let head =
         """
         <meta charset="utf-8"><style>
@@ -13,10 +17,23 @@ enum HTMLExporter {
         </style>
         """
         let header =
-        "<tr><th>Name</th><th>Publisher</th><th>Version</th><th>Type</th><th>Style</th><th>Architectures</th><th>Date</th><th>Size</th><th>Path</th><th>Requirement</th><th>Obsolete</th></tr>"
+        "<tr><th>Name</th><th>Publisher</th><th>Version</th><th>License</th><th>Type</th><th>Style</th><th>Architectures</th><th>Date</th><th>Size</th><th>Path</th><th>Requirement</th><th>Obsolete</th></tr>"
         let rowsHTML = rows.map { r in
-            "<tr>" + [
-                r.name, r.publisher, r.version, r.type, r.style, r.architectures,
+            // Get license type (macOS only, LicenseManager not available on iOS)
+            #if os(macOS)
+            let licenseType = LicenseTypeHelper.getCachedLicenseType(for: r)
+            #else
+            let licenseType = ""
+            #endif
+
+            return "<tr>" + [
+                r.name,
+                metadataManager.getDisplayPublisher(for: r),
+                metadataManager.getDisplayVersion(for: r),
+                licenseType,
+                r.type,
+                metadataManager.getDisplayStyle(for: r),
+                r.architectures,
                 r.dateString, r.sizeString, r.path, r.runtimeRequirement, r.obsoleteString
             ].map { "<td>\($0)</td>" }.joined() + "</tr>"
         }.joined()

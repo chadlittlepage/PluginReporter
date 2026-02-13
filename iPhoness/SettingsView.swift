@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var showFilePicker = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
+    @State private var showBugReport = false
+    @State private var showFeatureRequest = false
 
     // Pre-computed colors
     private let spaceBackground = Color.black
@@ -25,16 +27,17 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
-                    Picker("Appearance", selection: $appearance) {
+                    Picker("Appearance", selection: $appearance.animation(nil)) {
                         Text("System").tag("system")
                         Text("Light").tag("light")
                         Text("Dark").tag("dark")
                         Text("Space").tag("space")
                     }
                     .pickerStyle(.segmented)
+                    .animation(nil, value: appearance)
                 } header: {
                     Text("Display")
                 }
@@ -75,6 +78,60 @@ struct SettingsView: View {
                     Text("Instructions")
                 }
 
+                Section {
+                    AISettingsView()
+                } header: {
+                    Text("AI Suggestions")
+                }
+
+                Section {
+                    Button(action: {
+                        showBugReport = true
+                    }) {
+                        HStack {
+                            Image(systemName: "ant.fill")
+                                .foregroundColor(.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Report a Bug")
+                                    .foregroundColor(.primary)
+                                Text("Send crash reports and bug details")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Button(action: {
+                        showFeatureRequest = true
+                    }) {
+                        HStack {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundColor(.yellow)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Request a Feature")
+                                    .foregroundColor(.primary)
+                                Text("Suggest new features or improvements")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Text("Your device information will be automatically included to help us assist you better.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Support")
+                }
+
                 Section("About") {
                     HStack {
                         Text("Version")
@@ -86,8 +143,12 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(customBackgroundColor)
+            .scrollDismissesKeyboard(.never) // Never dismiss keyboard on scroll
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .transaction { transaction in
+                transaction.animation = nil // Disable all Form animations
+            }
             .fileImporter(
                 isPresented: $showFilePicker,
                 allowedContentTypes: [.json],
@@ -108,6 +169,26 @@ struct SettingsView: View {
                 Button(NSLocalizedString("OK", comment: "Dismiss button"), role: .cancel) { }
             } message: {
                 Text(errorMessage)
+            }
+            .sheet(isPresented: $showBugReport) {
+                NavigationStack {
+                    BugReportView()
+                        .navigationTitle("Report a Bug")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(Color(red: 24/255, green: 24/255, blue: 26/255), for: .navigationBar)
+                        .toolbarBackground(.visible, for: .navigationBar)
+                }
+                .presentationDetents([.large])
+            }
+            .sheet(isPresented: $showFeatureRequest) {
+                NavigationStack {
+                    FeatureRequestView()
+                        .navigationTitle("Request a Feature")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(Color(red: 24/255, green: 24/255, blue: 26/255), for: .navigationBar)
+                        .toolbarBackground(.visible, for: .navigationBar)
+                }
+                .presentationDetents([.large])
             }
         }
     }
