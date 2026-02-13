@@ -1,0 +1,5 @@
+* @chadlittlepage
+.github/ @chadlittlepage
+fastlane/ @chadlittlepage
+.swiftlint.yml @chadlittlepage
+SentryConfig.swift @chadlittlepage

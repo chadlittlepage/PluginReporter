@@ -43,5 +43,9 @@ AuthKey_*.p8
 *.swp
 *~.nib
 
+# Ruby Bundler
+vendor/bundle/
+.bundle/
+
 # OS Files
 .DS_Store
