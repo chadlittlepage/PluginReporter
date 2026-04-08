@@ -1,6 +1,6 @@
 # Plugin Reporter
 
-A native Apple-platform application for music producers and audio engineers that catalogs every audio plugin in your system **and** reports which plugins are used inside the project files of nearly every major DAW. Built with Swift / SwiftUI for **macOS, iPad, and iPhone**, with a Cloudflare Worker + Firebase backend powering AI features.
+A native Apple-platform application for music producers and audio engineers that catalogs every audio plugin in your system **and** reports which plugins are used inside the project files of nearly every major DAW. Built with Swift / SwiftUI for **macOS, iPadOS, and iOS**, with **iCloud sync** so a scan you run on your Mac shows up automatically on your iPad and iPhone. Backed by a Cloudflare Worker + Firebase Functions stack for AI features.
 
 > Currently in App Store submission track. See `APP_STORE_PROGRESS.md` for status.
 
@@ -40,7 +40,24 @@ All parsers conform to a single `DAWParser` protocol declaring `dawType`, `suppo
 ### 3. AI plugin suggestions
 Given a project's plugin chain, the app suggests substitutions, missing effects, and "what would Plugin X sound like" alternatives. Powered by a unified `AIFeaturesClient` that abstracts Firebase Functions, CloudKit, and Supabase as interchangeable backends, plus an on-device `PersonalLearningEngine` that learns from your usage.
 
-### 4. Accessibility
+### 4. Cross-platform with iCloud sync
+
+The app ships as **three first-class apps** from a single codebase:
+
+- **macOS** — full functionality: scan, parse DAW projects, export, manage settings
+- **iPadOS** — read-only companion: browse the most recent scan from your Mac, search, view reports
+- **iOS / iPhone** — same companion experience optimized for phone
+
+Sync is implemented via **iCloud CloudKit** (`CloudSyncManager.swift`) using a private database in container `iCloud.com.chadlittlepage.PluginReporter`. The flow:
+
+1. You scan plugins on the **Mac** → results upload to your iCloud private database
+2. Each upload tags the source device name, so the iPad/iPhone view can show "scanned by Chad's MacBook Pro"
+3. Your **iPad** and **iPhone** auto-fetch on launch, so the latest scan is always there
+4. The `uploadPlugins` function is gated `#if os(macOS)` — iOS devices are intentional read-only viewers, since plugin scanning requires Full Disk Access on a Mac
+
+The whole sync layer sits behind protocol abstractions in `SyncProtocols.swift` (`PreferencesSyncing`, `ReportsSyncing`), so the backend can swap between **CloudKit** and **Firebase** without touching the call sites. CloudKit is the current default; Firebase is used for the AI features.
+
+### 5. Accessibility
 Full VoiceOver support, dynamic type, color-contrast compliance, and labeled controls throughout. See `ACCESSIBILITY_GUIDELINES.md`, `ACCESSIBILITY_LABELS_IMPLEMENTATION.md`, and `audit_accessibility.sh`.
 
 ---
