@@ -514,8 +514,6 @@ class ArchiveManager {
         jsonData = try Data(contentsOf: url)
         #endif
 
-        var isEncrypted = false
-
         // Try to decode directly first (unencrypted)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

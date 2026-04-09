@@ -59,7 +59,9 @@ extension ExportManager {
 struct ExportManager {
     // MARK: Public API
     @MainActor
-    static func exportCSV(rows: [PluginItem], ratingsManager: RatingsManager = .shared, notesManager: NotesManager = .shared) {
+    static func exportCSV(rows: [PluginItem], ratingsManager: RatingsManager? = nil, notesManager: NotesManager? = nil) {
+        let ratingsManager = ratingsManager ?? .shared
+        let notesManager = notesManager ?? .shared
         let defaultName = defaultFileName(prefix: "Plugins", ext: "csv")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["csv"]) else { return }
         let csv = makeCSV(rows: rows, ratingsManager: ratingsManager, notesManager: notesManager)
@@ -81,7 +83,9 @@ struct ExportManager {
     }
 
     @MainActor
-    static func exportJSON(rows: [PluginItem], ratingsManager: RatingsManager = .shared, notesManager: NotesManager = .shared) {
+    static func exportJSON(rows: [PluginItem], ratingsManager: RatingsManager? = nil, notesManager: NotesManager? = nil) {
+        let ratingsManager = ratingsManager ?? .shared
+        let notesManager = notesManager ?? .shared
         let defaultName = defaultFileName(prefix: "Plugins", ext: "json")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["json"]) else { return }
         do {
@@ -106,7 +110,9 @@ struct ExportManager {
     }
 
     @MainActor
-    static func exportHTML(rows: [PluginItem], ratingsManager: RatingsManager = .shared, notesManager: NotesManager = .shared) {
+    static func exportHTML(rows: [PluginItem], ratingsManager: RatingsManager? = nil, notesManager: NotesManager? = nil) {
+        let ratingsManager = ratingsManager ?? .shared
+        let notesManager = notesManager ?? .shared
         let defaultName = defaultFileName(prefix: "Plugins", ext: "html")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["html", "htm"]) else { return }
         let html = makeHTML(rows: rows, ratingsManager: ratingsManager, notesManager: notesManager)
@@ -578,7 +584,7 @@ struct ExportManager {
         }
 
         // Maximum desired widths (what we'd use if we had infinite space)
-        var maxDesired: [Int] = [6, 35, 20, 5, 15, 12, 8, 16, 12, 10, 16, 3, 3, 18, 20, 60]
+        let maxDesired: [Int] = [6, 35, 20, 5, 15, 12, 8, 16, 12, 10, 16, 3, 3, 18, 20, 60]
         let minimums: [Int] = [4, 8, 6, 3, 6, 5, 5, 8, 8, 4, 8, 1, 1, 5, 5, 10]
 
         // First, measure actual content

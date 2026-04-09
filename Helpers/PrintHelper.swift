@@ -427,8 +427,12 @@ func quickExportPDF(plugins: [PluginItem], preferences: Preferences) {
         print("💾 Saving PDF to: \(url.path)")
         print("🔍 Before creating view - NSPrintInfo.shared margins: T=\(NSPrintInfo.shared.topMargin), B=\(NSPrintInfo.shared.bottomMargin), L=\(NSPrintInfo.shared.leftMargin), R=\(NSPrintInfo.shared.rightMargin)")
 
-        // Create printable view (uses NSPrintInfo.shared)
-        let printView = createPrintablePluginView(plugins: plugins, preferences: preferences)
+        // Create printable view (uses NSPrintInfo.shared).
+        // savePanel.begin's completion runs on the main thread but the closure
+        // isn't statically @MainActor, so assume isolation explicitly.
+        let printView = MainActor.assumeIsolated {
+            createPrintablePluginView(plugins: plugins, preferences: preferences)
+        }
 
         print("🔍 After creating view - printInfo margins: T=\(printInfo.topMargin), B=\(printInfo.bottomMargin), L=\(printInfo.leftMargin), R=\(printInfo.rightMargin)")
 

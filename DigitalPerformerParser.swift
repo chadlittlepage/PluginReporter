@@ -261,7 +261,7 @@ class DigitalPerformerParser: DAWParser {
     }
 
     private static func parseMASDevice(_ string: String, context: [String], index: Int) -> DPDevice? {
-        var deviceName = string
+        let deviceName = string
             .replacingOccurrences(of: "MAS", with: "")
             .trimmingCharacters(in: .whitespaces)
 

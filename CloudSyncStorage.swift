@@ -73,18 +73,27 @@ class CloudSyncStorage {
         print("💾 UserDefaults write: \(key) (\(localTime)s)")
     }
 
-    /// Load data - prefers iCloud if available, falls back to local
+    /// Load data - prefers iCloud if available, falls back to local.
+    ///
+    /// Will NOT overwrite a good local copy with an empty or smaller cloud copy.
+    /// This protects against the case where iCloud KVS hasn't synced yet (or
+    /// holds a stale/empty entry) and would otherwise wipe local data.
     func getData(forKey key: String) -> Data? {
-        if isCloudAvailable {
-            if let cloudData = ubiquitousStore.data(forKey: key) {
-                // Sync cloud data to local backup
+        let localData = localStore.data(forKey: key)
+
+        if isCloudAvailable, let cloudData = ubiquitousStore.data(forKey: key), !cloudData.isEmpty {
+            // Only mirror cloud → local when cloud actually has at least as
+            // much data as local. Smaller cloud payloads are treated as
+            // suspect (likely a not-yet-synced or partially-cleared key) and
+            // we keep using the local copy untouched.
+            if (localData?.count ?? 0) <= cloudData.count {
                 localStore.set(cloudData, forKey: key)
                 return cloudData
             }
         }
 
         // Fall back to local data
-        return localStore.data(forKey: key)
+        return localData
     }
 
     /// Remove data from both stores

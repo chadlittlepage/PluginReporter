@@ -83,8 +83,6 @@ class RenoiseParser: DAWParser {
         process.waitUntilExit()
 
         if process.terminationStatus != 0 {
-            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
             throw ParserError.decompressionFailed
         }
     }

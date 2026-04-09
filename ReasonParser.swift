@@ -217,7 +217,7 @@ class ReasonParser: DAWParser {
 
     private static func parseRackExtension(_ string: String, context: [String], index: Int) -> ReasonDevice? {
         // Rack Extensions have special naming like "se.propellerheads.RV7000"
-        var deviceName = string
+        let deviceName = string
             .replacingOccurrences(of: ".re", with: "")
             .replacingOccurrences(of: "RackExtension", with: "")
             .trimmingCharacters(in: .whitespaces)

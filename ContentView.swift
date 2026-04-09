@@ -90,7 +90,7 @@ struct ContentView: View {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         // ALL 18 DAW formats supported!
-        panel.allowedFileTypes = [
+        let dawExtensions = [
             "als",          // Ableton Live
             "song",         // Studio One
             "rpp",          // Reaper
@@ -109,6 +109,7 @@ struct ContentView: View {
             "logicx",       // Logic Pro
             "concert"       // MainStage
         ]
+        panel.allowedContentTypes = dawExtensions.compactMap { UTType(filenameExtension: $0) }
         return panel
     }()
     #endif
@@ -624,7 +625,7 @@ struct ContentView: View {
             }
             #if os(macOS)
             .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-                handleFileDrop(providers: providers)
+                _ = handleFileDrop(providers: providers)
                 return true
             }
             #endif
@@ -1632,15 +1633,21 @@ struct ContentView: View {
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportCSV"), object: nil, queue: .main) { [self] _ in
-            ExportManager.exportCSV(rows: self.displayedPlugins)
+            MainActor.assumeIsolated {
+                ExportManager.exportCSV(rows: self.displayedPlugins)
+            }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportJSON"), object: nil, queue: .main) { [self] _ in
-            ExportManager.exportJSON(rows: self.displayedPlugins)
+            MainActor.assumeIsolated {
+                ExportManager.exportJSON(rows: self.displayedPlugins)
+            }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportHTML"), object: nil, queue: .main) { [self] _ in
-            ExportManager.exportHTML(rows: self.displayedPlugins)
+            MainActor.assumeIsolated {
+                ExportManager.exportHTML(rows: self.displayedPlugins)
+            }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportPDF"), object: nil, queue: .main) { [self] _ in
@@ -1700,9 +1707,11 @@ struct ContentView: View {
             NSPrintInfo.shared.topMargin = self.prefs.pdfTopMargin
             NSPrintInfo.shared.bottomMargin = self.prefs.pdfBottomMargin
 
-            let printView = createPrintablePluginView(plugins: plugins, preferences: self.prefs)
+            let printView = MainActor.assumeIsolated {
+                createPrintablePluginView(plugins: plugins, preferences: self.prefs)
+            }
 
-            if let window = NSApp.keyWindow {
+            if NSApp.keyWindow != nil {
                 let printOperation = NSPrintOperation(view: printView, printInfo: printInfo)
 
                 // Generate filename with timestamp (same as Quick Export)

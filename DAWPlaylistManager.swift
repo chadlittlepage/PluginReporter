@@ -144,6 +144,50 @@ struct DAWPlaylistEntry: Identifiable, Codable, Equatable, Hashable {
     static func == (lhs: DAWPlaylistEntry, rhs: DAWPlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
+
+    // Custom decoder: accepts both the current key names and legacy ones
+    // ("name"/"publisher"/"type") used by playlists saved before the schema rename.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case pluginName, pluginManufacturer, pluginFormat
+        case name, publisher, type           // legacy
+        case trackName, trackIndex, deviceIndex
+        case isInstalled, matchedPluginPath
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
+        self.pluginName = (try? c.decode(String.self, forKey: .pluginName))
+            ?? (try? c.decode(String.self, forKey: .name)) ?? ""
+        self.pluginManufacturer = (try? c.decode(String.self, forKey: .pluginManufacturer))
+            ?? (try? c.decode(String.self, forKey: .publisher)) ?? ""
+        self.trackName = (try? c.decode(String.self, forKey: .trackName)) ?? ""
+        self.trackIndex = (try? c.decode(Int.self, forKey: .trackIndex)) ?? 0
+        self.deviceIndex = (try? c.decode(Int.self, forKey: .deviceIndex)) ?? 0
+        if let fmt = try? c.decode(PluginFormat.self, forKey: .pluginFormat) {
+            self.pluginFormat = fmt
+        } else if let raw = try? c.decode(String.self, forKey: .type) {
+            self.pluginFormat = PluginFormat(rawValue: raw) ?? .unknown
+        } else {
+            self.pluginFormat = .unknown
+        }
+        self.isInstalled = (try? c.decode(Bool.self, forKey: .isInstalled)) ?? false
+        self.matchedPluginPath = try? c.decode(String.self, forKey: .matchedPluginPath)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(pluginName, forKey: .pluginName)
+        try c.encode(pluginManufacturer, forKey: .pluginManufacturer)
+        try c.encode(trackName, forKey: .trackName)
+        try c.encode(trackIndex, forKey: .trackIndex)
+        try c.encode(deviceIndex, forKey: .deviceIndex)
+        try c.encode(pluginFormat, forKey: .pluginFormat)
+        try c.encode(isInstalled, forKey: .isInstalled)
+        try c.encodeIfPresent(matchedPluginPath, forKey: .matchedPluginPath)
+    }
 }
 
 /// Supported DAW types
