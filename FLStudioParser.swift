@@ -48,14 +48,7 @@ class FLStudioParser: DAWParser {
         let tracks = groupDevicesIntoTracks(devices)
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: .flStudio,
-            tracks: tracks,
-            tempo: tempo,
-            sampleRate: 44100,  // FL Studio default
-            version: version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: .flStudio, tracks: tracks, tempo: tempo, sampleRate: 44100, version: version, key: nil
         )
     }
 
@@ -117,9 +110,10 @@ class FLStudioParser: DAWParser {
 
     private struct FLDevice {
         let name: String
-        let manufacturer: String
+        let publisher: String
         let format: PluginFormat
         let channelName: String?
+        let preset: String
     }
 
     private static func parseDevices(from strings: [String], data: Data) -> [FLDevice] {
@@ -130,7 +124,7 @@ class FLStudioParser: DAWParser {
             // VST3 plugins
             if string.hasSuffix(".vst3") || string.contains("VST3") {
                 if let device = parseVST3Device(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -140,7 +134,7 @@ class FLStudioParser: DAWParser {
             // VST plugins
             else if (string.hasSuffix(".dll") || string.hasSuffix(".vst")) && !string.contains(".vst3") {
                 if let device = parseVSTDevice(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -150,7 +144,7 @@ class FLStudioParser: DAWParser {
             // AU plugins (macOS FL Studio 20+)
             else if string.hasSuffix(".component") || string.contains("AudioUnit") {
                 if let device = parseAUDevice(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -160,7 +154,7 @@ class FLStudioParser: DAWParser {
             // FL Studio native plugins
             else if isFLNativePlugin(string) {
                 if let device = parseFLNativePlugin(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -182,29 +176,42 @@ class FLStudioParser: DAWParser {
             .replacingOccurrences(of: ".vst3", with: "")
             .trimmingCharacters(in: .whitespaces)
 
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
         var channelName: String?
 
-        // Search nearby strings for manufacturer and channel info
-        let searchRange = max(0, index - 20)..<min(context.count, index + 20)
-        for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-            }
-            if nearbyString.hasPrefix("Channel ") || nearbyString.contains("channel:") {
-                channelName = nearbyString
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Search nearby strings for manufacturer and channel info
+            let searchRange = max(0, index - 20)..<min(context.count, index + 20)
+            for nearbyString in context[searchRange] {
+                // Extract manufacturer name from string (works for paths too)
+                if manufacturer == "Unknown", let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    manufacturer = extractedManufacturer
+                }
             }
         }
 
+        // Look for channel names
+        let searchRange = max(0, index - 20)..<min(context.count, index + 20)
+        for nearbyString in context[searchRange] {
+            if nearbyString.hasPrefix("Channel ") || nearbyString.contains("channel:") {
+                channelName = nearbyString
+                break
+            }
+        }
+
+        // Final fallback: Extract from plugin name
         if manufacturer == "Unknown" {
             manufacturer = extractManufacturerFromName(pluginName)
         }
 
+        // Extract preset name
+        let preset = extractPresetName(from: context, near: index)
+
         return FLDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            format: .VST3,
-            channelName: channelName
+            name: pluginName, publisher: manufacturer, format: .VST3, channelName: channelName, preset: preset
         )
     }
 
@@ -219,28 +226,42 @@ class FLStudioParser: DAWParser {
             .replacingOccurrences(of: ".vst", with: "")
             .trimmingCharacters(in: .whitespaces)
 
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
         var channelName: String?
 
-        let searchRange = max(0, index - 20)..<min(context.count, index + 20)
-        for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-            }
-            if nearbyString.hasPrefix("Channel ") || nearbyString.contains("channel:") {
-                channelName = nearbyString
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Search nearby strings for manufacturer
+            let searchRange = max(0, index - 20)..<min(context.count, index + 20)
+            for nearbyString in context[searchRange] {
+                // Extract manufacturer name from string (works for paths too)
+                if manufacturer == "Unknown", let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    manufacturer = extractedManufacturer
+                }
             }
         }
 
+        // Look for channel names
+        let searchRange = max(0, index - 20)..<min(context.count, index + 20)
+        for nearbyString in context[searchRange] {
+            if nearbyString.hasPrefix("Channel ") || nearbyString.contains("channel:") {
+                channelName = nearbyString
+                break
+            }
+        }
+
+        // Final fallback: Extract from plugin name
         if manufacturer == "Unknown" {
             manufacturer = extractManufacturerFromName(pluginName)
         }
 
+        // Extract preset name
+        let preset = extractPresetName(from: context, near: index)
+
         return FLDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            format: .VST,
-            channelName: channelName
+            name: pluginName, publisher: manufacturer, format: .VST, channelName: channelName, preset: preset
         )
     }
 
@@ -254,28 +275,42 @@ class FLStudioParser: DAWParser {
             .replacingOccurrences(of: "AudioUnit", with: "")
             .trimmingCharacters(in: .whitespaces)
 
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
         var channelName: String?
 
-        let searchRange = max(0, index - 20)..<min(context.count, index + 20)
-        for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-            }
-            if nearbyString.hasPrefix("Channel ") {
-                channelName = nearbyString
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Search nearby strings for manufacturer
+            let searchRange = max(0, index - 20)..<min(context.count, index + 20)
+            for nearbyString in context[searchRange] {
+                // Extract manufacturer name from string (works for paths too)
+                if manufacturer == "Unknown", let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    manufacturer = extractedManufacturer
+                }
             }
         }
 
+        // Look for channel names
+        let searchRange = max(0, index - 20)..<min(context.count, index + 20)
+        for nearbyString in context[searchRange] {
+            if nearbyString.hasPrefix("Channel ") {
+                channelName = nearbyString
+                break
+            }
+        }
+
+        // Final fallback: Extract from plugin name
         if manufacturer == "Unknown" {
             manufacturer = extractManufacturerFromName(pluginName)
         }
 
+        // Extract preset name
+        let preset = extractPresetName(from: context, near: index)
+
         return FLDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            format: .AU,
-            channelName: channelName
+            name: pluginName, publisher: manufacturer, format: .AU, channelName: channelName, preset: preset
         )
     }
 
@@ -289,11 +324,11 @@ class FLStudioParser: DAWParser {
             }
         }
 
+        // Extract preset name
+        let preset = extractPresetName(from: context, near: index)
+
         return FLDevice(
-            name: string,
-            manufacturer: "Image-Line",
-            format: .VST3,  // Treat as VST3 for compatibility
-            channelName: channelName
+            name: string, publisher: "Image-Line", format: .VST3, channelName: channelName, preset: preset
         )
     }
 
@@ -302,23 +337,7 @@ class FLStudioParser: DAWParser {
     private static func isFLNativePlugin(_ string: String) -> Bool {
         let flPlugins = [
             // Synths
-            "3xOsc", "BooBass", "FL Keys", "FPC", "Harmless", "Harmor",
-            "FLEX", "Sytrus", "Sawer", "Toxic Biohazard", "Morphine",
-            "Sakura", "Drumaxx", "Poizone", "Transistor Bass",
-
-            // Samplers
-            "DirectWave", "Slicex", "FPC",
-
-            // Effects
-            "Fruity Reverb", "Fruity Delay", "Fruity Chorus", "Fruity Flanger",
-            "Fruity Phaser", "Fruity Filter", "Fruity Parametric EQ",
-            "Fruity Limiter", "Fruity Compressor", "Fruity Multiband Compressor",
-            "Fruity Reeverb 2", "Fruity Delay Bank", "Fruity Vocoder",
-            "Gross Beat", "Vocodex", "NewTone", "Pitcher",
-
-            // Utilities
-            "Fruity Balance", "Fruity Stereo Shaper", "Fruity Send",
-            "Fruity Mute", "Fruity Notebook", "Fruity Formula Controller"
+            "3xOsc", "BooBass", "FL Keys", "FPC", "Harmless", "Harmor", "FLEX", "Sytrus", "Sawer", "Toxic Biohazard", "Morphine", "Sakura", "Drumaxx", "Poizone", "Transistor Bass", "DirectWave", "Slicex", "FPC", "Fruity Reverb", "Fruity Delay", "Fruity Chorus", "Fruity Flanger", "Fruity Phaser", "Fruity Filter", "Fruity Parametric EQ", "Fruity Limiter", "Fruity Compressor", "Fruity Multiband Compressor", "Fruity Reeverb 2", "Fruity Delay Bank", "Fruity Vocoder", "Gross Beat", "Vocodex", "NewTone", "Pitcher", "Fruity Balance", "Fruity Stereo Shaper", "Fruity Send", "Fruity Mute", "Fruity Notebook", "Fruity Formula Controller"
         ]
 
         return flPlugins.contains { string.contains($0) }
@@ -355,19 +374,12 @@ class FLStudioParser: DAWParser {
 
             let plugins = devices.enumerated().map { (deviceIndex, device) -> ParsedPlugin in
                 ParsedPlugin(
-                    name: device.name,
-                    manufacturer: device.manufacturer,
-                    trackName: trackName,
-                    trackIndex: trackIndex,
-                    deviceIndex: deviceIndex,
-                    format: device.format
+                    name: device.name, publisher: device.publisher, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: device.format, preset: device.preset
                 )
             }
 
             tracks.append(ParsedTrack(
-                name: trackName,
-                index: trackIndex,
-                plugins: plugins
+                name: trackName, index: trackIndex, plugins: plugins
             ))
         }
 
@@ -407,8 +419,7 @@ class FLStudioParser: DAWParser {
             // Look for version numbers like "20.9" or "21.0"
             if string.hasPrefix("FL ") || string.contains("Studio") {
                 let pattern = #"(\d+\.\d+(?:\.\d+)?)"#
-                if let regex = try? NSRegularExpression(pattern: pattern),
-                   let match = regex.firstMatch(in: string, range: NSRange(string.startIndex..., in: string)) {
+                if let regex = try? NSRegularExpression(pattern: pattern), let match = regex.firstMatch(in: string, range: NSRange(string.startIndex..., in: string)) {
                     if let range = Range(match.range, in: string) {
                         return "FL Studio \(string[range])"
                     }
@@ -420,24 +431,88 @@ class FLStudioParser: DAWParser {
 
     // MARK: - Helper Methods
 
+    /// Extract preset name from nearby strings
+    /// - Parameters:
+    ///   - context: All extracted strings
+    ///   - index: Current index
+    /// - Returns: Preset name if found, empty string otherwise
+    private static func extractPresetName(from context: [String], near index: Int) -> String {
+        // FL Studio often stores preset names near plugin references
+        // Search within 10 positions before and after
+        let searchRange = max(0, index - 10)..<min(context.count, index + 10)
+
+        for nearbyString in context[searchRange] {
+            // Skip system strings, file paths, and short strings
+            if nearbyString.contains("/") || nearbyString.contains("\\") ||
+               nearbyString.contains(".vst") || nearbyString.contains(".dll") ||
+               nearbyString.count < 3 || nearbyString.count > 60 {
+                continue
+            }
+
+            // Skip all-caps strings (likely constants)
+            if nearbyString.uppercased() == nearbyString && nearbyString.count > 4 {
+                continue
+            }
+
+            // Skip common FL Studio system strings
+            let skipStrings = ["Channel", "Mixer", "Pattern", "Automation", "Playlist", "VST", "VST3", "Plugin", "Effect", "Instrument"]
+            if skipStrings.contains(where: { nearbyString.contains($0) }) {
+                continue
+            }
+
+            // Valid preset name: starts with capital or number, reasonable length
+            if let first = nearbyString.first, first.isUppercase || first.isNumber {
+                // Additional filter: preset names often contain spaces or underscores
+                if nearbyString.contains(" ") || nearbyString.contains("_") || nearbyString.count >= 5 {
+                    return nearbyString
+                }
+            }
+        }
+
+        return ""
+    }
+
     private static func isManufacturerName(_ string: String) -> Bool {
+        // Skip file paths and URLs
+        if string.contains("/") || string.contains(".vst") || string.contains(".component") || string.contains(".au") || string.contains(".dll") {
+            return false
+        }
+
         let knownManufacturers = [
-            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope",
-            "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla",
-            "Xfer", "Dada Life", "Softube", "Eventide", "Lexicon", "SSL",
-            "Sonnox", "Steinberg", "UJAM", "Output", "Serum", "u-he",
-            "Kilohearts", "Image-Line", "Cymatics", "Splice", "Arcade"
+            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope", "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla DSP", "Valhalla", "Xfer", "Dada Life", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox", "Steinberg", "UJAM", "Output", "Serum", "u-he", "Kilohearts", "Image-Line", "Cymatics", "Splice", "Arcade"
         ]
 
         return knownManufacturers.contains { string.contains($0) }
     }
 
+    /// Extract manufacturer name from any string (including file paths)
+    private static func extractManufacturerFromString(_ string: String) -> String? {
+        let knownManufacturers = [
+            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope", "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla DSP", "Valhalla", "Xfer", "Dada Life", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox", "Steinberg", "UJAM", "Output", "Serum", "u-he", "Kilohearts", "Image-Line", "Cymatics", "Splice", "Arcade"
+        ]
+
+        // Find which manufacturer is contained in this string
+        for manufacturer in knownManufacturers {
+            if string.contains(manufacturer) {
+                return manufacturer
+            }
+        }
+
+        return nil
+    }
+
     private static func extractManufacturerFromName(_ pluginName: String) -> String {
+        // First try to extract from the plugin name itself
+        if let manufacturer = extractManufacturerFromString(pluginName) {
+            return manufacturer
+        }
+
         let components = pluginName.components(separatedBy: " ")
         if let first = components.first, first.count > 2 {
-            if isManufacturerName(first) {
-                return first
+            if let manufacturer = extractManufacturerFromString(first) {
+                return manufacturer
             }
+            return first
         }
 
         return "Unknown"

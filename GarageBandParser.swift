@@ -21,10 +21,7 @@ class GarageBandParser: DAWParser {
     static func parseProject(url: URL) throws -> ParsedProject {
         // Delegate to shared Apple DAW parser
         return try AppleDAWParser.parseAppleProject(
-            url: url,
-            dawType: .garageBand,
-            supportedExtensions: supportedExtensions,
-            dawName: "GarageBand"
+            url: url, dawType: .garageBand, supportedExtensions: supportedExtensions, dawName: "GarageBand"
         )
     }
 }

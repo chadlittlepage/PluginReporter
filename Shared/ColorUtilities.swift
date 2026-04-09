@@ -13,18 +13,19 @@ enum ColorUtilities {
     /// Returns the standard color for a given plugin format type
     /// - Parameter format: The plugin format (AU, VST, VST3, AAX, CLAP, LV2, OBSLT, etc.)
     /// - Returns: The SwiftUI Color for that format
+    /// - Note: These colors MUST match colorForPluginType() in MacPluginTable.swift
     static func colorForFormat(_ format: String) -> Color {
         switch format.uppercased() {
         case "AU": return .blue
         case "VST": return .green
-        case "VST3": return .cyan
+        case "VST3": return .teal  // Changed from .cyan to match table
         case "AAX": return .purple
         case "CLAP": return .orange
         case "LV2": return .gray
         case "LADSPA": return .indigo
         case "RTAS": return .mint
         case "OBSLT", "OBSOLETE": return .red
-        default: return .gray
+        default: return .secondary  // Changed from .gray to match table
         }
     }
 

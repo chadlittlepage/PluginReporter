@@ -66,12 +66,7 @@ enum DashboardReportBuilder {
     /// Build a comprehensive dashboard report
     static func buildReport(plugins: [PluginItem]) -> DashboardReport {
         return DashboardReport(
-            timestamp: Date(),
-            deviceInfo: collectDeviceInfo(),
-            appInfo: collectAppInfo(),
-            pluginStats: collectPluginStats(plugins: plugins),
-            usageMetrics: collectUsageMetrics(),
-            errorLogs: collectErrorLogs()
+            timestamp: Date(), deviceInfo: collectDeviceInfo(), appInfo: collectAppInfo(), pluginStats: collectPluginStats(plugins: plugins), usageMetrics: collectUsageMetrics(), errorLogs: collectErrorLogs()
         )
     }
 
@@ -110,11 +105,7 @@ enum DashboardReportBuilder {
         let memGB = Double(memSize) / 1_073_741_824.0
 
         return DashboardReport.DeviceInfo(
-            deviceModel: modelString,
-            osVersion: "macOS \(processInfo.operatingSystemVersionString)",
-            architecture: archString,
-            memory: String(format: "%.1f GB", memGB),
-            screenResolution: nil
+            deviceModel: modelString, osVersion: "macOS \(processInfo.operatingSystemVersionString)", architecture: archString, memory: String(format: "%.1f GB", memGB), screenResolution: nil
         )
     }
     #endif
@@ -135,11 +126,7 @@ enum DashboardReportBuilder {
         let resolution = "\(Int(bounds.width * scale))x\(Int(bounds.height * scale)) @\(Int(scale))x"
 
         return DashboardReport.DeviceInfo(
-            deviceModel: modelName,
-            osVersion: "\(device.systemName) \(device.systemVersion)",
-            architecture: architectureString(),
-            memory: String(format: "%.1f GB", memGB),
-            screenResolution: resolution
+            deviceModel: modelName, osVersion: "\(device.systemName) \(device.systemVersion)", architecture: architectureString(), memory: String(format: "%.1f GB", memGB), screenResolution: resolution
         )
     }
 
@@ -184,11 +171,7 @@ enum DashboardReportBuilder {
         }
 
         return DashboardReport.AppInfo(
-            version: version,
-            build: build,
-            installDate: installDate,
-            lastLaunchDate: lastLaunchDate,
-            totalLaunches: totalLaunches
+            version: version, build: build, installDate: installDate, lastLaunchDate: lastLaunchDate, totalLaunches: totalLaunches
         )
     }
 
@@ -230,13 +213,7 @@ enum DashboardReportBuilder {
         let avgSize = totalPlugins > 0 ? totalSize / Int64(totalPlugins) : 0
 
         return DashboardReport.PluginStats(
-            totalPlugins: totalPlugins,
-            pluginsByFormat: byFormat,
-            pluginsByPublisher: topPublishers,
-            pluginsByStyle: byStyle,
-            obsoletePlugins: obsoleteCount,
-            totalSizeBytes: totalSize,
-            averageSizeBytes: avgSize
+            totalPlugins: totalPlugins, pluginsByFormat: byFormat, pluginsByPublisher: topPublishers, pluginsByStyle: byStyle, obsoletePlugins: obsoleteCount, totalSizeBytes: totalSize, averageSizeBytes: avgSize
         )
     }
 
@@ -253,12 +230,7 @@ enum DashboardReportBuilder {
         let lastExport = defaults.object(forKey: "usage_last_export") as? Date
 
         return DashboardReport.UsageMetrics(
-            scansPerformed: scansPerformed,
-            exportsPerformed: exportsPerformed,
-            aiSuggestionsRequested: aiRequests,
-            averageSessionDuration: avgDuration,
-            lastScanDate: lastScan,
-            lastExportDate: lastExport
+            scansPerformed: scansPerformed, exportsPerformed: exportsPerformed, aiSuggestionsRequested: aiRequests, averageSessionDuration: avgDuration, lastScanDate: lastScan, lastExportDate: lastExport
         )
     }
 
@@ -266,8 +238,7 @@ enum DashboardReportBuilder {
 
     private static func collectErrorLogs() -> [DashboardReport.ErrorLog] {
         // Retrieve stored error logs (last 24 hours)
-        guard let logsData = UserDefaults.standard.data(forKey: "error_logs"),
-              let allLogs = try? JSONDecoder().decode([DashboardReport.ErrorLog].self, from: logsData) else {
+        guard let logsData = UserDefaults.standard.data(forKey: "error_logs"), let allLogs = try? JSONDecoder().decode([DashboardReport.ErrorLog].self, from: logsData) else {
             return []
         }
 
@@ -306,8 +277,7 @@ func dashboardLogEvent(event: String, properties: [String: Any]) {
 
     // Store event in UserDefaults for dashboard reporting
     var events: [[String: Any]] = []
-    if let eventsData = UserDefaults.standard.data(forKey: "dashboard_events"),
-       let existingEvents = try? JSONSerialization.jsonObject(with: eventsData) as? [[String: Any]] {
+    if let eventsData = UserDefaults.standard.data(forKey: "dashboard_events"), let existingEvents = try? JSONSerialization.jsonObject(with: eventsData) as? [[String: Any]] {
         events = existingEvents
     }
 
@@ -328,15 +298,11 @@ func dashboardLogEvent(event: String, properties: [String: Any]) {
 
 func dashboardLogError(message: String, severity: String = "error", context: String? = nil) {
     let errorLog = DashboardReport.ErrorLog(
-        timestamp: Date(),
-        message: message,
-        severity: severity,
-        context: context
+        timestamp: Date(), message: message, severity: severity, context: context
     )
 
     var logs: [DashboardReport.ErrorLog] = []
-    if let logsData = UserDefaults.standard.data(forKey: "error_logs"),
-       let existingLogs = try? JSONDecoder().decode([DashboardReport.ErrorLog].self, from: logsData) {
+    if let logsData = UserDefaults.standard.data(forKey: "error_logs"), let existingLogs = try? JSONDecoder().decode([DashboardReport.ErrorLog].self, from: logsData) {
         logs = existingLogs
     }
 

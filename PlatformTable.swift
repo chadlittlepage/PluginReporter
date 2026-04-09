@@ -1,6 +1,5 @@
-import SwiftUI
 import Foundation
-
+import SwiftUI
 
 #if os(macOS)
 import AppKit
@@ -16,8 +15,8 @@ extension PluginItem {
         let parts = version.split(separator: ".")
         return parts.map { part in
             // Keep numeric parts zero-padded, leave non-numeric as-is
-            if let n = Int(part) {
-                return String(format: "%05d", n)
+            if let num = Int(part) {
+                return String(format: "%05d", num)
             } else {
                 return String(part)
             }
@@ -31,12 +30,12 @@ extension PluginItem {
 
     var tableDateSortKey: Date {
         // Fast path: if date is available, use it directly
-        if let d = date { return d }
+        if let existingDate = date { return existingDate }
 
         // Fallback: parse from string only when needed
         let candidates: [DateFormatter] = Self._tableDateFormatters
         for fmt in candidates {
-            if let d = fmt.date(from: dateString) { return d }
+            if let parsedDate = fmt.date(from: dateString) { return parsedDate }
         }
         if let iso = Self._tableISOFormatter.date(from: dateString) { return iso }
         return .distantPast
@@ -50,7 +49,7 @@ extension PluginItem {
         // Parse into a Date and render as ISO-like string that sorts lexicographically
         let date: Date = {
             let candidates: [DateFormatter] = Self._tableDateFormatters
-            for fmt in candidates { if let d = fmt.date(from: dateString) { return d } }
+            for fmt in candidates { if let parsedDate = fmt.date(from: dateString) { return parsedDate } }
             if let iso = Self._tableISOFormatter.date(from: dateString) { return iso }
             return .distantPast
         }()
@@ -71,14 +70,15 @@ extension PluginItem {
     }
 
     private static let _tableISOFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withFullDate, .withFullTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
-        return f
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate, .withFullTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        return formatter
     }()
 }
 
 struct PlatformTable: View {
     let rows: [PluginItem]
+    let allPlugins: [PluginItem]  // ALL plugins for AI Suggestions
     @Binding var selection: [PluginItem]
     @Binding var sortStatus: String
     @Binding var showDetailPanel: Bool
@@ -90,12 +90,14 @@ struct PlatformTable: View {
     @Binding var scanProgress: Double
 
     /// Callback when plugins are deleted/uninstalled
-    var onPluginsDeleted: (() -> Void)? = nil
+    var onPluginsDeleted: (() -> Void)?
 
     #if os(macOS)
     private var macTable: some View {
-        MacPluginTable(
+        let _ = print("📊 [PlatformTable] Passing \(allPlugins.count) allPlugins to MacPluginTable")
+        return MacPluginTable(
             rows: rows,
+            allPlugins: allPlugins,
             selection: $selection,
             sortStatus: $sortStatus,
             showDetailPanel: $showDetailPanel,
@@ -107,6 +109,7 @@ struct PlatformTable: View {
 
     init(
         rows: [PluginItem],
+        allPlugins: [PluginItem] = [],  // Default to empty array
         selection: Binding<[PluginItem]>,
         sortStatus: Binding<String> = .constant(""),
         showDetailPanel: Binding<Bool> = .constant(false),
@@ -116,6 +119,7 @@ struct PlatformTable: View {
         onPluginsDeleted: (() -> Void)? = nil
     ) {
         self.rows = rows
+        self.allPlugins = allPlugins
         self._selection = selection
         self._sortStatus = sortStatus
         self._showDetailPanel = showDetailPanel
@@ -130,29 +134,29 @@ struct PlatformTable: View {
             #if os(macOS)
             macTable
             #else
-            List(rows, id: \.id) { i in
+            List(rows, id: \.id) { item in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(i.name).font(.headline)
+                        Text(item.name).font(.headline)
                         Spacer()
-                        Text(i.type).foregroundStyle(.secondary).font(.subheadline)
+                        Text(item.type).foregroundStyle(.secondary).font(.subheadline)
                     }
                     HStack(spacing: 12) {
-                        Text(i.publisher).foregroundStyle(.secondary)
-                        Text(i.version).foregroundStyle(.secondary)
-                        Text(i.architectures).foregroundStyle(.secondary)
+                        Text(item.publisher).foregroundStyle(.secondary)
+                        Text(item.version).foregroundStyle(.secondary)
+                        Text(item.preset).foregroundStyle(.secondary)
                     }.font(.footnote)
                     HStack(spacing: 12) {
-                        Text(i.dateString).foregroundStyle(.secondary)
-                        Text(i.sizeString).foregroundStyle(.secondary)
-                        Text(i.runtimeRequirement).foregroundStyle(.secondary)
-                        if i.obsolete { Text("Obsolete").foregroundStyle(.red) }
+                        Text(item.dateString).foregroundStyle(.secondary)
+                        Text(item.sizeString).foregroundStyle(.secondary)
+                        Text(item.runtimeRequirement).foregroundStyle(.secondary)
+                        if item.obsolete { Text("Obsolete").foregroundStyle(.red) }
                     }.font(.footnote)
-                    Text(i.path).font(.caption2).foregroundStyle(.secondary)
+                    Text(item.path).font(.caption2).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.middle)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { selection = [i] }
+                .onTapGesture { selection = [item] }
                 #if canImport(UIKit)
                 .contextMenu {
                     Button("Copy Path") {
@@ -189,4 +193,3 @@ struct PlatformTable: View {
         .animation(.default, value: isScanning)
     }
 }
-

@@ -7,13 +7,424 @@
 
 import SwiftUI
 
+// MARK: - Specs Tab View (prevents redraw on keyboard navigation)
+struct SpecsTabView: View {
+    let plugin: PluginItem
+    @State private var currentPluginID: UUID?
+    @State private var cachedContent: AnyView?
+    @State private var enrichedPlugin: PluginItem
+    @State private var isLoadingExtendedData = false
+    @StateObject private var enrichmentService = PluginEnrichmentService.shared
+
+    init(plugin: PluginItem) {
+        self.plugin = plugin
+        self._enrichedPlugin = State(initialValue: plugin)
+    }
+
+    var body: some View {
+        Group {
+            if let cachedContent = cachedContent {
+                cachedContent
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        SpecsSectionRenderer(plugin: enrichedPlugin)
+
+                        // Loading indicator for extended data
+                        if isLoadingExtendedData {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                Text("Loading presets and chains...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            .padding()
+                        }
+                    }
+                    .padding(16)
+                }
+            }
+        }
+        .onAppear {
+            loadExtendedDataIfNeeded()
+            renderContent()
+        }
+        .onChange(of: plugin.id) { newID in
+            if currentPluginID != newID {
+                currentPluginID = newID
+                enrichedPlugin = plugin
+                loadExtendedDataIfNeeded()
+                renderContent()
+            }
+        }
+    }
+
+    private func loadExtendedDataIfNeeded() {
+        // Only load if we don't have presets/chains yet
+        guard enrichedPlugin.enrichedPresets == nil else {
+            print("✅ Extended data already loaded")
+            return
+        }
+
+        isLoadingExtendedData = true
+        Task {
+            // Create a mutable copy to pass to the async function
+            var pluginCopy = enrichedPlugin
+            await enrichmentService.lazyLoadExtendedData(for: &pluginCopy)
+
+            await MainActor.run {
+                enrichedPlugin = pluginCopy
+                isLoadingExtendedData = false
+                renderContent()
+            }
+        }
+    }
+
+    private func renderContent() {
+        let content = ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                SpecsSectionRenderer(plugin: enrichedPlugin)
+            }
+            .padding(16)
+        }
+        cachedContent = AnyView(content)
+    }
+}
+
+struct SpecsSectionRenderer: View {
+    let plugin: PluginItem
+    @EnvironmentObject private var metadataManager: MetadataManager
+
+    var body: some View {
+        // Inline the specs content directly to avoid type erasure issues
+        Group {
+            specsContent
+        }
+    }
+
+    private var specsContent: some View {
+        Group {
+            // DESCRIPTION section (from Firebase enrichment)
+            if let description = plugin.description, !description.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("DESCRIPTION")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text(description)
+                        .font(.system(size: 13))
+                        .foregroundColor(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                divider
+            }
+
+            // TECHNICAL SPECIFICATIONS section (specs text only)
+            if let specs = plugin.specs, !specs.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("TECHNICAL SPECIFICATIONS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text(specs)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                divider
+            }
+
+            // Feature Tags (from Firebase)
+            if let tags = plugin.tags, !tags.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("TAGS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(tags, id: \.self) { tag in
+                                Text(tag.capitalized)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.2))
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                }
+                divider
+            }
+
+            // GUI COLORS section
+            if let colorScheme = plugin.colorScheme, !colorScheme.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("GUI COLORS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    HStack(spacing: 8) {
+                        ForEach(colorScheme.components(separatedBy: " ").filter { !$0.isEmpty }, id: \.self) { color in
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(colorFromName(color))
+                                    .frame(width: 12, height: 12)
+                                Text(color.capitalized)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.secondary.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                divider
+            }
+
+            // PRESETS section (lazy-loaded)
+            if let presets = plugin.enrichedPresets, !presets.isEmpty {
+                let uniquePresets = removeDuplicatePresets(presets)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("PRESETS")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("\(uniquePresets.count)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(uniquePresets) { preset in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(preset.name ?? "Untitled Preset")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.primary)
+
+                                if let description = preset.description, !description.isEmpty {
+                                    Text(description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(2)
+                                }
+
+                                HStack(spacing: 6) {
+                                    if let genre = preset.genre, !genre.isEmpty {
+                                        Text(genre)
+                                            .font(.caption2)
+                                            .foregroundColor(.blue)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.blue.opacity(0.15))
+                                            .cornerRadius(4)
+                                    }
+                                    if let category = preset.category, !category.isEmpty {
+                                        Text(category)
+                                            .font(.caption2)
+                                            .foregroundColor(.green)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.green.opacity(0.15))
+                                            .cornerRadius(4)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 10)
+                            .background(Color.secondary.opacity(0.05))
+                            .cornerRadius(8)
+                        }
+
+                        if uniquePresets.count > 10 {
+                            Text("+ \(uniquePresets.count - 10) more presets")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .italic()
+                                .padding(.top, 4)
+                        }
+                    }
+                }
+                divider
+            }
+
+            // FAMOUS USES section (lazy-loaded)
+            if let famousUses = plugin.famousUses, !famousUses.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("FAMOUS USES")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(famousUses.prefix(5), id: \.id) { use in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("\(use.song)")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    if let year = use.year {
+                                        Text("(\(year))")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+
+                                Text("by \(use.artist)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                if let engineer = use.engineer {
+                                    Text("Engineer: \(engineer)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 10)
+                            .background(Color.orange.opacity(0.05))
+                            .cornerRadius(8)
+                        }
+
+                        if famousUses.count > 5 {
+                            Text("+ \(famousUses.count - 5) more uses")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .italic()
+                                .padding(.top, 4)
+                        }
+                    }
+                }
+                divider
+            }
+
+            // PLUGIN CHAINS section (lazy-loaded)
+            if let chains = plugin.chains, !chains.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("PLUGIN CHAINS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(chains.prefix(3), id: \.id) { chain in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(chain.name)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.primary)
+
+                                if let description = chain.description {
+                                    Text(description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(2)
+                                }
+
+                                if let genre = chain.genre {
+                                    Text(genre)
+                                        .font(.caption2)
+                                        .foregroundColor(.purple)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.purple.opacity(0.15))
+                                        .cornerRadius(4)
+                                }
+                            }
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 10)
+                            .background(Color.purple.opacity(0.05))
+                            .cornerRadius(8)
+                        }
+
+                        if chains.count > 3 {
+                            Text("+ \(chains.count - 3) more chains")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .italic()
+                                .padding(.top, 4)
+                        }
+                    }
+                }
+                divider
+            }
+
+            // Placeholder
+            if plugin.tags?.isEmpty != false && plugin.description == nil && plugin.enrichedPresets == nil {
+                VStack(spacing: 12) {
+                    Image(systemName: "gauge.with.dots.needle.67percent")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary.opacity(0.3))
+                    Text("Specifications will appear here once this plugin is enriched from Firebase")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 60)
+            }
+        }
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.gray.opacity(0.3))
+            .frame(height: 1)
+    }
+
+    private func colorFromName(_ name: String) -> Color {
+        switch name.lowercased() {
+        case "red": return .red
+        case "blue": return .blue
+        case "green": return .green
+        case "yellow": return .yellow
+        case "orange": return .orange
+        case "purple": return .purple
+        case "pink": return .pink
+        case "cyan": return .cyan
+        case "brown": return .brown
+        case "gray", "grey": return .gray
+        case "black": return .black
+        case "white": return .white
+        default: return .gray
+        }
+    }
+
+    /// Remove duplicate presets based on name (case-insensitive)
+    private func removeDuplicatePresets(_ presets: [EnrichedPreset]) -> [EnrichedPreset] {
+        var seen = Set<String>()
+        var unique: [EnrichedPreset] = []
+
+        for preset in presets {
+            let presetName = (preset.name ?? "").lowercased().trimmingCharacters(in: .whitespaces)
+            if !presetName.isEmpty && !seen.contains(presetName) {
+                seen.insert(presetName)
+                unique.append(preset)
+            }
+        }
+
+        return unique
+    }
+}
+
 enum DetailTab: String, CaseIterable {
     case metadata = "Metadata"
+    case specs = "Specs"
     case license = "License"
 
     var icon: String {
         switch self {
         case .metadata: return "slider.horizontal.3"
+        case .specs: return "gauge.with.dots.needle.67percent"
         case .license: return "key.fill"
         }
     }
@@ -28,6 +439,7 @@ struct PluginDetailPanel: View {
     @StateObject private var tagsManager = TagsManager.shared
     @StateObject private var ratingsManager = RatingsManager.shared
     @StateObject private var notesManager = NotesManager.shared
+    @StateObject private var enrichmentService = PluginEnrichmentService.shared
     @EnvironmentObject private var prefs: Preferences
     @Environment(\.colorScheme) private var colorScheme
 
@@ -96,15 +508,15 @@ struct PluginDetailPanel: View {
                             Button(action: {
                                 selectedTab = tab
                             }) {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 4) {
                                     Image(systemName: tab.icon)
-                                        .font(.system(size: 13))
+                                        .font(.system(size: 12))
                                     Text(tab.rawValue)
-                                        .font(.system(size: 13))
+                                        .font(.system(size: 12))
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 6)
-                                .padding(.horizontal, 12)
+                                .padding(.horizontal, 6)
                                 #if os(macOS)
                                 .background(selectedTab == tab ? Color(red: 16/255, green: 73/255, blue: 135/255) : Color(nsColor: .controlBackgroundColor))
                                 #else
@@ -116,7 +528,7 @@ struct PluginDetailPanel: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .padding(.top, 17)
                     .padding(.bottom, 12)
                 }
@@ -177,6 +589,9 @@ struct PluginDetailPanel: View {
                                 initializeFields(for: plugin)
                             }
                         }
+                    } else if selectedTab == .specs {
+                        // Specs tab - Full technical specifications
+                        SpecsTabView(plugin: plugin)
                     } else {
                         // License tab (macOS only)
                         #if os(macOS)
@@ -188,22 +603,19 @@ struct PluginDetailPanel: View {
                         #endif
                     }
                 }
-                .id(plugin.id)  // Force recreation when plugin changes
             }
             .frame(width: panelWidth)
             .background(backgroundColor)
             .overlay(
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
-                    .frame(width: 1),
-                alignment: .leading
+                    .frame(width: 1), alignment: .leading
             )
             #if os(macOS)
             .overlay(
                 Rectangle()
                     .fill(prefs.appearance == .space ? Color.white.opacity(0.15) : (colorScheme == .light ? Color.black.opacity(0.5) : Color.clear))
-                    .frame(height: 1),
-                alignment: .top
+                    .frame(height: 1), alignment: .top
             )
             #endif
             .alert("Reset to Original Metadata?", isPresented: $showResetConfirmation) {
@@ -233,9 +645,7 @@ struct PluginDetailPanel: View {
 
             // Name
             editableField(
-                label: "NAME",
-                text: $editedName,
-                placeholder: "Plugin name"
+                label: "NAME", text: $editedName, placeholder: "Plugin name"
             ) {
                 // Save name (Note: plugin name is typically read-only from scan)
                 print("Name edited to: \(editedName)")
@@ -243,26 +653,17 @@ struct PluginDetailPanel: View {
 
             // Publisher
             editableMetadataField(
-                label: "PUBLISHER",
-                plugin: plugin,
-                field: .publisher,
-                placeholder: "Publisher/Developer name"
+                label: "PUBLISHER", plugin: plugin, field: .publisher, placeholder: "Publisher/Developer name"
             )
 
             // Version
             editableMetadataField(
-                label: "VERSION",
-                plugin: plugin,
-                field: .version,
-                placeholder: "Version number"
+                label: "VERSION", plugin: plugin, field: .version, placeholder: "Version number"
             )
 
             // Style
             editableMetadataField(
-                label: "STYLE/CATEGORY",
-                plugin: plugin,
-                field: .style,
-                placeholder: "e.g., EQ, Compressor, Reverb"
+                label: "STYLE/CATEGORY", plugin: plugin, field: .style, placeholder: "e.g., EQ, Compressor, Reverb"
             )
 
             // Reset and Undo buttons
@@ -310,9 +711,7 @@ struct PluginDetailPanel: View {
             // Track Name (for playlist plugins)
             if plugin.trackName != nil {
                 editableField(
-                    label: "TRACK NAME",
-                    text: $editedTrack,
-                    placeholder: "Track name from DAW"
+                    label: "TRACK NAME", text: $editedTrack, placeholder: "Track name from DAW"
                 ) {
                     // Track name editing (display only, no persistence yet)
                     print("Track edited to: \(editedTrack)")
@@ -336,26 +735,25 @@ struct PluginDetailPanel: View {
             let binding = Binding<String>(
                 get: {
                     switch field {
-                    case .publisher:
+                    case .publisher: 
                         return metadataManager.getDisplayPublisher(for: plugin)
-                    case .version:
+                    case .version: 
                         return metadataManager.getDisplayVersion(for: plugin)
-                    case .style:
+                    case .style: 
                         return metadataManager.getDisplayStyle(for: plugin)
                     }
-                },
-                set: { newValue in
+                }, set: { newValue in
                     let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !trimmed.isEmpty else { return }
 
                     var override = metadataManager.getOverride(for: plugin.path) ?? PluginMetadataOverride()
 
                     switch field {
-                    case .publisher:
+                    case .publisher: 
                         override.publisher = trimmed
-                    case .version:
+                    case .version: 
                         override.version = trimmed
-                    case .style:
+                    case .style: 
                         override.style = trimmed
                     }
 
@@ -423,9 +821,7 @@ struct PluginDetailPanel: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(LinearGradient(
-                        colors: [Color.accentColor.opacity(0.6), Color.accentColor.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                        colors: [Color.accentColor.opacity(0.6), Color.accentColor.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
 
                 Image(systemName: "waveform")
@@ -435,9 +831,23 @@ struct PluginDetailPanel: View {
             .frame(width: 60, height: 60)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(plugin.name)
-                    .font(.headline)
-                    .lineLimit(2)
+                HStack(spacing: 6) {
+                    Text(plugin.name)
+                        .font(.headline)
+                        .lineLimit(2)
+
+                    // Show green checkmark ONLY if fully enriched (has image AND specs)
+                    let hasImage = plugin.screenshotUrl != nil || plugin.thumbnailUrl != nil
+                    let hasSpecs = plugin.specs != nil && !plugin.specs!.isEmpty
+                    let isFullyEnriched = hasImage && hasSpecs
+
+                    if isFullyEnriched {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.green)
+                            .help("Fully enriched: Has image and specs data from Firebase")
+                    }
+                }
 
                 Text(metadataManager.getDisplayPublisher(for: plugin))
                     .font(.subheadline)
@@ -637,8 +1047,7 @@ struct PluginDetailPanel: View {
     private func notesSection(plugin: PluginItem) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             let noteText = Binding(
-                get: { notesManager.getNote(for: plugin.path) },
-                set: { notesManager.setNote(for: plugin.path, note: $0) }
+                get: { notesManager.getNote(for: plugin.path) }, set: { notesManager.setNote(for: plugin.path, note: $0) }
             )
 
             VStack(spacing: 0) {
@@ -711,6 +1120,172 @@ struct PluginDetailPanel: View {
         }
     }
 
+    // MARK: - Specs Section
+
+    private func specsSection(plugin: PluginItem) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Feature Bullet Points (from manufacturer website via Firebase) - FIRST
+            if let features = plugin.features, !features.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("FEATURES")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(features, id: \.self) { feature in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("•")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(feature)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                }
+
+                divider
+            }
+
+            // Description (from Firebase) - SECOND
+            if let description = plugin.description, !description.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("DESCRIPTION")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text(description)
+                        .font(.system(size: 13))
+                        .foregroundColor(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                divider
+            }
+
+            // TECHNICAL SPECIFICATIONS section (specs text only)
+            if let specs = plugin.specs, !specs.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("TECHNICAL SPECIFICATIONS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text(specs)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                divider
+            }
+
+            // Feature Tags (from Firebase) - FOURTH
+            if let tags = plugin.tags, !tags.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("TAGS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(tags, id: \.self) { tag in
+                                Text(tag.capitalized)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.2))
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                }
+
+                divider
+            }
+
+            // GUI COLORS section (underneath TAGS)
+            if let colorScheme = plugin.colorScheme, !colorScheme.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("GUI COLORS")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    HStack(spacing: 8) {
+                        ForEach(colorScheme.components(separatedBy: " ").filter { !$0.isEmpty }, id: \.self) { color in
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(colorFromName(color))
+                                    .frame(width: 12, height: 12)
+                                Text(color.capitalized)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.secondary.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+            }
+
+            // Placeholder for future structured specs from Firebase
+            if let tags = plugin.tags, tags.isEmpty, plugin.description == nil {
+                VStack(spacing: 12) {
+                    Image(systemName: "gauge.with.dots.needle.67percent")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary.opacity(0.5))
+
+                    Text("No specifications available")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("Specifications will appear here once this plugin is enriched from Firebase")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            }
+        }
+    }
+
+    private func specRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label + ":")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value.isEmpty ? "—" : value)
+                .font(.caption)
+                .foregroundColor(.primary)
+        }
+    }
+
+    private func colorFromName(_ name: String) -> Color {
+        switch name.lowercased() {
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "cyan": return .cyan
+        case "blue": return .blue
+        case "purple": return .purple
+        case "pink": return .pink
+        case "gray", "grey": return .gray
+        case "dark gray", "dark grey": return Color.gray.opacity(0.6)
+        case "light gray", "light grey": return Color.gray.opacity(0.3)
+        case "black": return .black
+        case "white": return .white
+        default: return .gray
+        }
+    }
+
     // MARK: - Helper Functions
 
     private func addTag(to plugin: PluginItem) {
@@ -740,6 +1315,56 @@ struct PluginDetailPanel: View {
             UIApplication.shared.open(url)
             #endif
         }
+    }
+
+    /// Strip HTML tags and decode entities from text
+    private func stripHTML(_ html: String) -> String {
+        var text = html
+
+        // Remove <style> tags and their contents
+        text = text.replacingOccurrences(of: "<style[^>]*>[\\s\\S]*?</style>", with: "", options: .regularExpression)
+
+        // Remove <script> tags and their contents
+        text = text.replacingOccurrences(of: "<script[^>]*>[\\s\\S]*?</script>", with: "", options: .regularExpression)
+
+        // Remove HTML tags
+        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+
+        // Decode common HTML entities
+        text = text.replacingOccurrences(of: "&nbsp;", with: " ")
+        text = text.replacingOccurrences(of: "&amp;", with: "&")
+        text = text.replacingOccurrences(of: "&lt;", with: "<")
+        text = text.replacingOccurrences(of: "&gt;", with: ">")
+        text = text.replacingOccurrences(of: "&quot;", with: "\"")
+        text = text.replacingOccurrences(of: "&#39;", with: "'")
+        text = text.replacingOccurrences(of: "&apos;", with: "'")
+
+        // Remove extra whitespace and newlines
+        text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Check if text looks like CSS/HTML/code rather than human-readable content
+    private func looksLikeCode(_ text: String) -> Bool {
+        // Check for CSS-like patterns
+        if text.contains("{") && text.contains("}") && text.contains(":") {
+            return true
+        }
+
+        // Check for WordPress/HTML class patterns
+        if text.contains(".wp-") || text.contains("#wp-") || text.contains("display:grid") {
+            return true
+        }
+
+        // Check if mostly punctuation/symbols (CSS indicators)
+        let alphanumericCount = text.filter { $0.isLetter || $0.isNumber }.count
+        let totalCount = text.count
+        if totalCount > 0 && Double(alphanumericCount) / Double(totalCount) < 0.5 {
+            return true
+        }
+
+        return false
     }
 
     // MARK: - Helper Functions
@@ -852,7 +1477,4 @@ private struct SimpleFlowLayout<T: Hashable>: View {
             }
         }
     }
-
-    // MARK: - Helper Functions
 }
-

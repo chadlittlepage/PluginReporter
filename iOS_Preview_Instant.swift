@@ -1,8 +1,8 @@
 // iOS_Preview_Instant.swift
 // INSTANT PREVIEW - Copy ALL of this into your Xcode Playground
 
-import SwiftUI
 import PlaygroundSupport
+import SwiftUI
 
 // Plugin List Screen
 struct PluginListScreen: View {
@@ -11,7 +11,7 @@ struct PluginListScreen: View {
         ("304C", "Avid Technology", "EQ", "AAX"),
         ("ADPTR MetricAB", "Adptr", "Effect", "AAX"),
         ("FabFilter Pro-Q 3", "FabFilter", "EQ", "VST3"),
-        ("Valhalla Room", "Valhalla DSP", "Reverb", "AU"),
+        ("Valhalla Room", "Valhalla DSP", "Reverb", "AU")
     ]
 
     var body: some View {

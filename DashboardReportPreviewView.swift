@@ -185,8 +185,7 @@ struct DashboardReportPreviewView: View {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
 
-        if let jsonData = try? encoder.encode(generatedReport),
-           let jsonStr = String(data: jsonData, encoding: .utf8) {
+        if let jsonData = try? encoder.encode(generatedReport), let jsonStr = String(data: jsonData, encoding: .utf8) {
             jsonString = jsonStr
         }
     }

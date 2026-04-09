@@ -21,50 +21,12 @@ class TagsManager: ObservableObject {
 
     // Common tag suggestions based on plugin style
     private let styleSuggestions: [String: [String]] = [
-        "Reverb": ["reverb", "space", "ambience"],
-        "Delay": ["delay", "echo", "time-based"],
-        "Compressor": ["compressor", "dynamics", "leveling"],
-        "EQ": ["eq", "equalizer", "tone", "filter"],
-        "Limiter": ["limiter", "dynamics", "mastering"],
-        "Gate": ["gate", "dynamics", "noise-reduction"],
-        "Expander": ["expander", "dynamics"],
-        "Saturation": ["saturation", "distortion", "warmth"],
-        "Distortion": ["distortion", "saturation", "drive"],
-        "Chorus": ["chorus", "modulation"],
-        "Flanger": ["flanger", "modulation"],
-        "Phaser": ["phaser", "modulation"],
-        "Tremolo": ["tremolo", "modulation"],
-        "Vibrato": ["vibrato", "modulation"],
-        "Synth": ["synth", "synthesizer", "instrument"],
-        "Sampler": ["sampler", "instrument"],
-        "Drum": ["drums", "percussion", "rhythm"],
-        "Bass": ["bass", "sub", "low-end"],
-        "Guitar": ["guitar", "amp"],
-        "Piano": ["piano", "keys"],
-        "Strings": ["strings", "orchestral"],
-        "Vocal": ["vocal", "voice"],
-        "Pitch": ["pitch", "tuning"],
-        "Analyzer": ["analyzer", "metering", "utility"],
-        "Utility": ["utility", "tool"],
-        "Mastering": ["mastering", "finalizer"]
+        "Reverb": ["reverb", "space", "ambience"], "Delay": ["delay", "echo", "time-based"], "Compressor": ["compressor", "dynamics", "leveling"], "EQ": ["eq", "equalizer", "tone", "filter"], "Limiter": ["limiter", "dynamics", "mastering"], "Gate": ["gate", "dynamics", "noise-reduction"], "Expander": ["expander", "dynamics"], "Saturation": ["saturation", "distortion", "warmth"], "Distortion": ["distortion", "saturation", "drive"], "Chorus": ["chorus", "modulation"], "Flanger": ["flanger", "modulation"], "Phaser": ["phaser", "modulation"], "Tremolo": ["tremolo", "modulation"], "Vibrato": ["vibrato", "modulation"], "Synth": ["synth", "synthesizer", "instrument"], "Sampler": ["sampler", "instrument"], "Drum": ["drums", "percussion", "rhythm"], "Bass": ["bass", "sub", "low-end"], "Guitar": ["guitar", "amp"], "Piano": ["piano", "keys"], "Strings": ["strings", "orchestral"], "Vocal": ["vocal", "voice"], "Pitch": ["pitch", "tuning"], "Analyzer": ["analyzer", "metering", "utility"], "Utility": ["utility", "tool"], "Mastering": ["mastering", "finalizer"]
     ]
 
     // Common tags that apply across different plugin types
     private let commonTags = [
-        "favorite",
-        "go-to",
-        "mixing",
-        "mastering",
-        "creative",
-        "surgical",
-        "analog",
-        "digital",
-        "vintage",
-        "modern",
-        "transparent",
-        "colored",
-        "cpu-heavy",
-        "cpu-light"
+        "favorite", "go-to", "mixing", "mastering", "creative", "surgical", "analog", "digital", "vintage", "modern", "transparent", "colored", "cpu-heavy", "cpu-light"
     ]
 
     private init() {
@@ -74,9 +36,12 @@ class TagsManager: ObservableObject {
 
     // MARK: - Tag Management
 
-    /// Get tags for a plugin
-    func getTags(for pluginPath: String) -> Set<String> {
-        return pluginTags[pluginPath] ?? []
+    /// Get tags for a plugin (nonisolated for use in filters)
+    nonisolated func getTags(for pluginPath: String) -> Set<String> {
+        // Access from main actor context
+        return MainActor.assumeIsolated {
+            return pluginTags[pluginPath] ?? []
+        }
     }
 
     /// Add a tag to a plugin
@@ -196,8 +161,7 @@ class TagsManager: ObservableObject {
     }
 
     private func loadTags() {
-        guard let data = CloudSyncStorage.shared.getData(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) else {
+        guard let data = CloudSyncStorage.shared.getData(forKey: storageKey), let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) else {
             return
         }
         // Convert [String] back to Set<String>
@@ -212,8 +176,7 @@ class TagsManager: ObservableObject {
     }
 
     private func loadCustomTags() {
-        guard let data = CloudSyncStorage.shared.getData(forKey: customTagsKey),
-              let decoded = try? JSONDecoder().decode([String].self, from: data) else {
+        guard let data = CloudSyncStorage.shared.getData(forKey: customTagsKey), let decoded = try? JSONDecoder().decode([String].self, from: data) else {
             return
         }
         customTags = Set(decoded)

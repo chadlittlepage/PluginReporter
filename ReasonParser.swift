@@ -45,14 +45,7 @@ class ReasonParser: DAWParser {
         let tracks = groupDevicesIntoTracks(devices)
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: .reason,
-            tracks: tracks,
-            tempo: tempo,
-            sampleRate: sampleRate,
-            version: version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: .reason, tracks: tracks, tempo: tempo, sampleRate: sampleRate, version: version, key: nil
         )
     }
 
@@ -93,7 +86,7 @@ class ReasonParser: DAWParser {
 
     private struct ReasonDevice {
         let name: String
-        let manufacturer: String
+        let publisher: String
         let type: DeviceType
         let format: PluginFormat
 
@@ -113,7 +106,7 @@ class ReasonParser: DAWParser {
             // VST3 plugins
             if string.hasSuffix(".vst3") || string.contains("vst3") {
                 if let device = parseVST3Device(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -123,7 +116,7 @@ class ReasonParser: DAWParser {
             // VST2 plugins
             else if string.hasSuffix(".vst") && !string.contains(".vst3") {
                 if let device = parseVST2Device(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -133,7 +126,7 @@ class ReasonParser: DAWParser {
             // Rack Extensions (.re)
             else if string.contains(".re") || string.contains("RackExtension") {
                 if let device = parseRackExtension(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -143,7 +136,7 @@ class ReasonParser: DAWParser {
             // Reason native devices (common device names)
             else if isReasonNativeDevice(string) {
                 if let device = parseReasonNativeDevice(string) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -164,25 +157,29 @@ class ReasonParser: DAWParser {
         pluginName = pluginName.replacingOccurrences(of: ".vst3", with: "")
             .trimmingCharacters(in: .whitespaces)
 
-        // Look for manufacturer in nearby strings
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
-        let searchRange = max(0, index - 10)..<min(context.count, index + 10)
-        for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-                break
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Look for manufacturer in nearby strings
+            let searchRange = max(0, index - 10)..<min(context.count, index + 10)
+            for nearbyString in context[searchRange] {
+                // Extract manufacturer name from string (works for paths too)
+                if let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    manufacturer = extractedManufacturer
+                    break
+                }
             }
         }
 
+        // Final fallback: Extract from plugin name
         if manufacturer == "Unknown" {
             manufacturer = extractManufacturerFromName(pluginName)
         }
 
         return ReasonDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            type: .vst3,
-            format: .VST3
+            name: pluginName, publisher: manufacturer, type: .vst3, format: .VST3
         )
     }
 
@@ -194,24 +191,29 @@ class ReasonParser: DAWParser {
         pluginName = pluginName.replacingOccurrences(of: ".vst", with: "")
             .trimmingCharacters(in: .whitespaces)
 
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
-        let searchRange = max(0, index - 10)..<min(context.count, index + 10)
-        for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-                break
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Look for manufacturer in nearby strings
+            let searchRange = max(0, index - 10)..<min(context.count, index + 10)
+            for nearbyString in context[searchRange] {
+                // Extract manufacturer name from string (works for paths too)
+                if let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    manufacturer = extractedManufacturer
+                    break
+                }
             }
         }
 
+        // Final fallback: Extract from plugin name
         if manufacturer == "Unknown" {
             manufacturer = extractManufacturerFromName(pluginName)
         }
 
         return ReasonDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            type: .vst2,
-            format: .VST
+            name: pluginName, publisher: manufacturer, type: .vst2, format: .VST
         )
     }
 
@@ -229,28 +231,19 @@ class ReasonParser: DAWParser {
                 let manufacturer = parts[1].capitalized // e.g., "propellerheads"
                 let name = parts[2...].joined(separator: " ") // e.g., "RV7000"
                 return ReasonDevice(
-                    name: name,
-                    manufacturer: manufacturer.isEmpty ? "Reason Studios" : manufacturer,
-                    type: .rackExtension,
-                    format: .VST3  // Treated as VST3 for compatibility
+                    name: name, publisher: manufacturer.isEmpty ? "Reason Studios" : manufacturer, type: .rackExtension, format: .VST3  // Treated as VST3 for compatibility
                 )
             }
         }
 
         return ReasonDevice(
-            name: deviceName,
-            manufacturer: "Reason Studios",
-            type: .rackExtension,
-            format: .VST3
+            name: deviceName, publisher: "Reason Studios", type: .rackExtension, format: .VST3
         )
     }
 
     private static func parseReasonNativeDevice(_ string: String) -> ReasonDevice? {
         return ReasonDevice(
-            name: string,
-            manufacturer: "Reason Studios",
-            type: .nativeRack,
-            format: .VST3  // Treated as VST3 for compatibility
+            name: string, publisher: "Reason Studios", type: .nativeRack, format: .VST3  // Treated as VST3 for compatibility
         )
     }
 
@@ -259,21 +252,7 @@ class ReasonParser: DAWParser {
     private static func isReasonNativeDevice(_ string: String) -> Bool {
         let nativeDevices = [
             // Instruments
-            "Thor", "Malstrom", "Subtractor", "NN-19", "NN-XT", "Dr. Octo Rex",
-            "Redrum", "Kong", "Grain", "Europa", "Monotone", "Klang",
-
-            // Effects
-            "RV7000", "Scream 4", "The Echo", "Alligator", "Pulveriser",
-            "Synchronous", "Audiomatic", "Sweeper", "Polar", "MClass",
-
-            // Utilities
-            "Combinator", "Line Mixer 6:2", "MClass Equalizer", "MClass Compressor",
-            "MClass Stereo Imager", "MClass Maximizer", "DDL-1", "D-11",
-            "ECF-42", "CF-101", "PH-90", "UN-16", "COMP-01", "PEQ-2",
-            "BV512", "Spider CV", "Spider Audio", "Matrix Pattern Sequencer",
-
-            // Reason 12+ devices
-            "Algoritm", "Friktion", "Scenic", "Radical Piano"
+            "Thor", "Malstrom", "Subtractor", "NN-19", "NN-XT", "Dr. Octo Rex", "Redrum", "Kong", "Grain", "Europa", "Monotone", "Klang", "RV7000", "Scream 4", "The Echo", "Alligator", "Pulveriser", "Synchronous", "Audiomatic", "Sweeper", "Polar", "MClass", "Combinator", "Line Mixer 6:2", "MClass Equalizer", "MClass Compressor", "MClass Stereo Imager", "MClass Maximizer", "DDL-1", "D-11", "ECF-42", "CF-101", "PH-90", "UN-16", "COMP-01", "PEQ-2", "BV512", "Spider CV", "Spider Audio", "Matrix Pattern Sequencer", "Algoritm", "Friktion", "Scenic", "Radical Piano"
         ]
 
         return nativeDevices.contains { string.contains($0) }
@@ -290,13 +269,13 @@ class ReasonParser: DAWParser {
         for device in devices {
             let trackName: String
             switch device.type {
-            case .nativeRack:
+            case .nativeRack: 
                 trackName = "Reason Rack"
-            case .vst2:
+            case .vst2: 
                 trackName = "VST Plugins"
-            case .vst3:
+            case .vst3: 
                 trackName = "VST3 Plugins"
-            case .rackExtension:
+            case .rackExtension: 
                 trackName = "Rack Extensions"
             }
 
@@ -315,19 +294,12 @@ class ReasonParser: DAWParser {
 
             let plugins = devices.enumerated().map { (deviceIndex, device) -> ParsedPlugin in
                 ParsedPlugin(
-                    name: device.name,
-                    manufacturer: device.manufacturer,
-                    trackName: trackName,
-                    trackIndex: trackIndex,
-                    deviceIndex: deviceIndex,
-                    format: device.format
+                    name: device.name, publisher: device.publisher, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: device.format
                 )
             }
 
             tracks.append(ParsedTrack(
-                name: trackName,
-                index: trackIndex,
-                plugins: plugins
+                name: trackName, index: trackIndex, plugins: plugins
             ))
         }
 
@@ -373,8 +345,7 @@ class ReasonParser: DAWParser {
             if string.lowercased().contains("reason") && string.contains(".") {
                 // Extract version number
                 let pattern = #"(\d+\.\d+(?:\.\d+)?)"#
-                if let regex = try? NSRegularExpression(pattern: pattern),
-                   let match = regex.firstMatch(in: string, range: NSRange(string.startIndex..., in: string)) {
+                if let regex = try? NSRegularExpression(pattern: pattern), let match = regex.firstMatch(in: string, range: NSRange(string.startIndex..., in: string)) {
                     if let range = Range(match.range, in: string) {
                         return "Reason \(string[range])"
                     }
@@ -387,22 +358,47 @@ class ReasonParser: DAWParser {
     // MARK: - Helper Methods
 
     private static func isManufacturerName(_ string: String) -> Bool {
+        // Skip file paths and URLs
+        if string.contains("/") || string.contains(".vst") || string.contains(".component") || string.contains(".au") {
+            return false
+        }
+
         let knownManufacturers = [
-            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope",
-            "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla",
-            "Xfer", "Dada Life", "Softube", "Eventide", "Lexicon", "SSL",
-            "Sonnox", "Celemony", "Steinberg", "UJAM", "Output", "Serum",
-            "u-he", "Kilohearts", "Reason Studios", "Propellerhead"
+            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope", "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla DSP", "Valhalla", "Xfer", "Dada Life", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox", "Celemony", "Steinberg", "UJAM", "Output", "Serum", "u-he", "Kilohearts", "Reason Studios", "Propellerhead"
         ]
 
         return knownManufacturers.contains { string.contains($0) }
     }
 
+    /// Extract manufacturer name from any string (including file paths)
+    private static func extractManufacturerFromString(_ string: String) -> String? {
+        let knownManufacturers = [
+            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope", "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla DSP", "Valhalla", "Xfer", "Dada Life", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox", "Celemony", "Steinberg", "UJAM", "Output", "Serum", "u-he", "Kilohearts", "Reason Studios", "Propellerhead"
+        ]
+
+        // Find which manufacturer is contained in this string
+        for manufacturer in knownManufacturers {
+            if string.contains(manufacturer) {
+                return manufacturer
+            }
+        }
+
+        return nil
+    }
+
     private static func extractManufacturerFromName(_ pluginName: String) -> String {
+        // First try to extract from the plugin name itself
+        if let manufacturer = extractManufacturerFromString(pluginName) {
+            return manufacturer
+        }
+
         // Try to extract manufacturer from plugin name
         // e.g., "FabFilter Pro-Q 3" -> "FabFilter"
         let components = pluginName.components(separatedBy: " ")
         if let first = components.first, first.count > 2 {
+            if let manufacturer = extractManufacturerFromString(first) {
+                return manufacturer
+            }
             return first
         }
 

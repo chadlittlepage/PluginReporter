@@ -29,14 +29,7 @@ class ArdourParser: DAWParser {
         try parser.parse(data: data)
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: .ardour,
-            tracks: parser.tracks,
-            tempo: parser.tempo,
-            sampleRate: parser.sampleRate,
-            version: parser.version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: .ardour, tracks: parser.tracks, tempo: parser.tempo, sampleRate: parser.sampleRate, version: parser.version, key: nil
         )
     }
 }
@@ -65,6 +58,7 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
     private var currentPluginName = ""
     private var currentManufacturer = ""
     private var currentPluginFormat: PluginFormat = .VST3
+    private var currentPreset = ""
 
     func parse(data: Data) throws {
         let xmlParser = XMLParser(data: data)
@@ -85,9 +79,7 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
 
     // MARK: - XMLParserDelegate
 
-    func parser(_ parser: XMLParser, didStartElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
 
         elementStack.append(elementName)
         characterBuffer = ""
@@ -127,18 +119,19 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
         // Plugin detection - Ardour uses Processor elements for plugins
         if elementName == "Processor" {
             // Check if this is actually a plugin (not a built-in processor)
-            if let type = attributeDict["type"], type.contains("lv2") || type.contains("vst") || type.contains("au") {
+            if let type = attributeDict["type"], type.contains("lv2") || type.contains("vst") || type.contains("au") || type.contains("ladspa") {
                 inPlugin = true
                 currentPluginName = ""
                 currentManufacturer = ""
                 currentPluginFormat = .VST3
+                currentPreset = ""
 
                 // Extract plugin name
                 if let name = attributeDict["name"] {
                     currentPluginName = name
                 }
 
-                // Determine format from type
+                // Determine format and manufacturer from type
                 if type.contains("lv2") {
                     currentPluginFormat = .VST3  // Map LV2 to VST3 for compatibility
                     currentManufacturer = extractLV2Manufacturer(from: attributeDict)
@@ -148,21 +141,25 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
                     currentPluginFormat = .VST
                 } else if type.contains("au") {
                     currentPluginFormat = .AU
+                } else if type.contains("ladspa") {
+                    currentPluginFormat = .VST  // Map LADSPA to VST
+                    currentManufacturer = "Harrison"  // LADSPA in Ardour/Mixbus is usually Harrison plugins
                 }
 
                 print("   🔌 Found plugin: \(currentPluginName)")
-            } else if let name = attributeDict["name"], name != "meter" && name != "main outs" {
-                // Could be a native Ardour plugin or other processor
-                inPlugin = true
-                currentPluginName = name
-                currentManufacturer = "Ardour"
-                currentPluginFormat = .VST3
-                print("   🔌 Found Ardour plugin: \(currentPluginName)")
             }
+            // Skip all other processor types (main-outs, trim, amp, meter, etc.)
+            // These are built-in Ardour routing/mixing processors, not plugins
         }
 
         // LV2 plugin info (nested in Processor)
         if elementName == "lv2" && inPlugin {
+            // Extract preset from last-preset-label
+            if let presetLabel = attributeDict["last-preset-label"], !presetLabel.isEmpty {
+                currentPreset = presetLabel
+                print("   🎨 Found preset: \(presetLabel)")
+            }
+
             if let uri = attributeDict["uri"] {
                 // Extract manufacturer from LV2 URI
                 currentManufacturer = extractManufacturerFromLV2URI(uri)
@@ -170,8 +167,7 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
         }
     }
 
-    func parser(_ parser: XMLParser, didEndElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?) {
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
 
         // End of plugin
         if elementName == "Processor" && inPlugin {
@@ -180,22 +176,20 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
             // Add plugin if we have valid data
             if !currentPluginName.isEmpty && !isBuiltInProcessor(currentPluginName) {
                 let plugin = ParsedPlugin(
-                    name: cleanPluginName(currentPluginName),
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentPluginFormat
+                    name: cleanPluginName(currentPluginName), publisher: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer, trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)", trackIndex: currentTrackIndex, deviceIndex: currentDeviceIndex, format: currentPluginFormat, preset: currentPreset
                 )
                 currentPlugins.append(plugin)
                 currentDeviceIndex += 1
-                print("   ✅ Added plugin: \(plugin.name) by \(plugin.manufacturer)")
+
+                let presetInfo = currentPreset.isEmpty ? "" : " - Preset: \(currentPreset)"
+                print("   ✅ Added plugin: \(plugin.name) by \(plugin.publisher)\(presetInfo)")
             }
 
             // Reset state
             currentPluginName = ""
             currentManufacturer = ""
             currentPluginFormat = .VST3
+            currentPreset = ""
         }
 
         // End of track/route
@@ -204,9 +198,7 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
             if !currentPlugins.isEmpty {
                 let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
                 let track = ParsedTrack(
-                    name: trackName,
-                    index: currentTrackIndex,
-                    plugins: currentPlugins
+                    name: trackName, index: currentTrackIndex, plugins: currentPlugins
                 )
                 tracks.append(track)
                 print("🎵 Added track '\(trackName)' with \(currentPlugins.count) plugins")
@@ -268,14 +260,7 @@ private class ArdourXMLParser: NSObject, XMLParserDelegate {
 
     private func isBuiltInProcessor(_ name: String) -> Bool {
         let builtInProcessors = [
-            "meter",
-            "main outs",
-            "Fader",
-            "Amp",
-            "Trim",
-            "Polarity",
-            "Phase",
-            "Gain"
+            "meter", "main outs", "Fader", "Amp", "Trim", "Polarity", "Phase", "Gain"
         ]
 
         return builtInProcessors.contains { name.lowercased().contains($0.lowercased()) }

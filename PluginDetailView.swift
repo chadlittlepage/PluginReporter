@@ -7,6 +7,8 @@ struct PluginDetailView: View {
     let allPlugins: [PluginItem]
 
     @State private var showAISuggestions = false
+    @State private var showModeChoice = false
+    @State private var showHeritageOnly = false
 
     var body: some View {
         ScrollView {
@@ -62,7 +64,7 @@ struct PluginDetailView: View {
                 // Action Buttons
                 VStack(spacing: 12) {
                     Button {
-                        showAISuggestions = true
+                        showModeChoice = true
                     } label: {
                         HStack {
                             Image(systemName: "sparkles")
@@ -106,8 +108,80 @@ struct PluginDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("What would you like to see?", isPresented: $showModeChoice) {
+            if PluginHeritageDatabase.getHeritage(for: plugin.name) != nil {
+                Button("View Hit Songs Using This Plugin") {
+                    print("👤 [User Choice] Selected: View Hit Songs (Heritage exists)")
+                    showHeritageOnly = true
+                }
+                Button("Discover Similar Plugins to Buy") {
+                    print("👤 [User Choice] Selected: Discover Similar Plugins (Don't Own)")
+                    showAISuggestions = true
+                }
+                Button("Find Similar Plugins I Already Own") {
+                    print("👤 [User Choice] Selected: Find Owned Alternatives")
+                    showAISuggestions = true
+                }
+            } else {
+                Button("Discover Similar Plugins to Buy") {
+                    print("👤 [User Choice] Selected: Discover Similar Plugins (No heritage)")
+                    showAISuggestions = true
+                }
+                Button("Find Similar Plugins I Already Own") {
+                    print("👤 [User Choice] Selected: Find Owned Alternatives (No heritage)")
+                    showAISuggestions = true
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                print("👤 [User Choice] Cancelled")
+            }
+        } message: {
+            if PluginHeritageDatabase.getHeritage(for: plugin.name) != nil {
+                Text("Explore '\(plugin.name)' - you own this plugin")
+            } else {
+                Text("Find plugins similar to '\(plugin.name)'")
+            }
+        }
         .sheet(isPresented: $showAISuggestions) {
-            AISuggestionsView(plugin: plugin, ownedPlugins: allPlugins)
+            AISuggestionsView(initialPlugin: plugin, ownedPlugins: allPlugins)
+        }
+        .sheet(isPresented: $showHeritageOnly) {
+            if let heritage = PluginHeritageDatabase.getHeritage(for: plugin.name) {
+                NavigationStack {
+                    HeritageDetailView(heritage: heritage, pluginName: plugin.name)
+                }
+            } else {
+                NavigationStack {
+                    VStack(spacing: 20) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary)
+
+                        Text("No Heritage Data")
+                            .font(.title2)
+                            .fontWeight(.bold)
+
+                        Text("'\(plugin.name)' doesn't have heritage information yet.")
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Text("Heritage data includes famous recordings, hit songs, and the engineers who used this plugin.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .navigationTitle("Heritage")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") {
+                                showHeritageOnly = false
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

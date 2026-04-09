@@ -32,7 +32,7 @@ struct PlaylistSidebarView: View {
     @FocusState private var isFocused: Bool
     @State private var playlistsToDelete: [DAWPlaylist] = []
     @State private var showDeleteConfirmation = false
-    @State private var dropTargetPlaylistID: UUID? = nil  // Track which playlist is being targeted
+    @State private var dropTargetPlaylistID: UUID?  // Track which playlist is being targeted
 
     private var backgroundColor: Color {
         prefs.appearance == .space ? Color.black : Color(nsColor: .windowBackgroundColor)
@@ -149,7 +149,7 @@ struct PlaylistSidebarView: View {
                 Text("DAW Playlists")
                     .font(.system(size: 12, weight: .medium))
 
-                if playlists.count > 0 {
+                if !playlists.isEmpty {
                     Text("(\(playlists.count))")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(secondaryTextColor)
@@ -498,9 +498,18 @@ struct PlaylistSidebarView: View {
                 } label: {
                     Label("Edit Metadata", systemImage: "pencil")
                 }
-
-                Divider()
             }
+
+            // Reveal in Finder - only for DAW playlists with sourceFile
+            if let sourceFile = playlist.sourceFile {
+                Button {
+                    NSWorkspace.shared.activateFileViewerSelecting([sourceFile])
+                } label: {
+                    Label("Reveal in Finder", systemImage: "folder")
+                }
+            }
+
+            Divider()
 
             Button(role: .destructive) {
                 // Delete all selected playlists if this is part of selection

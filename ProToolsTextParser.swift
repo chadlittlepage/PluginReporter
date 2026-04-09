@@ -21,52 +21,82 @@ class ProToolsTextParser: DAWParser {
             throw ParserError.invalidFileType
         }
 
-        // Parse the text file
         let session = try parseTextFile(url: url)
 
-        // Validate this is actually a Pro Tools export
         guard !session.sessionName.isEmpty else {
             throw ParserError.invalidProjectData("Not a valid Pro Tools Session Info export file")
         }
 
+        // Log extracted metadata
+        print("📊 Pro Tools Session Metadata:")
+        print("   • Name: \(session.sessionName)")
+        print("   • Sample Rate: \(Int(session.sampleRate)) Hz")
+        if !session.bitDepth.isEmpty {
+            print("   • Bit Depth: \(session.bitDepth)")
+        }
+        if !session.timecodeFormat.isEmpty {
+            print("   • Timecode Format: \(session.timecodeFormat)")
+        }
+        if !session.sessionStartTimecode.isEmpty {
+            print("   • Start Timecode: \(session.sessionStartTimecode)")
+        }
+        print("   • Tracks: \(session.tracks.count)")
+        print("   • Total Plugins: \(session.plugins.count)")
+
         // Convert to standardized ParsedProject
-        let tracks = session.tracks.enumerated().map { (index, track) -> ParsedTrack in
+        var allTracks: [ParsedTrack] = []
+        var pluginsFoundOnTracks: Set<String> = []
+
+        // First, process all audio tracks from TRACK LISTING
+        let audioTracks = session.tracks.enumerated().map { (index, track) -> ParsedTrack in
             let plugins = track.plugins.enumerated().map { (pluginIndex, pluginName) -> ParsedPlugin in
-                // Extract plugin name and manufacturer from string like "SSL 4K E (mono)"
-                let cleanName = pluginName.replacingOccurrences(of: " (mono)", with: "")
+                // Clean plugin name (remove stereo/mono suffixes)
+                let cleanName = pluginName
+                    .replacingOccurrences(of: " (mono)", with: "")
                     .replacingOccurrences(of: " (stereo)", with: "")
                     .trimmingCharacters(in: .whitespaces)
 
-                // Try to match with plugin summary to get manufacturer
-                // Use exact match first, then fuzzy match as fallback
+                // Track which plugins we've found on audio tracks
+                pluginsFoundOnTracks.insert(cleanName)
+
+                // Match with plugin summary to get manufacturer and format
                 var manufacturer = "Unknown"
                 var pluginFormat = "AAX Native"
 
                 if let matchedPlugin = session.plugins.first(where: { $0.pluginName == cleanName }) {
-                    manufacturer = matchedPlugin.manufacturer
+                    manufacturer = matchedPlugin.publisher
                     pluginFormat = matchedPlugin.format
                 } else if let matchedPlugin = session.plugins.first(where: { $0.pluginName.contains(cleanName) || cleanName.contains($0.pluginName) }) {
-                    manufacturer = matchedPlugin.manufacturer
+                    manufacturer = matchedPlugin.publisher
                     pluginFormat = matchedPlugin.format
+                }
+
+                // Fallback: detect manufacturer from plugin name
+                if manufacturer == "Unknown" || manufacturer.isEmpty {
+                    manufacturer = detectManufacturerFromName(cleanName)
                 }
 
                 // Map plugin format string to PluginFormat enum
                 let format: PluginFormat = {
-                    if pluginFormat.contains("AAX") { return .AAX }
-                    else if pluginFormat.contains("RTAS") { return .OBSLT }
-                    else if pluginFormat.contains("AU") { return .AU }
-                    else if pluginFormat.contains("VST3") { return .VST3 }
-                    else if pluginFormat.contains("VST") { return .VST }
-                    else { return .AAX }  // Default for Pro Tools
+                    if pluginFormat.contains("AAX") { return .AAX } else if pluginFormat.contains("RTAS") { return .OBSLT } else if pluginFormat.contains("AU") { return .AU } else if pluginFormat.contains("VST3") { return .VST3 } else if pluginFormat.contains("VST") { return .VST } else { return .AAX }  // Default for Pro Tools
                 }()
+
+                // Get version from matched plugin
+                var version = ""
+                if let matchedPlugin = session.plugins.first(where: { $0.pluginName == cleanName }) {
+                    version = matchedPlugin.version
+                } else if let matchedPlugin = session.plugins.first(where: { $0.pluginName.contains(cleanName) || cleanName.contains($0.pluginName) }) {
+                    version = matchedPlugin.version
+                }
 
                 return ParsedPlugin(
                     name: cleanName,
-                    manufacturer: manufacturer,
+                    publisher: manufacturer,
                     trackName: track.name,
                     trackIndex: index,
                     deviceIndex: pluginIndex,
-                    format: format
+                    type: format.rawValue,
+                    version: version  // Pass through version
                 )
             }
 
@@ -77,15 +107,76 @@ class ProToolsTextParser: DAWParser {
             )
         }
 
+        allTracks.append(contentsOf: audioTracks)
+
+        // Now add plugins from PLUGINS LISTING that weren't on any audio track
+        // These are likely on MIDI/Instrument/Aux/Bus/Master tracks
+        var otherTrackPlugins: [ParsedPlugin] = []
+
+        for (index, pluginData) in session.plugins.enumerated() {
+            if !pluginsFoundOnTracks.contains(pluginData.pluginName) {
+                // Map plugin format string to PluginFormat enum
+                let format: PluginFormat = {
+                    if pluginData.format.contains("AAX") { return .AAX } else if pluginData.format.contains("RTAS") { return .OBSLT } else if pluginData.format.contains("AU") { return .AU } else if pluginData.format.contains("VST3") { return .VST3 } else if pluginData.format.contains("VST") { return .VST } else { return .AAX }
+                }()
+
+                // Determine likely track type based on plugin characteristics
+                let trackType = categorizePlugin(pluginData.pluginName, manufacturer: pluginData.publisher)
+
+                let plugin = ParsedPlugin(
+                    name: pluginData.pluginName,
+                    publisher: pluginData.publisher.isEmpty ? detectManufacturerFromName(pluginData.pluginName) : pluginData.publisher,
+                    trackName: trackType,
+                    trackIndex: audioTracks.count, // These come after audio tracks
+                    deviceIndex: index,
+                    type: format.rawValue,
+                    version: pluginData.version  // Pass through version
+                )
+
+                otherTrackPlugins.append(plugin)
+            }
+        }
+
+        // Group "other" plugins by their track type
+        let groupedOtherPlugins = Dictionary(grouping: otherTrackPlugins, by: { $0.trackName })
+
+        for (trackName, plugins) in groupedOtherPlugins.sorted(by: { $0.key < $1.key }) {
+            let track = ParsedTrack(
+                name: trackName,
+                index: allTracks.count,
+                plugins: plugins.enumerated().map { (index, plugin) in
+                    ParsedPlugin(
+                        name: plugin.name,
+                        publisher: plugin.publisher,
+                        trackName: trackName,
+                        trackIndex: allTracks.count,
+                        deviceIndex: index,
+                        type: plugin.type  // Use type string directly
+                    )
+                }
+            )
+            allTracks.append(track)
+        }
+
+        // Construct comprehensive version string from all metadata
+        var versionComponents: [String] = []
+        if !session.bitDepth.isEmpty {
+            versionComponents.append(session.bitDepth)
+        }
+        if !session.timecodeFormat.isEmpty {
+            versionComponents.append(session.timecodeFormat)
+        }
+        let versionString = versionComponents.isEmpty ? nil : versionComponents.joined(separator: " • ")
+
         return ParsedProject(
             name: session.sessionName,
             sourceFile: url,
             dawType: .proTools,
-            tracks: tracks,
+            tracks: allTracks,
             tempo: nil,
             sampleRate: Int(session.sampleRate),
-            version: nil,
-            key: nil
+            version: versionString,
+            key: session.sessionStartTimecode.isEmpty ? nil : session.sessionStartTimecode
         )
     }
 
@@ -104,12 +195,9 @@ class ProToolsTextParser: DAWParser {
 
         var sessionName = ""
         var sampleRate: Double = 0
-        var bitDepth = ""
-        var timecode = ""
-        var timecodeFormat = ""
-        var audioTrackCount = 0
-        var audioClipCount = 0
-        var audioFileCount = 0
+        var bitDepth: String = ""
+        var timecodeFormat: String = ""
+        var sessionStartTimecode: String = ""
         var tracks: [ProToolsTrackData] = []
         var plugins: [ProToolsPluginData] = []
 
@@ -119,7 +207,7 @@ class ProToolsTextParser: DAWParser {
         while i < lines.count {
             let line = lines[i]
 
-            // Parse header info
+            // Parse ALL header metadata
             if line.hasPrefix("SESSION NAME:") {
                 sessionName = extractValue(from: line, after: "SESSION NAME:")
             } else if line.hasPrefix("SAMPLE RATE:") {
@@ -128,16 +216,10 @@ class ProToolsTextParser: DAWParser {
                 }
             } else if line.hasPrefix("BIT DEPTH:") {
                 bitDepth = extractValue(from: line, after: "BIT DEPTH:")
-            } else if line.hasPrefix("SESSION START TIMECODE:") {
-                timecode = extractValue(from: line, after: "SESSION START TIMECODE:")
             } else if line.hasPrefix("TIMECODE FORMAT:") {
                 timecodeFormat = extractValue(from: line, after: "TIMECODE FORMAT:")
-            } else if line.hasPrefix("# OF AUDIO TRACKS:") {
-                audioTrackCount = Int(extractValue(from: line, after: "# OF AUDIO TRACKS:")) ?? 0
-            } else if line.hasPrefix("# OF AUDIO CLIPS:") {
-                audioClipCount = Int(extractValue(from: line, after: "# OF AUDIO CLIPS:")) ?? 0
-            } else if line.hasPrefix("# OF AUDIO FILES:") {
-                audioFileCount = Int(extractValue(from: line, after: "# OF AUDIO FILES:")) ?? 0
+            } else if line.hasPrefix("SESSION START TIMECODE:") {
+                sessionStartTimecode = extractValue(from: line, after: "SESSION START TIMECODE:")
             }
 
             // Detect sections
@@ -155,10 +237,9 @@ class ProToolsTextParser: DAWParser {
             // Parse plugins section
             if currentSection == "PLUGINS" && !line.isEmpty {
                 if line.hasPrefix("MANUFACTURER") || line.hasPrefix("TRACK NAME:") {
-                    // End of plugins section
                     currentSection = ""
                 } else {
-                    let plugin = parsePluginLine(line, lastManufacturer: plugins.last?.manufacturer)
+                    let plugin = parsePluginLine(line, lastManufacturer: plugins.last?.publisher)
                     if !plugin.pluginName.isEmpty {
                         plugins.append(plugin)
                     }
@@ -178,11 +259,8 @@ class ProToolsTextParser: DAWParser {
             sessionName: sessionName,
             sampleRate: sampleRate,
             bitDepth: bitDepth,
-            timecode: timecode,
             timecodeFormat: timecodeFormat,
-            audioTrackCount: audioTrackCount,
-            audioClipCount: audioClipCount,
-            audioFileCount: audioFileCount,
+            sessionStartTimecode: sessionStartTimecode,
             tracks: tracks,
             plugins: plugins
         )
@@ -193,43 +271,124 @@ class ProToolsTextParser: DAWParser {
         return line[range.upperBound...].trimmingCharacters(in: .whitespaces)
     }
 
-    private static func parsePluginLine(_ line: String, lastManufacturer: String? = nil) -> ProToolsPluginData {
-        // Split by tabs (Pro Tools uses tabs as delimiter)
-        let components = line.components(separatedBy: "\t").filter { !$0.isEmpty }
+    private static func detectManufacturerFromName(_ pluginName: String) -> String {
+        let lower = pluginName.lowercased()
 
-        guard components.count >= 6 else {
-            return ProToolsPluginData(
-                manufacturer: "",
-                pluginName: "",
-                version: "",
-                format: "",
-                stems: "",
-                instanceCount: ""
-            )
+        // Known manufacturer patterns in plugin names
+        if lower.contains("fabfilter") { return "FabFilter" }
+        if lower.contains("waves") { return "Waves" }
+        if lower.contains("valhalla") { return "Valhalla DSP" }
+        if lower.contains("soundtoys") { return "Soundtoys" }
+        if lower.contains("izotope") { return "iZotope" }
+        if lower.contains("slate") { return "Slate Digital" }
+        if lower.contains("native instruments") || lower.contains("kontakt") || lower.contains("massive") { return "Native Instruments" }
+        if lower.contains("serum") { return "Xfer Records" }
+        if lower.contains("arturia") { return "Arturia" }
+        if lower.contains("omnisphere") || lower.contains("keyscape") { return "Spectrasonics" }
+        if lower.contains("output") { return "Output" }
+        if lower.contains("u-he") || lower.contains("diva") || lower.contains("zebra") { return "u-he" }
+        if lower.contains("plugin alliance") || lower.contains("bx_") || lower.contains("brainworx") { return "Plugin Alliance" }
+        if lower.contains("softube") { return "Softube" }
+        if lower.contains("celemony") || lower.contains("melodyne") { return "Celemony" }
+        if lower.contains("auto-tune") || lower.contains("antares") { return "Antares" }
+        if lower.contains("spitfire") { return "Spitfire Audio" }
+        if lower.contains("ssl ") || lower.starts(with: "ssl") { return "Solid State Logic" }
+        if lower.contains("uad ") || lower.contains("universal audio") { return "Universal Audio" }
+        if lower.contains("avid") || lower.contains("pro tools") { return "Avid" }
+        if lower.contains("lexicon") { return "Lexicon" }
+        if lower.contains("eventide") { return "Eventide" }
+
+        return "Unknown"
+    }
+
+    private static func categorizePlugin(_ pluginName: String, manufacturer: String) -> String {
+        let lower = pluginName.lowercased()
+
+        // Virtual instruments / Synths
+        if lower.contains("xpand") || lower.contains("mini grand") || lower.contains("groovecell") ||
+           lower.contains("kontakt") || lower.contains("massive") || lower.contains("serum") ||
+           lower.contains("omnisphere") || lower.contains("keyscape") || lower.contains("diva") ||
+           lower.contains("zebra") || lower.contains("synth") || lower.contains("piano") ||
+           lower.contains("organ") || lower.contains("strings") || lower.contains("brass") {
+            return "MIDI / Instrument Tracks"
         }
 
-        // Handle manufacturer continuation pattern:
-        // Pro Tools lists manufacturer once, then subsequent plugins from same vendor have empty manufacturer field
+        // MIDI effects / note processing
+        if lower.contains("note stack") || lower.contains("velocity control") ||
+           lower.contains("pitch control") || lower.contains("arpeggiator") ||
+           lower.contains("chord") {
+            return "MIDI / Instrument Tracks"
+        }
+
+        // Reverb / Delay (often on Aux/Send tracks)
+        if lower.contains("reverb") || lower.contains("delay") || lower.contains("echo") ||
+           lower.contains("mod delay") {
+            return "Aux / Bus / Master Tracks"
+        }
+
+        // Dynamics processors (often on Master/Bus)
+        if lower.contains("limiter") || lower.contains("maximizer") ||
+           lower.contains("compressor") || lower.contains("dyn3") ||
+           lower.contains("impact") {
+            return "Aux / Bus / Master Tracks"
+        }
+
+        // EQs and filters (often on Master/Bus)
+        if lower.contains("eq") || lower.contains("equalizer") ||
+           lower.contains("filter") {
+            return "Aux / Bus / Master Tracks"
+        }
+
+        // Saturation / Distortion (often on Master/Bus)
+        if lower.contains("saturation") || lower.contains("tape") ||
+           lower.contains("distortion") || lower.contains("overdrive") {
+            return "Aux / Bus / Master Tracks"
+        }
+
+        // Modulation effects (often on Aux/Send)
+        if lower.contains("chorus") || lower.contains("flanger") ||
+           lower.contains("phaser") || lower.contains("tremolo") ||
+           lower.contains("vibrato") {
+            return "Aux / Bus / Master Tracks"
+        }
+
+        // Spatial / Stereo (often on Aux/Bus/Master)
+        if lower.contains("stereo") || lower.contains("width") ||
+           lower.contains("pan") || lower.contains("imager") {
+            return "Aux / Bus / Master Tracks"
+        }
+
+        // Utility plugins
+        if lower.contains("click") || lower.contains("tuner") {
+            return "Utility Tracks"
+        }
+
+        // Default to Aux/Bus/Master (more likely than "Other")
+        return "Aux / Bus / Master Tracks"
+    }
+
+    private static func parsePluginLine(_ line: String, lastManufacturer: String? = nil) -> ProToolsPluginData {
+        let components = line.components(separatedBy: "\t").filter { !$0.isEmpty }
+
+        guard components.count >= 4 else {
+            return ProToolsPluginData(publisher: "", pluginName: "", version: "", format: "")
+        }
+
+        // Handle manufacturer continuation pattern
         let manufacturer = components[0].trimmingCharacters(in: .whitespaces)
         let finalManufacturer = manufacturer.isEmpty ? (lastManufacturer ?? "") : manufacturer
 
         return ProToolsPluginData(
-            manufacturer: finalManufacturer,
+            publisher: finalManufacturer,
             pluginName: components[1].trimmingCharacters(in: .whitespaces),
             version: components[2].trimmingCharacters(in: .whitespaces),
-            format: components[3].trimmingCharacters(in: .whitespaces),
-            stems: components[4].trimmingCharacters(in: .whitespaces),
-            instanceCount: components[5].trimmingCharacters(in: .whitespaces)
+            format: components[3].trimmingCharacters(in: .whitespaces)
         )
     }
 
     private static func parseTrack(lines: [String], startIndex: Int) -> ProToolsTrackData {
         var trackName = ""
-        var comments = ""
-        var userDelay = ""
-        var state = ""
         var plugins: [String] = []
-
         var i = startIndex
 
         // Parse track name
@@ -238,42 +397,21 @@ class ProToolsTextParser: DAWParser {
             i += 1
         }
 
-        // Parse comments
-        if i < lines.count && lines[i].hasPrefix("COMMENTS:") {
-            comments = extractValue(from: lines[i], after: "COMMENTS:")
-            i += 1
-        }
-
-        // Parse user delay
-        if i < lines.count && lines[i].hasPrefix("USER DELAY:") {
-            userDelay = extractValue(from: lines[i], after: "USER DELAY:")
-            i += 1
-        }
-
-        // Parse state
-        if i < lines.count && lines[i].hasPrefix("STATE:") {
-            state = extractValue(from: lines[i], after: "STATE:")
-            i += 1
-        }
-
-        // Parse plugins
-        if i < lines.count && lines[i].hasPrefix("PLUG-INS:") {
-            let pluginLine = extractValue(from: lines[i], after: "PLUG-INS:")
-            if !pluginLine.isEmpty {
-                // Split by tabs to get individual plugins
-                plugins = pluginLine.components(separatedBy: "\t")
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
+        // Skip to plugins line
+        while i < lines.count {
+            if lines[i].hasPrefix("PLUG-INS:") {
+                let pluginLine = extractValue(from: lines[i], after: "PLUG-INS:")
+                if !pluginLine.isEmpty {
+                    plugins = pluginLine.components(separatedBy: "\t")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
+                break
             }
+            i += 1
         }
 
-        return ProToolsTrackData(
-            name: trackName,
-            comments: comments,
-            userDelay: userDelay,
-            state: state,
-            plugins: plugins
-        )
+        return ProToolsTrackData(name: trackName, plugins: plugins)
     }
 }
 
@@ -283,28 +421,20 @@ private struct ProToolsSessionData {
     let sessionName: String
     let sampleRate: Double
     let bitDepth: String
-    let timecode: String
     let timecodeFormat: String
-    let audioTrackCount: Int
-    let audioClipCount: Int
-    let audioFileCount: Int
+    let sessionStartTimecode: String
     let tracks: [ProToolsTrackData]
     let plugins: [ProToolsPluginData]
 }
 
 private struct ProToolsTrackData {
     let name: String
-    let comments: String
-    let userDelay: String
-    let state: String
-    let plugins: [String]  // Plugin names like "SSL 4K E (mono)"
+    let plugins: [String]
 }
 
 private struct ProToolsPluginData {
-    let manufacturer: String
+    let publisher: String
     let pluginName: String
     let version: String
-    let format: String  // "AAX Native", etc.
-    let stems: String   // "Mono / Mono", "Stereo / Stereo", etc.
-    let instanceCount: String
+    let format: String
 }

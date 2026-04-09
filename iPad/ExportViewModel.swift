@@ -104,17 +104,13 @@ class ExportViewModel: ObservableObject {
 
     private func generatePDF() -> URL? {
         let pdfMetaData = [
-            kCGPDFContextTitle: "Plugin List",
-            kCGPDFContextAuthor: "Plugin Reporter"
+            kCGPDFContextTitle: "Plugin List", kCGPDFContextAuthor: "Plugin Reporter"
         ]
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = pdfMetaData as [String: Any]
 
         let pageRect = CGRect(
-            x: 0,
-            y: 0,
-            width: Constants.PDF.pageWidth,
-            height: Constants.PDF.pageHeight
+            x: 0, y: 0, width: Constants.PDF.pageWidth, height: Constants.PDF.pageHeight
         )
 
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)

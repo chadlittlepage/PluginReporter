@@ -9,15 +9,19 @@ import SwiftUI
 
 struct PluginListView: View {
     let plugins: [PluginItem]
-    var onImport: (() -> Void)? = nil
+    var onImport: (() -> Void)?
     @Binding var filteredPluginsForExport: [PluginItem]
     @State private var searchText = ""
     @State private var selectedFormats: Set<String> = []
     @State private var selectedStarRatings: Set<Int> = []
-    @State private var selectedStyle: String? = nil
-    @State private var selectedPublisher: String? = nil
+    @State private var selectedStyle: String?
+    @State private var selectedPublisher: String?
     @State private var sortOrder: SortOrder = .name
     @State private var showFilterSheet = false
+
+    // Screenshot Viewer (matches macOS design)
+    @State private var selectedPluginForViewer: PluginItem?
+    @State private var showPluginImage = false  // Toggle between chart and screenshot
 
     // SPEED: Cached computed values to avoid recalculation
     @State private var cachedConsolidated: [ConsolidatedPlugin] = []
@@ -28,6 +32,7 @@ struct PluginListView: View {
     @State private var cachedUniqueStyles: [String] = []
     @State private var cachedFormatCounts: [String: Int] = [:]
     @State private var cachedStyleCounts: [String: Int] = [:]
+    @State private var hasComputedOnce = false
 
     enum SortOrder {
         case name, publisher, type, style
@@ -70,6 +75,8 @@ struct PluginListView: View {
 
     // SPEED: Compute filter/sort in one pass
     private func computeFilteredAndSorted() {
+        let start = Date()
+        print("⚙️ [COMPUTE START] computeFilteredAndSorted() with \(plugins.count) plugins")
         var result = plugins
 
         // Apply search filter - search all fields
@@ -132,11 +139,15 @@ struct PluginListView: View {
         }
 
         cachedFilteredSorted = result
+        let duration = Date().timeIntervalSince(start)
+        print("✅ [COMPUTE DONE] computeFilteredAndSorted() took \(String(format: "%.3f", duration))s")
         computeConsolidated()
     }
 
     // SPEED: Compute consolidated plugins
     private func computeConsolidated() {
+        let start = Date()
+        print("⚙️ [COMPUTE START] computeConsolidated() with \(cachedFilteredSorted.count) plugins")
         let grouped = Dictionary(grouping: cachedFilteredSorted) { plugin in
             "\(plugin.name)|\(plugin.publisher)"
         }
@@ -168,6 +179,8 @@ struct PluginListView: View {
         }
 
         cachedConsolidated = consolidated
+        let duration = Date().timeIntervalSince(start)
+        print("✅ [COMPUTE DONE] computeConsolidated() took \(String(format: "%.3f", duration))s, result: \(consolidated.count) plugins")
         computeSectioned()
     }
 
@@ -273,16 +286,21 @@ struct PluginListView: View {
     }
 
     var searchBarBackgroundColor: Color {
-        appearance == "space" ? spaceDarker : appearance == "dark" ? darkDarker : appearance == "light" ? lightDarker : Color(UIColor.systemGray6)
+        // Space appearance: 3% more grey than normal spaceDarker
+        appearance == "space" ? Color(red: 18/255, green: 18/255, blue: 18/255) : appearance == "dark" ? darkDarker : appearance == "light" ? lightDarker : Color(UIColor.systemGray6)
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Stats Card
-                statsCard
-                    .padding(.top, 0)
-                    .padding(.bottom, 0)
+                // Stats Card OR Screenshot Viewer (toggle between them - matches macOS)
+                if showPluginImage {
+                    screenshotViewWithToggle
+                } else {
+                    statsCard
+                        .padding(.top, 0)
+                        .padding(.bottom, 0)
+                }
 
                 // Active Sort and Filters
                 if sortOrder != .name || hasActiveFilters {
@@ -340,6 +358,12 @@ struct PluginListView: View {
                                                     .equatable()
                                             }
                                             .listRowBackground(Color.clear)
+                                            .onTapGesture {
+                                                // Populate viewer with first plugin when row is tapped
+                                                if let firstPlugin = consolidated.originalPlugins.first {
+                                                    selectedPluginForViewer = firstPlugin
+                                                }
+                                            }
                                         }
                                     }
                                     .id(section.key)
@@ -378,7 +402,13 @@ struct PluginListView: View {
             .onChange(of: selectedPublisher) { _ in computeFilteredAndSorted() }
             .onChange(of: sortOrder) { _ in computeFilteredAndSorted() }
             .task(id: plugins.count) {
-                // Recompute when plugins change (much faster than .id() view recreation)
+                // OPTIMIZATION: Only compute on first appearance or when plugins actually change
+                guard !hasComputedOnce || filteredPluginsForExport.isEmpty else {
+                    print("⏭️ [SKIP COMPUTE] Cache is valid, skipping recomputation")
+                    return
+                }
+                print("🔄 [RECOMPUTE] Running full computation")
+                hasComputedOnce = true
                 computeMetadata()
                 computeFilteredAndSorted()
                 filteredPluginsForExport = filteredAndSortedPlugins
@@ -731,10 +761,139 @@ struct PluginListView: View {
         !selectedFormats.isEmpty || selectedStyle != nil || selectedPublisher != nil
     }
 
+    @ViewBuilder
+    private var screenshotViewWithToggle: some View {
+        VStack(spacing: 0) {
+            // Header with toggle button (matches macOS design)
+            HStack {
+                // Toggle button on the left
+                VStack(alignment: .leading, spacing: 4) {
+                    Button(action: {
+                        withAnimation {
+                            showPluginImage.toggle()
+                        }
+                    }) {
+                        Image(systemName: "chart.bar")
+                            .foregroundColor(.blue)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    Text("Chart")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.leading, 14)
+
+                Spacer()
+
+                // Plugin name in center
+                if let plugin = selectedPluginForViewer {
+                    VStack(alignment: .center, spacing: 4) {
+                        Text(plugin.name)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        Text(plugin.publisher)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    Text("Select a plugin")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+
+            Divider()
+
+            // Screenshot content
+            if let plugin = selectedPluginForViewer {
+                let imageUrlString = plugin.screenshotUrl ?? plugin.thumbnailUrl
+
+                if let imageUrlString = imageUrlString,
+                   let imageURL = URL(string: imageUrlString) {
+                    let pluginKey = "\(plugin.name)|\(plugin.publisher)"
+                    ScrollView {
+                        CachedAsyncImage(url: imageURL, pluginKey: pluginKey) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .cornerRadius(8)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .frame(minHeight: 250, maxHeight: 500)
+                    .onAppear {
+                        print("📸 [iPad VIEWER] Plugin: \(plugin.name)")
+                        print("📸 [iPad VIEWER] screenshotUrl: \(plugin.screenshotUrl ?? "nil")")
+                        print("📸 [iPad VIEWER] thumbnailUrl: \(plugin.thumbnailUrl ?? "nil")")
+                        print("📸 [iPad VIEWER] Valid URL found: \(imageURL.absoluteString)")
+                    }
+                } else {
+                    // No screenshot URL available
+                    VStack(spacing: 12) {
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        Text("No screenshot available")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(height: 250)
+                    .frame(maxWidth: .infinity)
+                    .onAppear {
+                        print("❌ [iPad VIEWER] Plugin: \(plugin.name)")
+                        print("❌ [iPad VIEWER] screenshotUrl: \(plugin.screenshotUrl ?? "nil")")
+                        print("❌ [iPad VIEWER] thumbnailUrl: \(plugin.thumbnailUrl ?? "nil")")
+                        print("❌ [iPad VIEWER] No valid URL found!")
+                    }
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Tap a plugin to view screenshot")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 250)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .background(statsCardBackgroundColor)
+        .padding()
+    }
+
     private var statsCard: some View {
         VStack(alignment: .center, spacing: 12) {
             HStack {
+                // Toggle button at top left (matches macOS design)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button(action: {
+                        withAnimation {
+                            showPluginImage.toggle()
+                        }
+                    }) {
+                        Image(systemName: "photo")
+                            .foregroundColor(.blue)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    Text("Image")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.leading, 4)
+
                 Spacer()
+
                 VStack(alignment: .center, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(hasActiveFilters ? "Filtered Plugins" : "Plugins")
@@ -845,5 +1004,243 @@ struct SectionIndexView: View {
 
     private func scrollToSection(_ section: String) {
         NotificationCenter.default.post(name: NSNotification.Name("ScrollToSection"), object: section)
+    }
+}
+//
+//  ImageCacheManager.swift
+//  Plugin Reporter (Shared)
+//
+//  Persistent disk-based image cache for plugin screenshots
+//
+
+import Foundation
+import SwiftUI
+
+/// Thread-safe persistent image cache manager
+/// Saves downloaded images to disk and serves from cache on subsequent loads
+@MainActor
+class ImageCacheManager {
+    static let shared = ImageCacheManager()
+
+    // MARK: - Properties
+
+    private let cacheDirectory: URL
+    private let fileManager = FileManager.default
+    private var memoryCache = NSCache<NSString, UIImage>()  // Fast memory cache
+
+    // MARK: - Initialization
+
+    private init() {
+        // Create cache directory in app's cache folder
+        let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        cacheDirectory = cachesDirectory.appendingPathComponent("PluginScreenshots", isDirectory: true)
+
+        // Create directory if it doesn't exist
+        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+
+        // Configure memory cache (50 MB limit)
+        memoryCache.totalCostLimit = 50 * 1024 * 1024  // 50 MB
+        memoryCache.countLimit = 100  // Max 100 images in memory
+
+        print("📦 ImageCache initialized at: \(cacheDirectory.path)")
+    }
+
+    // MARK: - Public API
+
+    /// Get image from cache or download if needed
+    func getImage(from url: URL, pluginKey: String) async throws -> PlatformImage {
+        // 1. Check memory cache first (fastest)
+        let cacheKey = NSString(string: pluginKey)
+        if let cachedImage = memoryCache.object(forKey: cacheKey) {
+            print("🎯 Memory cache hit: \(pluginKey)")
+            return cachedImage
+        }
+
+        // 2. Check disk cache (persistent)
+        if let diskImage = loadFromDisk(pluginKey: pluginKey) {
+            print("💾 Disk cache hit: \(pluginKey)")
+            // Store in memory cache for faster access next time
+            memoryCache.setObject(diskImage, forKey: cacheKey)
+            return diskImage
+        }
+
+        // 3. Download from network
+        print("⬇️ Downloading image: \(pluginKey) from \(url.absoluteString)")
+        let (data, _) = try await URLSession.shared.data(from: url)
+
+        guard let image = PlatformImage(data: data) else {
+            throw URLError(.cannotDecodeContentData)
+        }
+
+        // 4. Save to both caches
+        saveToDisk(image: image, pluginKey: pluginKey)
+        memoryCache.setObject(image, forKey: cacheKey)
+
+        print("✅ Downloaded and cached: \(pluginKey)")
+        return image
+    }
+
+    /// Clear all cached images (memory + disk)
+    func clearCache() {
+        // Clear memory cache
+        memoryCache.removeAllObjects()
+
+        // Clear disk cache
+        try? fileManager.removeItem(at: cacheDirectory)
+        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+
+        print("🗑️ Image cache cleared")
+    }
+
+    /// Get cache size in bytes
+    func getCacheSize() -> Int64 {
+        guard let files = try? fileManager.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: [.fileSizeKey]) else {
+            return 0
+        }
+
+        var totalSize: Int64 = 0
+        for file in files {
+            if let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize {
+                totalSize += Int64(size)
+            }
+        }
+        return totalSize
+    }
+
+    // MARK: - Private Helpers
+
+    private func loadFromDisk(pluginKey: String) -> PlatformImage? {
+        let fileURL = cacheDirectory.appendingPathComponent(sanitizedFilename(from: pluginKey))
+
+        guard let data = try? Data(contentsOf: fileURL) else {
+            return nil
+        }
+
+        return PlatformImage(data: data)
+    }
+
+    private func saveToDisk(image: PlatformImage, pluginKey: String) {
+        let fileURL = cacheDirectory.appendingPathComponent(sanitizedFilename(from: pluginKey))
+
+        #if os(macOS)
+        guard let data = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: data),
+              let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
+            return
+        }
+        #else
+        guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+            return
+        }
+        #endif
+
+        try? jpegData.write(to: fileURL, options: .atomic)
+    }
+
+    private func sanitizedFilename(from pluginKey: String) -> String {
+        // Convert plugin key to safe filename
+        let sanitized = pluginKey
+            .replacingOccurrences(of: "|", with: "-")
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        return "\(sanitized).jpg"
+    }
+}
+
+// MARK: - Platform Compatibility
+
+#if os(macOS)
+typealias PlatformImage = NSImage
+#else
+typealias PlatformImage = UIImage
+#endif
+//
+//  CachedAsyncImage.swift
+//  Plugin Reporter (Shared)
+//
+//  Custom AsyncImage that uses persistent disk cache
+//
+
+import SwiftUI
+
+/// Drop-in replacement for AsyncImage with persistent caching
+struct CachedAsyncImage<Content: View, Placeholder: View>: View {
+    let url: URL?
+    let pluginKey: String
+    let content: (Image) -> Content
+    let placeholder: () -> Placeholder
+
+    @State private var image: PlatformImage?
+    @State private var isLoading = false
+    @State private var loadError: Error?
+
+    var body: some View {
+        Group {
+            if let image = image {
+                #if os(macOS)
+                content(Image(nsImage: image))
+                #else
+                content(Image(uiImage: image))
+                #endif
+            } else if isLoading {
+                placeholder()
+            } else if loadError != nil {
+                placeholder()
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: url) {
+            await loadImage()
+        }
+    }
+
+    private func loadImage() async {
+        guard let url = url else { return }
+
+        isLoading = true
+        loadError = nil
+
+        do {
+            let loadedImage = try await ImageCacheManager.shared.getImage(from: url, pluginKey: pluginKey)
+            self.image = loadedImage
+            self.isLoading = false
+        } catch {
+            print("❌ Failed to load image: \(error.localizedDescription)")
+            self.loadError = error
+            self.isLoading = false
+        }
+    }
+}
+
+// MARK: - Convenience Initializers
+
+extension CachedAsyncImage where Content == Image, Placeholder == ProgressView<EmptyView, EmptyView> {
+    /// Simple initializer with default placeholder
+    init(url: URL?, pluginKey: String) {
+        self.url = url
+        self.pluginKey = pluginKey
+        self.content = { $0 }
+        self.placeholder = { ProgressView() }
+    }
+}
+
+extension CachedAsyncImage where Placeholder == ProgressView<EmptyView, EmptyView> {
+    /// Initializer with custom content transform
+    init(url: URL?, pluginKey: String, @ViewBuilder content: @escaping (Image) -> Content) {
+        self.url = url
+        self.pluginKey = pluginKey
+        self.content = content
+        self.placeholder = { ProgressView() }
+    }
+}
+
+extension CachedAsyncImage where Content == Image {
+    /// Initializer with custom placeholder
+    init(url: URL?, pluginKey: String, @ViewBuilder placeholder: @escaping () -> Placeholder) {
+        self.url = url
+        self.pluginKey = pluginKey
+        self.content = { $0 }
+        self.placeholder = placeholder
     }
 }

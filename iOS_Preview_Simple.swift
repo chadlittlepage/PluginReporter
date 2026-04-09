@@ -2,8 +2,8 @@
 // SIMPLE PREVIEW - Just paste this into Xcode Playground to see the UI instantly!
 // File → New → Playground → iOS → Blank → Paste this code
 
-import SwiftUI
 import PlaygroundSupport
+import SwiftUI
 
 // MARK: - Main Container
 
@@ -37,7 +37,7 @@ struct PluginListPreview: View {
         ("304C", "Avid Technology", "EQ", "AAX"),
         ("ADPTR MetricAB", "Adptr", "Effect", "AAX"),
         ("FabFilter Pro-Q 3", "FabFilter", "EQ", "VST3"),
-        ("Valhalla Room", "Valhalla DSP", "Reverb", "AU"),
+        ("Valhalla Room", "Valhalla DSP", "Reverb", "AU")
     ]
 
     var body: some View {

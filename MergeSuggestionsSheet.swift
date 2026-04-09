@@ -80,9 +80,7 @@ struct MergeSuggestionsSheet: View {
                         LazyVStack(spacing: 12) {
                             ForEach(suggestions) { suggestion in
                                 MergeSuggestionRow(
-                                    suggestion: suggestion,
-                                    isSelected: selectedSuggestions.contains(suggestion.id),
-                                    onToggle: {
+                                    suggestion: suggestion, isSelected: selectedSuggestions.contains(suggestion.id), onToggle: {
                                         if selectedSuggestions.contains(suggestion.id) {
                                             selectedSuggestions.remove(suggestion.id)
                                         } else {

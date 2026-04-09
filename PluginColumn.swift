@@ -1,8 +1,8 @@
 // PluginColumn.swift — FULL REPLACEMENT
 // Canonical definition used by FastTableView / ContentView
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable {
     case name
@@ -10,7 +10,6 @@ public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable 
     case version
     case type
     case style
-    case architectures
     case date
     case size
     case path
@@ -29,7 +28,6 @@ public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable 
         case .version:       return "Version"
         case .type:          return "Type"
         case .style:         return "Style"
-        case .architectures: return "Architectures"
         case .date:          return "Date"
         case .size:          return "Size"
         case .path:          return "Path"
@@ -47,7 +45,6 @@ public enum PluginColumn: String, CaseIterable, Identifiable, Codable, Hashable 
         case .version:       return 80
         case .type:          return 60
         case .style:         return 100
-        case .architectures: return 140
         case .date:          return 110
         case .size:          return 80
         case .path:          return 260

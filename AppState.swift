@@ -7,14 +7,15 @@
 //
 
 // AppState.swift — FULL REPLACEMENT (shared selection + clipboard actions)
-import Foundation
 import Combine
+import Foundation
 #if os(macOS)
 import AppKit
 #endif
 
 final class AppState: ObservableObject {
     @Published var selected: [PluginItem] = []   // currently selected rows in the table
+    @Published var all: [PluginItem] = []        // ALL plugins (for AI Suggestions)
 
     // Track selected IDs to persist selection across filter changes
     var selectedIDs: Set<UUID> = []
@@ -46,18 +47,18 @@ final class AppState: ObservableObject {
     func copyFullDetails() {
         guard !selected.isEmpty else { return }
         // Tab-separated per item, newline between items (TSV)
-        let lines: [String] = selected.map { i in
+        let lines: [String] = selected.map { item in
             [
-                i.name,
-                i.publisher,
-                i.version,
-                i.type,
-                i.architectures,
-                Humanize.date(i.date),
-                Humanize.bytes(i.sizeBytes),
-                i.path,
-                i.runtimeRequirement,
-                i.obsolete ? "Yes" : "No"
+                item.name,
+                item.publisher,
+                item.version,
+                item.type,
+                item.architectures,
+                Humanize.date(item.date),
+                Humanize.bytes(item.sizeBytes),
+                item.path,
+                item.runtimeRequirement,
+                item.obsolete ? "Yes" : "No"
             ].joined(separator: "\t")
         }
         let tsv = lines.joined(separator: "\n")

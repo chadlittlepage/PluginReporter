@@ -121,8 +121,6 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
     let charWidth = font.maximumAdvancement.width
     let capacity = Int(width / charWidth)
 
-    print("📄 Export: width=\(width), fontSize=\(fontSize), ACTUAL charWidth=\(charWidth), capacity=\(capacity)")
-
     // Get managers for rating, notes, and metadata
     let ratingsManager = RatingsManager.shared
     let notesManager = NotesManager.shared
@@ -164,7 +162,7 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
         columns.append(ColumnInfo(header: "License", maxDesired: 8, minimum: 5) { item, _, _ in getLicenseType(for: item) })
     }
     if preferences.pdfShowArch {
-        columns.append(ColumnInfo(header: "Arch", maxDesired: 16, minimum: 8) { item, _, _ in item.architectures })
+        columns.append(ColumnInfo(header: "Preset", maxDesired: 16, minimum: 8) { item, _, _ in item.preset })
     }
     if preferences.pdfShowDate {
         columns.append(ColumnInfo(header: "Date", maxDesired: 12, minimum: 8) { item, _, _ in item.dateString })
@@ -222,14 +220,6 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
     }
 
     func totalWidth(_ w: [Int]) -> Int { w.reduce(0, +) + sepWidth }
-
-    print("🔍 COLUMN WIDTH DEBUG:")
-    print("   Capacity: \(capacity) characters")
-    print("   Separator width: \(sepWidth) characters (\(columnCount - 1) separators)")
-    print("   Initial widths: \(widths)")
-    print("   Initial total: \(totalWidth(widths))")
-    print("   Max content lengths: \(maxLens)")
-    print("   Column headers: \(headers)")
 
     if capacity > 0 {
         // First, shrink to fit if needed
@@ -289,18 +279,23 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
             guardCount -= 1
         }
 
-        // Phase 3: Distribute ALL remaining space to columns that still have truncated content
-        // Keep iterating until we can't expand any more OR we've used all space
-        print("   📊 Phase 3: Distributing remaining space")
-        print("      Before Phase 3: widths=\(widths), total=\(totalWidth(widths))")
+        // Phase 3: Distribute remaining space to columns, with reasonable limits
+        // Cap Name column at 30 chars to prevent excessive expansion in wide layouts
+        let reasonableLimits = maxLens.enumerated().map { idx, maxLen in
+            if headers[idx] == "Name" {
+                return min(maxLen, 30)
+            }
+            return maxLen
+        }
+
         var guardCount3 = 10_000
         while totalWidth(widths) < capacity && guardCount3 > 0 {
             var didExpand = false
 
-            // Find columns that still have content to show
+            // Find columns that still have content to show (using reasonable limits)
             var needyColumns: [(index: Int, need: Int)] = []
             for idx in 0..<columnCount {
-                let need = maxLens[idx] - widths[idx]
+                let need = reasonableLimits[idx] - widths[idx]
                 if need > 0 {
                     needyColumns.append((idx, need))
                 }
@@ -308,14 +303,12 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
 
             // If no columns need more space, we're done
             if needyColumns.isEmpty {
-                print("      ✅ No columns need more space. Stopping Phase 3.")
                 break
             }
 
             // Distribute remaining space among needy columns
             let remainingSpace = capacity - totalWidth(widths)
             if remainingSpace <= 0 {
-                print("      ✅ No remaining space. Stopping Phase 3.")
                 break
             }
 
@@ -329,12 +322,7 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
             if !didExpand { break }
             guardCount3 -= 1
         }
-        print("      After Phase 3: widths=\(widths), total=\(totalWidth(widths))")
     }
-
-    print("   ✅ FINAL widths: \(widths)")
-    print("   ✅ FINAL total: \(totalWidth(widths)) / \(capacity)")
-    print("   ✅ Space utilization: \(String(format: "%.1f", Double(totalWidth(widths)) / Double(capacity) * 100))%")
 
     // Padding/clip helper
     func pad(_ s: String, _ n: Int) -> String {
@@ -357,10 +345,6 @@ func buildPrintTableText(plugins: [PluginItem], width: CGFloat, fontSize: CGFloa
 
 /// Show custom Page Setup dialog with live preview
 func showCustomPageSetup(preferences: Preferences, plugins: [PluginItem]) {
-    print("📋 Page Setup opened")
-    print("📋 Received \(plugins.count) plugins")
-    print("📋 First 5 plugins: \(plugins.prefix(5).map { $0.name })")
-
     let pageSetupView = PageSetupView(preferences: preferences, plugins: plugins)
     let window = NSWindow(
         contentRect: NSRect(x: 0, y: 0, width: 1100, height: 800),
@@ -379,12 +363,6 @@ func showCustomPageSetup(preferences: Preferences, plugins: [PluginItem]) {
 
 /// Quick export to PDF using current Page Setup settings
 func quickExportPDF(plugins: [PluginItem], preferences: Preferences) {
-    print("📄 Quick Export PDF clicked")
-    print("📄 Received \(plugins.count) plugins")
-    print("📄 First 5 plugins: \(plugins.prefix(5).map { $0.name })")
-    print("📐 Using Page Setup settings: T=\(preferences.pdfTopMargin), B=\(preferences.pdfBottomMargin), L=\(preferences.pdfLeftMargin), R=\(preferences.pdfRightMargin)")
-    print("📄 Page: \(preferences.pdfPage.rawValue), Landscape: \(preferences.pdfLandscape), Font: \(preferences.pdfFontSize)pt")
-
     // Configure printInfo from preferences
     let printInfo = NSPrintInfo.shared.copy() as! NSPrintInfo
 
@@ -407,8 +385,6 @@ func quickExportPDF(plugins: [PluginItem], preferences: Preferences) {
     NSPrintInfo.shared.topMargin = preferences.pdfTopMargin
     NSPrintInfo.shared.bottomMargin = preferences.pdfBottomMargin
 
-    print("✅ NSPrintInfo configured: T=\(NSPrintInfo.shared.topMargin), B=\(NSPrintInfo.shared.bottomMargin), L=\(NSPrintInfo.shared.leftMargin), R=\(NSPrintInfo.shared.rightMargin)")
-
     // Generate filename with timestamp
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
@@ -424,35 +400,24 @@ func quickExportPDF(plugins: [PluginItem], preferences: Preferences) {
     savePanel.begin { response in
         guard response == .OK, let url = savePanel.url else { return }
 
-        print("💾 Saving PDF to: \(url.path)")
-        print("🔍 Before creating view - NSPrintInfo.shared margins: T=\(NSPrintInfo.shared.topMargin), B=\(NSPrintInfo.shared.bottomMargin), L=\(NSPrintInfo.shared.leftMargin), R=\(NSPrintInfo.shared.rightMargin)")
+        Task { @MainActor in
+            // Create printable view (uses NSPrintInfo.shared)
+            let printView = createPrintablePluginView(plugins: plugins, preferences: preferences)
 
-        // Create printable view (uses NSPrintInfo.shared).
-        // savePanel.begin's completion runs on the main thread but the closure
-        // isn't statically @MainActor, so assume isolation explicitly.
-        let printView = MainActor.assumeIsolated {
-            createPrintablePluginView(plugins: plugins, preferences: preferences)
+            // Configure print info for PDF output
+            printInfo.jobDisposition = .save
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = url
+
+            // Create print operation for PDF export
+            let printOperation = NSPrintOperation(view: printView, printInfo: printInfo)
+            printOperation.showsPrintPanel = false
+            printOperation.showsProgressPanel = false
+
+            // Run the print operation to generate PDF
+            printOperation.run()
+
+            dashboardTrackExport()
         }
-
-        print("🔍 After creating view - printInfo margins: T=\(printInfo.topMargin), B=\(printInfo.bottomMargin), L=\(printInfo.leftMargin), R=\(printInfo.rightMargin)")
-
-        // Configure print info for PDF output
-        printInfo.jobDisposition = .save
-        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = url
-
-        print("🔍 Final printInfo before operation: T=\(printInfo.topMargin), B=\(printInfo.bottomMargin), L=\(printInfo.leftMargin), R=\(printInfo.rightMargin)")
-
-        // Create print operation for PDF export
-        let printOperation = NSPrintOperation(view: printView, printInfo: printInfo)
-        printOperation.showsPrintPanel = false
-        printOperation.showsProgressPanel = false
-
-        // Run the print operation to generate PDF
-        printOperation.run()
-
-        print("✅ PDF export completed")
-
-        dashboardTrackExport()
     }
 }
 #endif

@@ -45,14 +45,7 @@ public struct ParsedProject {
     }
 
     public init(
-        name: String,
-        sourceFile: URL,
-        dawType: DAWType,
-        tracks: [ParsedTrack],
-        tempo: Double? = nil,
-        sampleRate: Int? = nil,
-        version: String? = nil,
-        key: String? = nil
+        name: String, sourceFile: URL, dawType: DAWType, tracks: [ParsedTrack], tempo: Double? = nil, sampleRate: Int? = nil, version: String? = nil, key: String? = nil
     ) {
         self.name = name
         self.sourceFile = sourceFile
@@ -73,11 +66,37 @@ public struct ParsedTrack {
 
 public struct ParsedPlugin {
     public let name: String
-    public let manufacturer: String
+    public let publisher: String  // Renamed from 'manufacturer' to match PluginItem
     public let trackName: String
     public let trackIndex: Int
     public let deviceIndex: Int
-    public let format: PluginFormat
+    public let type: String  // Renamed from 'format' to match PluginItem, now String instead of enum
+    public let version: String  // Version from DAW project file (optional, defaults to "")
+    public let preset: String  // Preset name from DAW project file (optional, defaults to "")
+
+    // Convenience initializer that accepts PluginFormat enum (for backwards compatibility during refactor)
+    public init(name: String, publisher: String, trackName: String, trackIndex: Int, deviceIndex: Int, format: PluginFormat, version: String = "", preset: String = "") {
+        self.name = name
+        self.publisher = publisher
+        self.trackName = trackName
+        self.trackIndex = trackIndex
+        self.deviceIndex = deviceIndex
+        self.type = format.rawValue  // Convert enum to string
+        self.version = version
+        self.preset = preset
+    }
+
+    // Direct initializer with string type
+    public init(name: String, publisher: String, trackName: String, trackIndex: Int, deviceIndex: Int, type: String, version: String = "", preset: String = "") {
+        self.name = name
+        self.publisher = publisher
+        self.trackName = trackName
+        self.trackIndex = trackIndex
+        self.deviceIndex = deviceIndex
+        self.type = type
+        self.version = version
+        self.preset = preset
+    }
 }
 
 // MARK: - Parser Registry
@@ -101,7 +120,6 @@ class DAWParserRegistry {
         registerParser(FLStudioParser.self)
         registerParser(TracktionParser.self)
         registerParser(ArdourParser.self)
-        registerParser(FairlightParser.self)
         registerParser(MixbusParser.self)
         #if os(macOS)
         registerParser(LogicProParser.self)  // macOS only (Logic Pro is Mac-only)
@@ -171,21 +189,21 @@ enum ParserError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedDAWType(let type):
+        case .unsupportedDAWType(let type): 
             return "Parser not available for \(type.rawValue)"
-        case .unsupportedFileExtension(let ext):
+        case .unsupportedFileExtension(let ext): 
             return "No parser available for .\(ext) files"
-        case .invalidFileType:
+        case .invalidFileType: 
             return "Invalid or corrupted project file"
-        case .decompressionFailed:
+        case .decompressionFailed: 
             return "Failed to decompress project file"
-        case .xmlParsingFailed:
+        case .xmlParsingFailed: 
             return "Failed to parse project XML/data"
-        case .invalidProjectData(let reason):
+        case .invalidProjectData(let reason): 
             return "Invalid project data: \(reason)"
-        case .emptyFile:
+        case .emptyFile: 
             return "The file is empty (0 bytes). This may be a backup file or corrupted project."
-        case .corruptedFile:
+        case .corruptedFile: 
             return "The file appears to be corrupted or incomplete. Please try opening the original project file."
         }
     }

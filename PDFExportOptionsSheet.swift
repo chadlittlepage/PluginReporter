@@ -1,6 +1,6 @@
 // PDFExportOptionsSheet.swift — SwiftUI UI for PDF export options
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct PDFExportOptionsSheet: View {
     @Binding var options: PDFExportOptions
@@ -14,8 +14,8 @@ struct PDFExportOptionsSheet: View {
             HStack {
                 Text("Page Size")
                 Picker("Page Size", selection: $options.page) {
-                    ForEach(PDFExportOptions.Page.allCases) { p in
-                        Text(p.rawValue).tag(p)
+                    ForEach(PDFExportOptions.Page.allCases) { page in
+                        Text(page.rawValue).tag(page)
                     }
                 }
                 .labelsHidden()

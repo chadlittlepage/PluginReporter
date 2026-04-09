@@ -82,6 +82,18 @@ public enum SharedStorage {
 
             let dateInterval = dict["Date"] as? Double ?? 0
             let date = dateInterval > 0 ? Date(timeIntervalSince1970: dateInterval) : nil
+            let architectures = (dict["Architectures"] as? String ?? "")
+            let requirement = dict["Requirement"] as? String ?? ""
+            let archLower = architectures.lowercased()
+            let requirementLower = requirement.lowercased()
+            let typeUpper = type.uppercased()
+            let explicitObsolete = dict["Obsolete"] as? Bool ?? false
+            let derivedObsolete =
+                explicitObsolete ||
+                typeUpper == "OBSLT" ||
+                requirementLower.contains("rosetta") ||
+                (requirementLower.contains("intel") && !requirementLower.contains("apple")) ||
+                (archLower.contains("intel") && !archLower.contains("apple"))
 
             return PluginItem(
                 name: name,
@@ -89,12 +101,12 @@ public enum SharedStorage {
                 version: dict["Version"] as? String ?? "",
                 type: type,
                 style: dict["Style"] as? String ?? "",
-                architectures: dict["Architectures"] as? String ?? "",
+                architectures: architectures,
                 date: date,
                 sizeBytes: Int64(dict["SizeBytes"] as? Int ?? 0),
                 path: dict["Path"] as? String ?? "",
-                runtimeRequirement: dict["Requirement"] as? String ?? "",
-                obsolete: dict["Obsolete"] as? Bool ?? false
+                runtimeRequirement: requirement,
+                obsolete: derivedObsolete
             )
         }
 

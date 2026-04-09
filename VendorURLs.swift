@@ -61,7 +61,7 @@ struct VendorURLs {
         // Additional vendors
         "dexed": "https://asb2m10.github.io/dexed",
         "digital suburban": "https://asb2m10.github.io/dexed",
-        "auto-tune": "https://www.antarestech.com",
+        "auto-tune": "https://www.antarestech.com"
     ]
 
     /// Get website URL for a publisher name

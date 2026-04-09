@@ -29,14 +29,7 @@ class TracktionParser: DAWParser {
         try parser.parse(data: data)
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: .tracktion,
-            tracks: parser.tracks,
-            tempo: parser.tempo,
-            sampleRate: parser.sampleRate,
-            version: parser.version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: .tracktion, tracks: parser.tracks, tempo: parser.tempo, sampleRate: parser.sampleRate, version: parser.version, key: nil
         )
     }
 }
@@ -85,9 +78,7 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
 
     // MARK: - XMLParserDelegate
 
-    func parser(_ parser: XMLParser, didStartElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
 
         elementStack.append(elementName)
         characterBuffer = ""
@@ -164,15 +155,15 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
                 }
             }
 
+            // NOTE: Waveform stores programNum (preset index like 0, 1, 2) but NOT preset names
+            // We intentionally don't extract programNum because showing numbers like "0" isn't
+            // useful to users. Preset names are stored inside the plugin, not the project file.
+
             // If we have a plugin name, add it immediately (for simple format like VSTPLUGIN)
             if !currentPluginName.isEmpty && elementName == "VSTPLUGIN" {
                 let plugin = ParsedPlugin(
-                    name: currentPluginName,
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentPluginFormat
+                    name: currentPluginName, publisher: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer, trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)", trackIndex: currentTrackIndex, deviceIndex: currentDeviceIndex, format: currentPluginFormat
+                    // preset omitted - Waveform limitation: only stores preset index, not name
                 )
                 currentPlugins.append(plugin)
                 currentDeviceIndex += 1
@@ -187,8 +178,7 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
         }
     }
 
-    func parser(_ parser: XMLParser, didEndElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?) {
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
 
         // End of plugin
         if elementName == "PLUGIN" || elementName == "VST" || elementName == "VST3" ||
@@ -198,12 +188,8 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
             // Add plugin if we have valid data (skip for VSTPLUGIN as it's added immediately)
             if !currentPluginName.isEmpty && elementName != "VSTPLUGIN" {
                 let plugin = ParsedPlugin(
-                    name: currentPluginName,
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentPluginFormat
+                    name: currentPluginName, publisher: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer, trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)", trackIndex: currentTrackIndex, deviceIndex: currentDeviceIndex, format: currentPluginFormat
+                    // preset omitted - Waveform limitation: only stores preset index, not name
                 )
                 currentPlugins.append(plugin)
                 currentDeviceIndex += 1
@@ -226,9 +212,7 @@ private class TracktionXMLParser: NSObject, XMLParserDelegate {
             // Always add track, even if it has no plugins
             let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
             let track = ParsedTrack(
-                name: trackName,
-                index: currentTrackIndex,
-                plugins: currentPlugins
+                name: trackName, index: currentTrackIndex, plugins: currentPlugins
             )
             tracks.append(track)
 

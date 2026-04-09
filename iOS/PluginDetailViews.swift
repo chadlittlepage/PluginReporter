@@ -10,6 +10,7 @@ import SwiftUI
 struct ConsolidatedPluginDetailView: View {
     let consolidated: PluginListView.ConsolidatedPlugin
     @State private var showShareSheet = false
+    @State private var showPluginImage = true  // Toggle between chart and screenshot (default to image)
     @StateObject private var notesManager = NotesManager.shared
     @StateObject private var ratingsManager = RatingsManager.shared
     @StateObject private var tagsManager = TagsManager.shared
@@ -30,6 +31,11 @@ struct ConsolidatedPluginDetailView: View {
                 .padding(.horizontal)
                 .padding(.top)
 
+                // Screenshot/Chart Toggle Section
+                screenshotSection
+
+                Divider()
+
                 // AI Suggestions Button - Top Center
                 HStack {
                     Spacer()
@@ -49,8 +55,6 @@ struct ConsolidatedPluginDetailView: View {
                         ),
                         ownedPlugins: [] // Don't pass all plugins - AI service doesn't need them all
                     )
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -90,10 +94,10 @@ struct ConsolidatedPluginDetailView: View {
                                 Text(type)
                                     .font(.caption)
                                     .fontWeight(.semibold)
-                                    .frame(width: 56, height: 24)  // Fixed uniform size (larger for detail view)
+                                    .frame(width: 48, height: 18)  // Fixed uniform size (matches listing view)
                                     .background(ColorUtilities.colorForFormat(type).opacity(0.2))
                                     .foregroundColor(ColorUtilities.colorForFormat(type))
-                                    .cornerRadius(8)
+                                    .cornerRadius(Constants.Layout.badgeCornerRadius)
                             }
                         }
                     }
@@ -161,6 +165,80 @@ struct ConsolidatedPluginDetailView: View {
         }
     }
 
+    // Screenshot Section with Toggle
+    @ViewBuilder
+    private var screenshotSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Toggle button
+            HStack {
+                Button(action: {
+                    withAnimation {
+                        showPluginImage.toggle()
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: showPluginImage ? "chart.bar" : "photo")
+                            .font(.subheadline)
+                        Text(showPluginImage ? "Show Chart" : "Show Image")
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            // Content area
+            if showPluginImage {
+                // Show screenshot
+                if let firstPlugin = consolidated.originalPlugins.first {
+                    let imageUrlString = firstPlugin.screenshotUrl ?? firstPlugin.thumbnailUrl
+
+                    if let imageUrlString = imageUrlString,
+                       let imageURL = URL(string: imageUrlString) {
+                        let pluginKey = "\(consolidated.name)|\(consolidated.publisher)"
+                        CachedAsyncImage(url: imageURL, pluginKey: pluginKey) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .cornerRadius(8)
+                        }
+                        .frame(maxHeight: 300)
+                        .padding(.horizontal)
+                    } else {
+                        // No screenshot available
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 48))
+                                .foregroundColor(.secondary.opacity(0.5))
+                            Text("No screenshot available")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            } else {
+                // Show chart placeholder
+                VStack(spacing: 12) {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Chart view not implemented")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 200)
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
     var shareText: String {
         var text = "\(consolidated.name)\n"
         text += "Publisher: \(consolidated.publisher)\n"
@@ -204,8 +282,6 @@ struct PluginDetailView: View {
                         plugin: plugin,
                         ownedPlugins: [plugin]
                     )
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                     Spacer()
                 }
                 .padding(.horizontal)

@@ -32,8 +32,7 @@ struct PublishersCloud: View {
         switch item {
         case .publisher(let name):
             ChipView(title: name, selected: selection.contains(name)) {
-                if selection.contains(name) { selection.remove(name) }
-                else { selection.insert(name) }
+                if selection.contains(name) { selection.remove(name) } else { selection.insert(name) }
             }
         }
     }

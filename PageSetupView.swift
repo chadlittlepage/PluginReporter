@@ -54,12 +54,10 @@ struct PageSetupView: View {
                                 Rectangle()
                                     .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1, antialiased: true)
                                     .frame(
-                                        width: scaledPageWidth - ((leftMargin + rightMargin) * previewScale),
-                                        height: scaledPageHeight - ((topMargin + bottomMargin) * previewScale)
+                                        width: scaledPageWidth - ((leftMargin + rightMargin) * previewScale), height: scaledPageHeight - ((topMargin + bottomMargin) * previewScale)
                                     )
                                     .offset(
-                                        x: leftMargin * previewScale,
-                                        y: topMargin * previewScale
+                                        x: leftMargin * previewScale, y: topMargin * previewScale
                                     )
 
                                 // Preview text
@@ -69,14 +67,11 @@ struct PageSetupView: View {
                                     .lineLimit(nil)
                                     .fixedSize(horizontal: true, vertical: true)  // Prevent text wrapping
                                     .frame(
-                                        width: scaledPageWidth - ((leftMargin + rightMargin) * previewScale),
-                                        height: scaledPageHeight - ((topMargin + bottomMargin) * previewScale),
-                                        alignment: .topLeading
+                                        width: scaledPageWidth - ((leftMargin + rightMargin) * previewScale), height: scaledPageHeight - ((topMargin + bottomMargin) * previewScale), alignment: .topLeading
                                     )
                                     .clipped()  // Clip overflow instead of wrapping
                                     .offset(
-                                        x: leftMargin * previewScale,
-                                        y: topMargin * previewScale
+                                        x: leftMargin * previewScale, y: topMargin * previewScale
                                     )
                             }
                             .frame(width: scaledPageWidth, height: scaledPageHeight)
@@ -138,16 +133,14 @@ struct PageSetupView: View {
                         GroupBox(label: HStack {
                     Text("Margins").font(.headline)
                     Spacer()
-                    HStack(spacing: 6) {
-                        Image(systemName: marginsLocked ? "lock.fill" : "lock.open.fill")
-                            .foregroundColor(marginsLocked ? .accentColor : .secondary)
-                            .font(.title2)
-                            .imageScale(.large)
-                        Toggle("Lock", isOn: $marginsLocked)
-                            .labelsHidden()
-                            .toggleStyle(.checkbox)
-                            .scaleEffect(1.3)
-                    }
+                    Image(systemName: marginsLocked ? "lock.fill" : "lock.open.fill")
+                        .foregroundColor(marginsLocked ? .accentColor : .secondary)
+                        .font(.title2)
+                        .imageScale(.large)
+                        .onTapGesture {
+                            marginsLocked.toggle()
+                        }
+                        .help(marginsLocked ? "Click to unlock margins" : "Click to lock margins")
                 }) {
                     VStack(spacing: 16) {
                         // Top Margin
@@ -290,8 +283,7 @@ struct PageSetupView: View {
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: Binding(
-                            get: { Double(preferences.pdfFontSize) },
-                            set: { preferences.pdfFontSize = CGFloat($0) }
+                            get: { Double(preferences.pdfFontSize) }, set: { preferences.pdfFontSize = CGFloat($0) }
                         ), in: 5...14, step: 0.5)
                     }
                     .padding(8)
@@ -313,7 +305,7 @@ struct PageSetupView: View {
                             ColumnToggleButton(label: "Style", isOn: $preferences.pdfShowStyle)
                             ColumnToggleButton(label: "Version", isOn: $preferences.pdfShowVersion)
                             ColumnToggleButton(label: "License", isOn: $preferences.pdfShowLicense)
-                            ColumnToggleButton(label: "Arch", isOn: $preferences.pdfShowArch)
+                            ColumnToggleButton(label: "Preset", isOn: $preferences.pdfShowArch)
                             ColumnToggleButton(label: "Date", isOn: $preferences.pdfShowDate)
                             ColumnToggleButton(label: "Size", isOn: $preferences.pdfShowSize)
                             ColumnToggleButton(label: "Requirement", isOn: $preferences.pdfShowRequirement)
@@ -393,21 +385,11 @@ struct PageSetupView: View {
                         Spacer()
 
                         Button("OK") {
-                            // Save the average margin value to preferences
-                            print("💾 Page Setup OK clicked")
-                            print("📏 Saving margins FROM state: T=\(topMargin), B=\(bottomMargin), L=\(leftMargin), R=\(rightMargin)")
+                            // Save the margin values to preferences
                             updatePreferencesMargin()
-                            print("✅ Prefs after save: T=\(preferences.pdfTopMargin), B=\(preferences.pdfBottomMargin), L=\(preferences.pdfLeftMargin), R=\(preferences.pdfRightMargin)")
 
                             // Force UserDefaults to sync
                             UserDefaults.standard.synchronize()
-
-                            // Verify it was saved to UserDefaults
-                            let savedTop = UserDefaults.standard.double(forKey: "pdfTopMargin")
-                            let savedBottom = UserDefaults.standard.double(forKey: "pdfBottomMargin")
-                            let savedLeft = UserDefaults.standard.double(forKey: "pdfLeftMargin")
-                            let savedRight = UserDefaults.standard.double(forKey: "pdfRightMargin")
-                            print("🔍 UserDefaults check: T=\(savedTop), B=\(savedBottom), L=\(savedLeft), R=\(savedRight)")
 
                             dismiss()
                         }
@@ -514,44 +496,15 @@ struct PageSetupView: View {
             let charWidth = font.maximumAdvancement.width
             let capacity = Int(contentWidth / charWidth)
 
-            print("📏 PageSetup: pageWidth=\(pageWidth), margins=L:\(self.leftMargin) R:\(self.rightMargin), contentWidth=\(contentWidth)")
-            print("📏 PageSetup: fontSize=\(self.preferences.pdfFontSize), ACTUAL charWidth=\(charWidth) (was \(self.preferences.pdfFontSize * 0.6)), capacity=\(capacity)")
-
             // Build preview text using actual plugin data (one page worth)
             let header = "Plugin Report (\(self.plugins.count) items)\n\n"
             let tableText = self.buildPreviewTable(
-                capacity: capacity,
-                topMargin: self.topMargin,
-                bottomMargin: self.bottomMargin
+                capacity: capacity, topMargin: self.topMargin, bottomMargin: self.bottomMargin
             )
             self.previewText = header + tableText
 
             self.isGeneratingPreview = false
         }
-    }
-
-    private func getLicenseType(for plugin: PluginItem) -> String {
-        let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
-            .replacingOccurrences(of: " ", with: "_")
-
-        if let license = LicenseManager.shared.getLicense(for: pluginID) {
-            // Check if it mentions iLok anywhere (imported from iLok)
-            if let notes = license.notes?.lowercased(), notes.contains("ilok") {
-                return "iLok"
-            }
-            if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
-                return "iLok"
-            }
-            // Check if it has a serial number or license key
-            if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
-                return "Serial"
-            }
-            // If we have a license entry but no specific data, still show something was imported
-            if license.notes?.isEmpty == false {
-                return "iLok"  // Default to iLok if we have notes but no serial
-            }
-        }
-        return ""
     }
 
     private func buildPreviewTable(capacity: Int, topMargin: CGFloat, bottomMargin: CGFloat) -> String {
@@ -560,7 +513,7 @@ struct PageSetupView: View {
         let notesManager = NotesManager.shared
         let metadataManager = MetadataManager.shared
 
-        // Define column information structure (IDENTICAL to buildPrintTableText)
+        // Define column information structure
         struct ColumnInfo {
             let header: String
             let maxDesired: Int
@@ -596,7 +549,7 @@ struct PageSetupView: View {
             columns.append(ColumnInfo(header: "License", maxDesired: 8, minimum: 5) { item, _, _ in getLicenseType(for: item) })
         }
         if preferences.pdfShowArch {
-            columns.append(ColumnInfo(header: "Arch", maxDesired: 16, minimum: 8) { item, _, _ in item.architectures })
+            columns.append(ColumnInfo(header: "Preset", maxDesired: 16, minimum: 8) { item, _, _ in item.preset })
         }
         if preferences.pdfShowDate {
             columns.append(ColumnInfo(header: "Date", maxDesired: 12, minimum: 8) { item, _, _ in item.dateString })
@@ -658,9 +611,6 @@ struct PageSetupView: View {
 
         // Double the calculated rows to ensure we fill the page (with some overflow for safety)
         let previewCount = max(100, min(rowsPerPage * 2, plugins.count))
-
-        print("📄 Page height: \(pageHeight), content height: \(contentHeight), line height: \(lineHeight)")
-        print("📄 Rows per page calculated: \(rowsPerPage), showing: \(previewCount) plugins (2x for safety)")
 
         // Preview sample: show enough to fill one page
         let previewPlugins = Array(plugins.prefix(previewCount))
@@ -729,16 +679,23 @@ struct PageSetupView: View {
                 guardCount -= 1
             }
 
-            // Phase 3: Distribute ALL remaining space to columns that still have truncated content
-            // Keep iterating until we can't expand any more OR we've used all space
+            // Phase 3: Distribute remaining space to columns, with reasonable limits
+            // Cap Name column at 30 chars to prevent excessive expansion in wide layouts
+            let reasonableLimits = maxLens.enumerated().map { idx, maxLen in
+                if headers[idx] == "Name" {
+                    return min(maxLen, 30)
+                }
+                return maxLen
+            }
+
             var guardCount3 = 10_000
             while totalWidth(widths) < capacity && guardCount3 > 0 {
                 var didExpand = false
 
-                // Find columns that still have content to show
+                // Find columns that still have content to show (using reasonable limits)
                 var needyColumns: [(index: Int, need: Int)] = []
                 for idx in 0..<columnCount {
-                    let need = maxLens[idx] - widths[idx]
+                    let need = reasonableLimits[idx] - widths[idx]
                     if need > 0 {
                         needyColumns.append((idx, need))
                     }
@@ -774,11 +731,6 @@ struct PageSetupView: View {
         let headerLine = zip(headers, widths).map { pad($0, $1) }.joined(separator: sep)
         let rule = String(repeating: "—", count: min(headerLine.count, max(capacity, headerLine.count)))
 
-        let totalCalculated = totalWidth(widths)
-        print("📊 Column widths: \(widths)")
-        print("📊 Total width calculated: \(totalCalculated), capacity: \(capacity), diff: \(capacity - totalCalculated)")
-        print("📊 Rendering \(previewPlugins.count) of \(plugins.count) total plugins for preview")
-
         var body = ""
         for item in previewPlugins {
             let c = cols(for: item)
@@ -797,21 +749,9 @@ struct PageSetupView: View {
 
 #Preview {
     PageSetupView(
-        preferences: Preferences(),
-        plugins: [
+        preferences: Preferences(), plugins: [
             PluginItem(
-                id: UUID(),
-                name: "Sample Plugin",
-                publisher: "Sample Publisher",
-                version: "1.0.0",
-                type: "AU",
-                style: "Effect",
-                architectures: "Universal",
-                date: Date(),
-                sizeBytes: 1_000_000,
-                path: "/Library/Audio/Plug-Ins/Components/Sample.component",
-                runtimeRequirement: "Universal",
-                obsolete: false
+                id: UUID(), name: "Sample Plugin", publisher: "Sample Publisher", version: "1.0.0", type: "AU", style: "Effect", architectures: "Universal", date: Date(), sizeBytes: 1_000_000, path: "/Library/Audio/Plug-Ins/Components/Sample.component", runtimeRequirement: "Universal", obsolete: false
             )
         ]
     )

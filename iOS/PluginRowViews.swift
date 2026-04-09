@@ -99,7 +99,7 @@ struct PluginRow: View, Equatable {
                     .frame(width: 48, height: 18)  // Fixed uniform size for mobile
                     .background(ColorUtilities.colorForFormat(plugin.type).opacity(0.2))
                     .foregroundColor(ColorUtilities.colorForFormat(plugin.type))
-                    .cornerRadius(6)
+                    .cornerRadius(Constants.Layout.badgeCornerRadius)
 
                 // Show OBSLT badge if obsolete (matching uniform width)
                 if plugin.obsolete {

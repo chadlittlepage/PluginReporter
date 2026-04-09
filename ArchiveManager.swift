@@ -116,9 +116,7 @@ class ArchiveManager {
         // Use PBKDF2 with 100,000 iterations (OWASP recommendation)
         let iterations = 100_000
         let derivedKeyData = try pbkdf2(
-            password: passwordData,
-            salt: salt,
-            keyByteCount: 32, // 256 bits
+            password: passwordData, salt: salt, keyByteCount: 32, // 256 bits
             rounds: iterations
         )
 
@@ -132,15 +130,7 @@ class ArchiveManager {
             salt.withUnsafeBytes { saltBytes in
                 password.withUnsafeBytes { passwordBytes in
                     CCKeyDerivationPBKDF(
-                        CCPBKDFAlgorithm(kCCPBKDF2),
-                        passwordBytes.baseAddress?.assumingMemoryBound(to: Int8.self),
-                        password.count,
-                        saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        salt.count,
-                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                        UInt32(rounds),
-                        derivedKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        keyByteCount
+                        CCPBKDFAlgorithm(kCCPBKDF2), passwordBytes.baseAddress?.assumingMemoryBound(to: Int8.self), password.count, saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), salt.count, CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), UInt32(rounds), derivedKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), keyByteCount
                     )
                 }
             }
@@ -186,23 +176,14 @@ class ArchiveManager {
 
         // Create manifest
         let manifest = ArchiveManifest(
-            version: archiveFormatVersion,
-            exportDate: Date(),
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown",
-            platform: {
+            version: archiveFormatVersion, exportDate: Date(), appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown", platform: {
                 #if os(macOS)
                 return "macOS"
                 #else
                 return "iOS"
                 #endif
-            }(),
-            inventory: ArchiveManifest.DataInventory(
-                ratingsCount: ratingsCount,
-                tagsCount: tagsCount,
-                notesCount: notesCount,
-                playlistsCount: playlistsCount,
-                metadataCount: metadataCount,
-                licensesCount: licensesCount
+            }(), inventory: ArchiveManifest.DataInventory(
+                ratingsCount: ratingsCount, tagsCount: tagsCount, notesCount: notesCount, playlistsCount: playlistsCount, metadataCount: metadataCount, licensesCount: licensesCount
             )
         )
 
@@ -216,14 +197,7 @@ class ArchiveManager {
 
         // Create archive contents
         let contents = ArchiveContents(
-            manifest: manifest,
-            ratingsData: ratingsData,
-            tagsData: tagsData,
-            notesData: notesData,
-            playlistsData: playlistsData,
-            metadataData: metadataData,
-            licensesData: licensesData,
-            preferencesData: preferencesData
+            manifest: manifest, ratingsData: ratingsData, tagsData: tagsData, notesData: notesData, playlistsData: playlistsData, metadataData: metadataData, licensesData: licensesData, preferencesData: preferencesData
         )
 
         // Encode to JSON
@@ -591,25 +565,25 @@ enum ArchiveError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .incompatibleVersion(let version):
+        case .incompatibleVersion(let version): 
             return "Archive version \(version) is not compatible with this version of Plugin Reporter"
-        case .zipCreationFailed:
+        case .zipCreationFailed: 
             return "Failed to create ZIP archive"
-        case .zipExtractionFailed:
+        case .zipExtractionFailed: 
             return "Failed to extract ZIP archive"
-        case .invalidPreferencesData:
+        case .invalidPreferencesData: 
             return "Invalid preferences data in archive"
-        case .noDataToExport:
+        case .noDataToExport: 
             return "No data available to export"
-        case .encryptionFailed:
+        case .encryptionFailed: 
             return "Failed to encrypt archive data"
-        case .decryptionFailed:
+        case .decryptionFailed: 
             return "Failed to decrypt archive - incorrect password or corrupted file"
-        case .invalidPassword:
+        case .invalidPassword: 
             return "Password is invalid or cannot be processed"
-        case .passwordRequired:
+        case .passwordRequired: 
             return "This archive is encrypted and requires a password"
-        case .keyDerivationFailed:
+        case .keyDerivationFailed: 
             return "Failed to derive encryption key from password"
         }
     }

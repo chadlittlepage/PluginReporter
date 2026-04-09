@@ -72,39 +72,15 @@ class DashboardHTTPClient: ObservableObject {
 
         // Create a minimal test report
         let testReport = DashboardReport(
-            timestamp: Date(),
-            deviceInfo: DashboardReport.DeviceInfo(
-                deviceModel: "Test",
-                osVersion: "Test",
-                architecture: "Test",
-                memory: "Test",
-                screenResolution: nil
-            ),
-            appInfo: DashboardReport.AppInfo(
-                version: "Test",
-                build: "Test",
-                installDate: nil,
-                lastLaunchDate: Date(),
-                totalLaunches: 0
-            ),
-            pluginStats: DashboardReport.PluginStats(
-                totalPlugins: 0,
-                pluginsByFormat: [:],
-                pluginsByPublisher: [:],
-                pluginsByStyle: [:],
-                obsoletePlugins: 0,
-                totalSizeBytes: 0,
-                averageSizeBytes: 0
-            ),
-            usageMetrics: DashboardReport.UsageMetrics(
-                scansPerformed: 0,
-                exportsPerformed: 0,
-                aiSuggestionsRequested: 0,
-                averageSessionDuration: 0,
-                lastScanDate: nil,
-                lastExportDate: nil
-            ),
-            errorLogs: []
+            timestamp: Date(), deviceInfo: DashboardReport.DeviceInfo(
+                deviceModel: "Test", osVersion: "Test", architecture: "Test", memory: "Test", screenResolution: nil
+            ), appInfo: DashboardReport.AppInfo(
+                version: "Test", build: "Test", installDate: nil, lastLaunchDate: Date(), totalLaunches: 0
+            ), pluginStats: DashboardReport.PluginStats(
+                totalPlugins: 0, pluginsByFormat: [:], pluginsByPublisher: [:], pluginsByStyle: [:], obsoletePlugins: 0, totalSizeBytes: 0, averageSizeBytes: 0
+            ), usageMetrics: DashboardReport.UsageMetrics(
+                scansPerformed: 0, exportsPerformed: 0, aiSuggestionsRequested: 0, averageSessionDuration: 0, lastScanDate: nil, lastExportDate: nil
+            ), errorLogs: []
         )
 
         do {
@@ -229,8 +205,7 @@ class DashboardHTTPClient: ObservableObject {
     }
 
     private func loadQueuedReports() -> [DashboardReport] {
-        guard let data = UserDefaults.standard.data(forKey: queueKey),
-              let reports = try? JSONDecoder().decode([DashboardReport].self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: queueKey), let reports = try? JSONDecoder().decode([DashboardReport].self, from: data) else {
             return []
         }
         return reports
@@ -245,8 +220,7 @@ class DashboardHTTPClient: ObservableObject {
     // MARK: - Configuration Management
 
     private func loadConfiguration() -> DashboardConfiguration? {
-        guard let serverEndpoint = UserDefaults.standard.string(forKey: "dashboard_server_endpoint"),
-              !serverEndpoint.isEmpty else {
+        guard let serverEndpoint = UserDefaults.standard.string(forKey: "dashboard_server_endpoint"), !serverEndpoint.isEmpty else {
             return nil
         }
 
@@ -256,9 +230,7 @@ class DashboardHTTPClient: ObservableObject {
         let apiKey = KeychainHelper.load(key: "dashboard_api_key") ?? ""
 
         return DashboardConfiguration(
-            serverEndpoint: serverEndpoint,
-            apiKey: apiKey,
-            enabled: enabled
+            serverEndpoint: serverEndpoint, apiKey: apiKey, enabled: enabled
         )
     }
 
@@ -294,13 +266,13 @@ enum DashboardError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notConfigured:
+        case .notConfigured: 
             return "Server endpoint not configured"
-        case .invalidURL:
+        case .invalidURL: 
             return "Invalid server URL"
-        case .invalidResponse:
+        case .invalidResponse: 
             return "Invalid response from server"
-        case .serverError(let code, let message):
+        case .serverError(let code, let message): 
             return "Server error \(code): \(message)"
         }
     }

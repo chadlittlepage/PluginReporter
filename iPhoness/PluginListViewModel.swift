@@ -5,8 +5,8 @@
 //  ViewModel for plugin list - handles filtering, sorting, and business logic
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 @MainActor
 class PluginListViewModel: ObservableObject {

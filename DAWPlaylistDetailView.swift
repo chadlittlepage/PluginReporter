@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// Detailed view of a DAW playlist showing plugins grouped by track
 struct DAWPlaylistDetailView: View {
@@ -80,10 +81,7 @@ struct DAWPlaylistDetailView: View {
                 LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
                     ForEach(filteredTracks, id: \.self) { trackName in
                         TrackSection(
-                            trackName: trackName,
-                            entries: filteredEntries(for: trackName),
-                            isExpanded: expandedTracks.contains(trackName),
-                            onToggle: { toggleTrack(trackName) }
+                            trackName: trackName, entries: filteredEntries(for: trackName), isExpanded: expandedTracks.contains(trackName), onToggle: { toggleTrack(trackName) }
                         )
                     }
                 }
@@ -109,8 +107,8 @@ struct DAWPlaylistDetailView: View {
         // Filter by search
         if !searchText.isEmpty {
             entries = entries.filter {
-                $0.pluginName.localizedCaseInsensitiveContains(searchText) ||
-                $0.pluginManufacturer.localizedCaseInsensitiveContains(searchText)
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.publisher.localizedCaseInsensitiveContains(searchText)
             }
         }
 
@@ -155,13 +153,14 @@ struct DAWPlaylistDetailView: View {
     }
 
     private func generateCSV() -> String {
-        var csv = "Track,Plugin Name,Manufacturer,Format,Status,Device Index\n"
+        var csv = "Track,Plugin Name,Manufacturer,Format,Status,Device Index,Preset\n"
 
         for trackName in PluginMatcher.sortedTrackNames(playlist.entries) {
             let entries = playlist.entries(forTrack: trackName)
             for entry in entries {
                 let status = entry.isInstalled ? "Installed" : "Missing"
-                let row = "\"\(trackName)\",\"\(entry.pluginName)\",\"\(entry.pluginManufacturer)\",\"\(entry.pluginFormat.rawValue)\",\"\(status)\",\(entry.deviceIndex + 1)\n"
+                let preset = entry.preset.isEmpty ? "" : entry.preset
+                let row = "\"\(trackName)\",\"\(entry.name)\",\"\(entry.publisher)\",\"\(entry.type)\",\"\(status)\",\(entry.deviceIndex + 1),\"\(preset)\"\n"
                 csv += row
             }
         }
@@ -213,31 +212,19 @@ private struct PlaylistHeader: View {
             // Stats
             HStack(spacing: 24) {
                 StatBox(
-                    title: "Total Plugins",
-                    value: "\(playlist.entries.count)",
-                    icon: "square.grid.3x3",
-                    color: .blue
+                    title: "Total Plugins", value: "\(playlist.entries.count)", icon: "square.grid.3x3", color: .blue
                 )
 
                 StatBox(
-                    title: "Installed",
-                    value: "\(playlist.installedCount)",
-                    icon: "checkmark.circle",
-                    color: .green
+                    title: "Installed", value: "\(playlist.installedCount)", icon: "checkmark.circle", color: .green
                 )
 
                 StatBox(
-                    title: "Missing",
-                    value: "\(playlist.missingCount)",
-                    icon: "exclamationmark.triangle",
-                    color: .orange
+                    title: "Missing", value: "\(playlist.missingCount)", icon: "exclamationmark.triangle", color: .orange
                 )
 
                 StatBox(
-                    title: "Tracks",
-                    value: "\(playlist.trackNames.count)",
-                    icon: "waveform",
-                    color: .purple
+                    title: "Tracks", value: "\(playlist.trackNames.count)", icon: "waveform", color: .purple
                 )
 
                 Spacer()
@@ -335,14 +322,30 @@ private struct TrackSection: View {
     }
 }
 
+// MARK: - Custom Resizable Window
+// Moved to: Helpers/ResizableWindow.swift
+
 // MARK: - Plugin Entry Row
 
 private struct PluginEntryRow: View {
 
     let entry: DAWPlaylistEntry
+    @EnvironmentObject var appState: AppState
+
+    // Keep strong reference to window
+    @State private var aiSuggestionsWindow: ResizableWindow?
 
     var body: some View {
-        HStack(spacing: 12) {
+        _ = print("🖥️ [DISPLAY] Rendering plugin entry:")
+        _ = print("   • name: '\(entry.name)'")
+        _ = print("   • publisher: '\(entry.publisher)'")
+        _ = print("   • type: '\(entry.type)'")
+        _ = print("   • isInstalled: \(entry.isInstalled)")
+        _ = print("   • version: '\(entry.version)'")
+        _ = print("   • style: '\(entry.style)'")
+        _ = print("   • architectures: '\(entry.architectures)'")
+
+        return HStack(spacing: 12) {
             // Status icon
             Image(systemName: entry.isInstalled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .foregroundColor(entry.isInstalled ? .green : .orange)
@@ -350,12 +353,13 @@ private struct PluginEntryRow: View {
 
             // Plugin info
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.pluginName)
+                Text(entry.name)
                     .font(.subheadline)
                     .fontWeight(.medium)
 
                 HStack(spacing: 8) {
-                    Text(entry.pluginManufacturer)
+                    // Display publisher directly - parser filled, AI validated/enriched
+                    Text(entry.publisher)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -363,7 +367,7 @@ private struct PluginEntryRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Text(entry.pluginFormat.rawValue)
+                    Text(entry.type)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -373,9 +377,70 @@ private struct PluginEntryRow: View {
                             .foregroundColor(.orange)
                     }
                 }
+
+                // Show enriched metadata for missing plugins (parser or AI filled)
+                if !entry.isInstalled {
+                    HStack(spacing: 8) {
+                        if !entry.version.isEmpty {
+                            Text("v\(entry.version)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.7))
+                        }
+
+                        if !entry.style.isEmpty {
+                            Text("•")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.7))
+                            Text(entry.style)
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.7))
+                        }
+
+                        if !entry.architectures.isEmpty {
+                            Text("•")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.7))
+                            Text(entry.architectures)
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.7))
+                        }
+                    }
+                }
+
+                // Show preset for all plugins (installed or not)
+                if !entry.preset.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.caption2)
+                            .foregroundColor(.purple.opacity(0.7))
+                        Text("Preset: \(entry.preset)")
+                            .font(.caption2)
+                            .foregroundColor(.purple.opacity(0.9))
+                    }
+                }
             }
 
             Spacer()
+
+            // AI Suggestions button for missing plugins
+            if !entry.isInstalled {
+                Button {
+                    openAISuggestionsWindow()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                        Text("Your Alternatives")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor)
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                .help("Find owned plugins that can replace this missing plugin")
+            }
 
             // Device index
             Text("#\(entry.deviceIndex + 1)")
@@ -390,5 +455,46 @@ private struct PluginEntryRow: View {
         .padding(.horizontal, 12)
         .background(entry.isInstalled ? Color.clear : Color.orange.opacity(0.05))
         .cornerRadius(6)
+    }
+
+    private func openAISuggestionsWindow() {
+        // Create plugin item from entry
+        let pluginItem = PluginItem(
+            name: entry.name, publisher: entry.publisher, version: entry.version, type: entry.type, style: entry.style, architectures: "", date: nil, sizeBytes: 0, path: "", runtimeRequirement: "", obsolete: false
+        )
+
+        let hostingView = NSHostingView(
+            rootView: AISuggestionsView(plugin: pluginItem, ownedPlugins: appState.all)
+                .environmentObject(appState)
+        )
+
+        // Configure hosting view to respect minimum size constraints
+        hostingView.autoresizingMask = [.width, .height]
+        hostingView.translatesAutoresizingMaskIntoConstraints = true
+
+        // Close existing window if any
+        aiSuggestionsWindow?.close()
+
+        // Use custom window class
+        let window = ResizableWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 650, height: 700), styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false
+        )
+
+        window.contentView = hostingView
+        window.title = "AI Suggestions - \(entry.name)"
+        window.minSize = NSSize(width: 520, height: 700)
+        window.maxSize = NSSize(width: 1200, height: 1000)
+        window.contentMinSize = NSSize(width: 520, height: 700)
+        window.contentMaxSize = NSSize(width: 1200, height: 1000)
+        window.isReleasedWhenClosed = false
+
+        // Explicitly enable resizing
+        window.styleMask.insert(.resizable)
+
+        // CRITICAL: Store strong reference to prevent window from being reset
+        aiSuggestionsWindow = window
+
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 }

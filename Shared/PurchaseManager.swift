@@ -15,14 +15,14 @@ enum IAPProduct: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .unlockUnlimited:
+        case .unlockUnlimited: 
             return "Unlock Unlimited Plugins"
         }
     }
 
     var description: String {
         switch self {
-        case .unlockUnlimited:
+        case .unlockUnlimited: 
             return "Remove the 10-plugin limit and unlock all export features"
         }
     }
@@ -130,7 +130,7 @@ class PurchaseManager: ObservableObject {
             let result = try await product.purchase()
 
             switch result {
-            case .success(let verification):
+            case .success(let verification): 
                 let transaction = try checkVerified(verification)
 
                 // Update purchase state
@@ -141,19 +141,19 @@ class PurchaseManager: ObservableObject {
 
                 AppLogger.info("Purchase successful: \(product.id)")
 
-            case .userCancelled:
+            case .userCancelled: 
                 AppLogger.info("User cancelled purchase")
                 await MainActor.run {
                     self.purchaseState = .free
                 }
 
-            case .pending:
+            case .pending: 
                 AppLogger.info("Purchase pending approval")
                 await MainActor.run {
                     self.purchaseState = .free
                 }
 
-            @unknown default:
+            @unknown default: 
                 AppLogger.warning("Unknown purchase result")
                 await MainActor.run {
                     self.purchaseState = .free
@@ -246,9 +246,9 @@ class PurchaseManager: ObservableObject {
     /// Verify transaction is valid
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
-        case .unverified(_, let error):
+        case .unverified(_, let error): 
             throw error
-        case .verified(let safe):
+        case .verified(let safe): 
             return safe
         }
     }

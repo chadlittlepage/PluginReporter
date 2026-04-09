@@ -9,9 +9,13 @@ public extension PluginItem {
         date.map(Humanize.date) ?? ""
     }
 
-    /// Human-readable size (eg. "719 KB").
+    /// Human-readable size (eg. "719 KB"). Empty for missing plugins.
     var sizeString: String {
-        Humanize.bytes(sizeBytes)
+        // Missing plugins have no file, so no size
+        if missing && sizeBytes == 0 {
+            return ""
+        }
+        return Humanize.bytes(sizeBytes)
     }
 
     /// "Yes"/"No" string for obsolete flag.

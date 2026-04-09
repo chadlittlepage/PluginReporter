@@ -14,7 +14,7 @@ class DigitalPerformerParser: DAWParser {
     // MARK: - DAWParser Protocol Conformance
 
     static let dawType: DAWType = .digitalPerformer
-    static let supportedExtensions: [String] = ["motu"]
+    static let supportedExtensions: [String] = ["dpdoc", "motu", "perf"]
 
     static func parseProject(url: URL) throws -> ParsedProject {
         guard supportedExtensions.contains(url.pathExtension.lowercased()) else {
@@ -48,14 +48,7 @@ class DigitalPerformerParser: DAWParser {
         let tracks = groupDevicesIntoTracks(devices)
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: .digitalPerformer,
-            tracks: tracks,
-            tempo: tempo,
-            sampleRate: sampleRate,
-            version: version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: .digitalPerformer, tracks: tracks, tempo: tempo, sampleRate: sampleRate, version: version, key: nil
         )
     }
 
@@ -96,7 +89,7 @@ class DigitalPerformerParser: DAWParser {
 
     private struct DPDevice {
         let name: String
-        let manufacturer: String
+        let publisher: String
         let format: PluginFormat
         let trackName: String?
     }
@@ -109,7 +102,7 @@ class DigitalPerformerParser: DAWParser {
             // AU plugins (primary format on macOS)
             if string.contains("AudioUnit") || string.hasSuffix(".component") {
                 if let device = parseAUDevice(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -119,7 +112,7 @@ class DigitalPerformerParser: DAWParser {
             // VST3 plugins
             else if string.hasSuffix(".vst3") || string.contains("VST3") {
                 if let device = parseVST3Device(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -129,7 +122,7 @@ class DigitalPerformerParser: DAWParser {
             // VST plugins
             else if string.hasSuffix(".vst") && !string.contains(".vst3") {
                 if let device = parseVSTDevice(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -139,7 +132,7 @@ class DigitalPerformerParser: DAWParser {
             // MAS plugins (MOTU Audio System - DP native)
             else if string.contains("MAS") || isMOTUNativePlugin(string) {
                 if let device = parseMASDevice(string, context: strings, index: index) {
-                    let key = "\(device.name)_\(device.manufacturer)"
+                    let key = "\(device.name)_\(device.publisher)"
                     if !seenDevices.contains(key) {
                         devices.append(device)
                         seenDevices.insert(key)
@@ -162,18 +155,34 @@ class DigitalPerformerParser: DAWParser {
             .replacingOccurrences(of: "AudioUnit", with: "")
             .trimmingCharacters(in: .whitespaces)
 
-        // Look for manufacturer in nearby strings
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
         var trackName: String?
 
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Look for manufacturer in nearby strings
+            // BUT skip "MOTU" since that's the DAW manufacturer, not the plugin manufacturer
+            let searchRange = max(0, index - 15)..<min(context.count, index + 15)
+            for nearbyString in context[searchRange] {
+                // Try to extract manufacturer from this string (works for paths too)
+                if let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    // SKIP if it's just the DAW manufacturer (MOTU for Digital Performer)
+                    if extractedManufacturer != "MOTU" {
+                        manufacturer = extractedManufacturer
+                        break  // Found it, stop searching
+                    }
+                }
+            }
+        }
+
+        // Look for track names
         let searchRange = max(0, index - 15)..<min(context.count, index + 15)
         for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-            }
-            // Look for track names
             if nearbyString.hasPrefix("Track ") || nearbyString.contains("track:") {
                 trackName = nearbyString
+                break
             }
         }
 
@@ -187,10 +196,7 @@ class DigitalPerformerParser: DAWParser {
         }
 
         return DPDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            format: .AU,
-            trackName: trackName
+            name: pluginName, publisher: manufacturer, format: .AU, trackName: trackName
         )
     }
 
@@ -202,16 +208,34 @@ class DigitalPerformerParser: DAWParser {
         pluginName = pluginName.replacingOccurrences(of: ".vst3", with: "")
             .trimmingCharacters(in: .whitespaces)
 
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
         var trackName: String?
 
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Look for manufacturer in nearby strings
+            // BUT skip "MOTU" since that's the DAW manufacturer, not the plugin manufacturer
+            let searchRange = max(0, index - 15)..<min(context.count, index + 15)
+            for nearbyString in context[searchRange] {
+                // Try to extract manufacturer from this string (works for paths too)
+                if let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    // SKIP if it's just the DAW manufacturer (MOTU for Digital Performer)
+                    if extractedManufacturer != "MOTU" {
+                        manufacturer = extractedManufacturer
+                        break  // Found it, stop searching
+                    }
+                }
+            }
+        }
+
+        // Look for track names
         let searchRange = max(0, index - 15)..<min(context.count, index + 15)
         for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-            }
             if nearbyString.hasPrefix("Track ") || nearbyString.contains("track:") {
                 trackName = nearbyString
+                break
             }
         }
 
@@ -220,10 +244,7 @@ class DigitalPerformerParser: DAWParser {
         }
 
         return DPDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            format: .VST3,
-            trackName: trackName
+            name: pluginName, publisher: manufacturer, format: .VST3, trackName: trackName
         )
     }
 
@@ -235,16 +256,34 @@ class DigitalPerformerParser: DAWParser {
         pluginName = pluginName.replacingOccurrences(of: ".vst", with: "")
             .trimmingCharacters(in: .whitespaces)
 
+        // FIRST: Try to extract manufacturer from the plugin path itself
         var manufacturer = "Unknown"
         var trackName: String?
 
+        if let extractedFromPath = extractManufacturerFromString(string) {
+            manufacturer = extractedFromPath
+        } else {
+            // FALLBACK: Look for manufacturer in nearby strings
+            // BUT skip "MOTU" since that's the DAW manufacturer, not the plugin manufacturer
+            let searchRange = max(0, index - 15)..<min(context.count, index + 15)
+            for nearbyString in context[searchRange] {
+                // Try to extract manufacturer from this string (works for paths too)
+                if let extractedManufacturer = extractManufacturerFromString(nearbyString) {
+                    // SKIP if it's just the DAW manufacturer (MOTU for Digital Performer)
+                    if extractedManufacturer != "MOTU" {
+                        manufacturer = extractedManufacturer
+                        break  // Found it, stop searching
+                    }
+                }
+            }
+        }
+
+        // Look for track names
         let searchRange = max(0, index - 15)..<min(context.count, index + 15)
         for nearbyString in context[searchRange] {
-            if isManufacturerName(nearbyString) {
-                manufacturer = nearbyString
-            }
             if nearbyString.hasPrefix("Track ") || nearbyString.contains("track:") {
                 trackName = nearbyString
+                break
             }
         }
 
@@ -253,10 +292,7 @@ class DigitalPerformerParser: DAWParser {
         }
 
         return DPDevice(
-            name: pluginName,
-            manufacturer: manufacturer,
-            format: .VST,
-            trackName: trackName
+            name: pluginName, publisher: manufacturer, format: .VST, trackName: trackName
         )
     }
 
@@ -276,10 +312,7 @@ class DigitalPerformerParser: DAWParser {
         }
 
         return DPDevice(
-            name: deviceName,
-            manufacturer: "MOTU",
-            format: .AU,  // Treat MAS as AU for compatibility
-            trackName: trackName
+            name: deviceName, publisher: "MOTU", format: .AU, trackName: trackName
         )
     }
 
@@ -288,25 +321,7 @@ class DigitalPerformerParser: DAWParser {
     private static func isMOTUNativePlugin(_ string: String) -> Bool {
         let motuPlugins = [
             // EQ
-            "Parametric EQ", "MasterWorks EQ", "Precision EQ",
-
-            // Dynamics
-            "Leveler", "Compressor", "Multiband", "Dynamics",
-
-            // Reverb & Delay
-            "ProVerb", "Delay", "Echo",
-
-            // Modulation
-            "Chorus", "Flanger", "Phaser", "Tremolo",
-
-            // Distortion
-            "Overdrive", "Tube", "Saturate",
-
-            // Pitch & Time
-            "Pitch Shift", "Time Stretch",
-
-            // Utilities
-            "Trim", "Phase", "De-esser", "Gate"
+            "Parametric EQ", "MasterWorks EQ", "Precision EQ", "Leveler", "Compressor", "Multiband", "Dynamics", "ProVerb", "Delay", "Echo", "Chorus", "Flanger", "Phaser", "Tremolo", "Overdrive", "Tube", "Saturate", "Pitch Shift", "Time Stretch", "Trim", "Phase", "De-esser", "Gate"
         ]
 
         return motuPlugins.contains { string.contains($0) }
@@ -343,19 +358,12 @@ class DigitalPerformerParser: DAWParser {
 
             let plugins = devices.enumerated().map { (deviceIndex, device) -> ParsedPlugin in
                 ParsedPlugin(
-                    name: device.name,
-                    manufacturer: device.manufacturer,
-                    trackName: trackName,
-                    trackIndex: trackIndex,
-                    deviceIndex: deviceIndex,
-                    format: device.format
+                    name: device.name, publisher: device.publisher, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: device.format
                 )
             }
 
             tracks.append(ParsedTrack(
-                name: trackName,
-                index: trackIndex,
-                plugins: plugins
+                name: trackName, index: trackIndex, plugins: plugins
             ))
         }
 
@@ -416,8 +424,7 @@ class DigitalPerformerParser: DAWParser {
             if string.contains("Digital Performer") {
                 // Try to extract version number
                 let pattern = #"(\d+(?:\.\d+)?)"#
-                if let regex = try? NSRegularExpression(pattern: pattern),
-                   let match = regex.firstMatch(in: string, range: NSRange(string.startIndex..., in: string)) {
+                if let regex = try? NSRegularExpression(pattern: pattern), let match = regex.firstMatch(in: string, range: NSRange(string.startIndex..., in: string)) {
                     if let range = Range(match.range, in: string) {
                         return "Digital Performer \(string[range])"
                     }
@@ -435,24 +442,46 @@ class DigitalPerformerParser: DAWParser {
     // MARK: - Helper Methods
 
     private static func isManufacturerName(_ string: String) -> Bool {
+        // Skip file paths and URLs
+        if string.contains("/") || string.contains(".vst") || string.contains(".component") || string.contains(".au") {
+            return false
+        }
+
         let knownManufacturers = [
-            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope",
-            "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla",
-            "Xfer", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox",
-            "Celemony", "Steinberg", "UJAM", "Output", "Serum", "u-he",
-            "Kilohearts", "Apple", "MOTU", "Vienna", "Spitfire", "EastWest"
+            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope", "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla DSP", "Valhalla", "Xfer", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox", "Celemony", "Steinberg", "UJAM", "Output", "Serum", "u-he", "Kilohearts", "Apple", "MOTU", "Vienna", "Spitfire", "EastWest"
         ]
 
         return knownManufacturers.contains { string.contains($0) }
     }
 
+    /// Extract manufacturer name from any string (including file paths)
+    private static func extractManufacturerFromString(_ string: String) -> String? {
+        let knownManufacturers = [
+            "FabFilter", "Waves", "Native Instruments", "Arturia", "iZotope", "Soundtoys", "Plugin Alliance", "UAD", "Slate Digital", "Valhalla DSP", "Valhalla", "Xfer", "Softube", "Eventide", "Lexicon", "SSL", "Sonnox", "Celemony", "Steinberg", "UJAM", "Output", "Serum", "u-he", "Kilohearts", "Apple", "MOTU", "Vienna", "Spitfire", "EastWest"
+        ]
+
+        // Find which manufacturer is contained in this string
+        for manufacturer in knownManufacturers {
+            if string.contains(manufacturer) {
+                return manufacturer
+            }
+        }
+
+        return nil
+    }
+
     private static func extractManufacturerFromName(_ pluginName: String) -> String {
+        // First try to extract from the plugin name itself
+        if let manufacturer = extractManufacturerFromString(pluginName) {
+            return manufacturer
+        }
+
         // Try to extract manufacturer from plugin name
         let components = pluginName.components(separatedBy: " ")
         if let first = components.first, first.count > 2 {
             // Check if first word matches known manufacturer
-            if isManufacturerName(first) {
-                return first
+            if let manufacturer = extractManufacturerFromString(first) {
+                return manufacturer
             }
         }
 

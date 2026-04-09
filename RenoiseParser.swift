@@ -83,6 +83,8 @@ class RenoiseParser: DAWParser {
         process.waitUntilExit()
 
         if process.terminationStatus != 0 {
+            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+            _ = String(data: errorData, encoding: .utf8) ?? "Unknown error"
             throw ParserError.decompressionFailed
         }
     }
@@ -102,6 +104,11 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
     private var currentPlugins: [ParsedPlugin] = []
     private var currentDeviceIndex = 0
 
+    // Instrument plugins (stored separately from track plugins)
+    private var instrumentPlugins: [ParsedPlugin] = []
+    private var instrumentDeviceIndex = 0
+    private var currentInstrumentName: String?
+
     // XML parsing state
     private var elementStack: [String] = []
     private var characterBuffer = ""
@@ -114,6 +121,7 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
     private var currentManufacturer = ""
     private var currentPluginPath = ""
     private var currentPluginFormat: PluginFormat = .VST3
+    private var inInstruments = false
 
     func parse(data: Data) throws {
         let xmlParser = XMLParser(data: data)
@@ -121,6 +129,17 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
 
         guard xmlParser.parse() else {
             throw ParserError.xmlParsingFailed
+        }
+
+        // Add instrument plugins as a separate track if we found any
+        if !instrumentPlugins.isEmpty {
+            let instrumentTrack = ParsedTrack(
+                name: "Instruments",
+                index: tracks.count,
+                plugins: instrumentPlugins
+            )
+            tracks.append(instrumentTrack)
+            print("🎵 Added 'Instruments' track with \(instrumentPlugins.count) plugins")
         }
 
         print("\n📊 RENOISE PARSING COMPLETE")
@@ -136,7 +155,7 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
+                attributes attributeDict: [String: String] = [:]) {
 
         elementStack.append(elementName)
         characterBuffer = ""
@@ -153,6 +172,16 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
         // Global song settings
         if elementName == "GlobalSongData" {
             // Will look for BeatsPerMin and SampleRate in child elements
+        }
+
+        // Instruments section
+        if elementName == "Instruments" {
+            inInstruments = true
+        }
+
+        // Individual instrument within Instruments section
+        if elementName == "Instrument" && inInstruments {
+            currentInstrumentName = nil
         }
 
         // Track detection
@@ -174,8 +203,9 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
         }
 
         // Plugin device detection
-        if elementName == "PluginDevice" || elementName == "VstPluginDevice" ||
-           elementName == "AudioUnitPluginDevice" || elementName == "LadspaPluginDevice" {
+        if elementName == "PluginDevice" || elementName == "AudioPluginDevice" ||
+           elementName == "VstPluginDevice" || elementName == "AudioUnitPluginDevice" ||
+           elementName == "LadspaPluginDevice" {
             inPluginDevice = true
             currentPluginName = ""
             currentManufacturer = ""
@@ -185,7 +215,7 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
             // Determine format from element name
             if elementName == "VstPluginDevice" {
                 currentPluginFormat = .VST
-            } else if elementName == "AudioUnitPluginDevice" {
+            } else if elementName == "AudioUnitPluginDevice" || elementName == "AudioPluginDevice" {
                 currentPluginFormat = .AU
             } else if elementName == "LadspaPluginDevice" {
                 currentPluginFormat = .VST  // Map LADSPA to VST
@@ -225,13 +255,42 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
             }
         }
 
+        // Instrument name
+        if elementName == "Name" && isInContext(["Instrument"]) && inInstruments && currentInstrumentName == nil {
+            if !content.isEmpty {
+                currentInstrumentName = content
+                print("🎹 Found instrument: \(content)")
+            }
+        }
+
         // Plugin name (inside PluginProperties or directly)
         if elementName == "PluginDisplayName" && inPluginDevice {
             currentPluginName = content
+            // Extract manufacturer from display name if present (format: "AU: Manufacturer: PluginName")
+            if currentManufacturer.isEmpty {
+                currentManufacturer = extractManufacturerFromDisplayName(content)
+            }
             print("   🔌 Found plugin: \(content)")
-        } else if elementName == "PluginIdentifier" && inPluginDevice && currentPluginName.isEmpty {
-            // Fallback to identifier if no display name
-            currentPluginName = extractPluginNameFromIdentifier(content)
+        } else if elementName == "PluginIdentifier" && inPluginDevice {
+            // Extract manufacturer from identifier if we don't have one yet
+            if currentManufacturer.isEmpty {
+                currentManufacturer = extractManufacturerFromIdentifier(content)
+            }
+            // Use identifier as fallback name if no display name
+            if currentPluginName.isEmpty {
+                currentPluginName = extractPluginNameFromIdentifier(content)
+            }
+        }
+
+        // Plugin type (AU, VST, etc.) from AudioPluginDevice
+        if elementName == "PluginType" && inPluginDevice {
+            if content == "AU" {
+                currentPluginFormat = .AU
+            } else if content == "VST" {
+                currentPluginFormat = .VST
+            } else if content == "VST3" {
+                currentPluginFormat = .VST3
+            }
         }
 
         // Plugin path (can extract manufacturer from path)
@@ -246,23 +305,44 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
         }
 
         // End of plugin device
-        if (elementName == "PluginDevice" || elementName == "VstPluginDevice" ||
-            elementName == "AudioUnitPluginDevice" || elementName == "LadspaPluginDevice") && inPluginDevice {
+        if (elementName == "PluginDevice" || elementName == "AudioPluginDevice" ||
+            elementName == "VstPluginDevice" || elementName == "AudioUnitPluginDevice" ||
+            elementName == "LadspaPluginDevice") && inPluginDevice {
             inPluginDevice = false
 
             // Add plugin if we have valid data
             if !currentPluginName.isEmpty {
-                let plugin = ParsedPlugin(
-                    name: cleanPluginName(currentPluginName),
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentPluginFormat
-                )
-                currentPlugins.append(plugin)
-                currentDeviceIndex += 1
-                print("   ✅ Added plugin: \(plugin.name) by \(plugin.manufacturer)")
+                let cleanedName = cleanPluginName(currentPluginName)
+                let publisher = currentManufacturer.isEmpty ? "Unknown" : currentManufacturer
+
+                // Determine if this is an instrument plugin or track plugin
+                if inInstruments {
+                    // Add to instrument plugins
+                    let plugin = ParsedPlugin(
+                        name: cleanedName,
+                        publisher: publisher,
+                        trackName: currentInstrumentName ?? "Instrument \(instrumentPlugins.count + 1)",
+                        trackIndex: 0,  // Will be updated when creating track
+                        deviceIndex: instrumentDeviceIndex,
+                        format: currentPluginFormat
+                    )
+                    instrumentPlugins.append(plugin)
+                    instrumentDeviceIndex += 1
+                    print("   ✅ Added instrument plugin: \(plugin.name) by \(plugin.publisher)")
+                } else {
+                    // Add to track plugins
+                    let plugin = ParsedPlugin(
+                        name: cleanedName,
+                        publisher: publisher,
+                        trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
+                        trackIndex: currentTrackIndex,
+                        deviceIndex: currentDeviceIndex,
+                        format: currentPluginFormat
+                    )
+                    currentPlugins.append(plugin)
+                    currentDeviceIndex += 1
+                    print("   ✅ Added track plugin: \(plugin.name) by \(plugin.publisher)")
+                }
             }
 
             // Reset state
@@ -289,6 +369,11 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
             currentTrackName = nil
             currentPlugins = []
             currentDeviceIndex = 0
+        }
+
+        // End of Instruments section
+        if elementName == "Instruments" {
+            inInstruments = false
         }
 
         elementStack.removeLast()
@@ -353,8 +438,21 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
     }
 
     private func cleanPluginName(_ name: String) -> String {
-        // Remove common suffixes and clean up
         var cleaned = name
+
+        // Remove format prefixes like "AU: Manufacturer: PluginName"
+        // Extract just the plugin name part
+        let components = cleaned.components(separatedBy: ": ")
+        if components.count >= 3 {
+            // Format is "AU: Manufacturer: PluginName" - take the last part
+            cleaned = components[2...].joined(separator: ": ")
+        } else if components.count == 2 && (components[0] == "AU" || components[0] == "VST" || components[0] == "VST3") {
+            // Format is "AU: PluginName" - take the second part
+            cleaned = components[1]
+        }
+
+        // Remove common suffixes and clean up
+        cleaned = cleaned
             .replacingOccurrences(of: " (mono)", with: "")
             .replacingOccurrences(of: " (stereo)", with: "")
             .replacingOccurrences(of: " VST", with: "")
@@ -371,6 +469,30 @@ private class RenoiseXMLParser: NSObject, XMLParserDelegate {
         }
 
         return cleaned
+    }
+
+    private func extractManufacturerFromDisplayName(_ displayName: String) -> String {
+        // Renoise format: "AU: Manufacturer: PluginName" or "VST: Manufacturer: PluginName"
+        let components = displayName.components(separatedBy: ": ")
+        if components.count >= 3 {
+            // Second component is the manufacturer
+            return components[1]
+        }
+        return "Unknown"
+    }
+
+    private func extractManufacturerFromIdentifier(_ identifier: String) -> String {
+        // AU identifier format: "aumu:KLMV:KORG" or "aufx:ksot: kHs"
+        // VST identifier format varies
+        let components = identifier.components(separatedBy: ":")
+        if components.count >= 3 {
+            // Last component is often the manufacturer
+            let manufacturer = components[2].trimmingCharacters(in: .whitespaces)
+            if !manufacturer.isEmpty && manufacturer.count > 1 {
+                return manufacturer
+            }
+        }
+        return "Unknown"
     }
 }
 #endif // os(macOS)

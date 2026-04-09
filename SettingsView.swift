@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var prefs: Preferences
@@ -178,8 +178,7 @@ struct SettingsView: View {
                                 Toggle(isOn: Binding(
                                     get: { prefs.selectedFormats.contains(fmt) },
                                     set: { on in
-                                        if on { prefs.selectedFormats.insert(fmt) }
-                                        else { prefs.selectedFormats.remove(fmt) }
+                                        if on { prefs.selectedFormats.insert(fmt) } else { prefs.selectedFormats.remove(fmt) }
                                     })) {
                                         Text(fmt.rawValue)
                                             .font(.caption)
@@ -193,6 +192,87 @@ struct SettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                     }
+                    .background(cardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+
+                // MARK: - Column Visibility
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Table Columns")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 16) {
+                        Text("Choose which columns to display in the plugin table")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        // Column toggle buttons
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96))], spacing: 10) {
+                            ColumnToggleButton(label: "Rating", isOn: $prefs.showColumnRating)
+                            ColumnToggleButton(label: "Name", isOn: $prefs.showColumnName)
+                            ColumnToggleButton(label: "Publisher", isOn: $prefs.showColumnPublisher)
+                            ColumnToggleButton(label: "Version", isOn: $prefs.showColumnVersion)
+                            ColumnToggleButton(label: "Type", isOn: $prefs.showColumnType)
+                            ColumnToggleButton(label: "Style", isOn: $prefs.showColumnStyle)
+                            ColumnToggleButton(label: "License", isOn: $prefs.showColumnLicense)
+                            ColumnToggleButton(label: "Date", isOn: $prefs.showColumnDate)
+                            ColumnToggleButton(label: "Size", isOn: $prefs.showColumnSize)
+                            ColumnToggleButton(label: "Requirement", isOn: $prefs.showColumnRequirement)
+                            ColumnToggleButton(label: "Obsolete", isOn: $prefs.showColumnObsolete)
+                            ColumnToggleButton(label: "Missing", isOn: $prefs.showColumnMissing)
+                            ColumnToggleButton(label: "Track", isOn: $prefs.showColumnTrack)
+                            ColumnToggleButton(label: "Notes", isOn: $prefs.showColumnNotes)
+                            ColumnToggleButton(label: "Path", isOn: $prefs.showColumnPath)
+                        }
+
+                        // Quick actions
+                        HStack {
+                            Button("Select All") {
+                                prefs.showColumnRating = true
+                                prefs.showColumnName = true
+                                prefs.showColumnPublisher = true
+                                prefs.showColumnVersion = true
+                                prefs.showColumnType = true
+                                prefs.showColumnStyle = true
+                                prefs.showColumnLicense = true
+                                prefs.showColumnDate = true
+                                prefs.showColumnSize = true
+                                prefs.showColumnPath = true
+                                prefs.showColumnRequirement = true
+                                prefs.showColumnObsolete = true
+                                prefs.showColumnMissing = true
+                                prefs.showColumnTrack = true
+                                prefs.showColumnNotes = true
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button("Deselect All") {
+                                prefs.showColumnRating = false
+                                prefs.showColumnName = false
+                                prefs.showColumnPublisher = false
+                                prefs.showColumnVersion = false
+                                prefs.showColumnType = false
+                                prefs.showColumnStyle = false
+                                prefs.showColumnLicense = false
+                                prefs.showColumnDate = false
+                                prefs.showColumnSize = false
+                                prefs.showColumnPath = false
+                                prefs.showColumnRequirement = false
+                                prefs.showColumnObsolete = false
+                                prefs.showColumnMissing = false
+                                prefs.showColumnTrack = false
+                                prefs.showColumnNotes = false
+                            }
+                            .buttonStyle(.bordered)
+
+                            Spacer()
+                        }
+                    }
+                    .padding(16)
                     .background(cardBackground)
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
@@ -296,7 +376,7 @@ struct SettingsView: View {
                             ColumnToggleButton(label: "Style", isOn: $prefs.pdfShowStyle)
                             ColumnToggleButton(label: "Version", isOn: $prefs.pdfShowVersion)
                             ColumnToggleButton(label: "License", isOn: $prefs.pdfShowLicense)
-                            ColumnToggleButton(label: "Arch", isOn: $prefs.pdfShowArch)
+                            ColumnToggleButton(label: "Preset", isOn: $prefs.pdfShowArch)
                             ColumnToggleButton(label: "Date", isOn: $prefs.pdfShowDate)
                             ColumnToggleButton(label: "Size", isOn: $prefs.pdfShowSize)
                             ColumnToggleButton(label: "Requirement", isOn: $prefs.pdfShowRequirement)
@@ -760,7 +840,7 @@ struct SettingsView: View {
             }
 
             let useEncryption = (encryptChoice == .alertFirstButtonReturn)
-            var password: String? = nil
+            var password: String?
 
             if useEncryption {
                 // Prompt for password
@@ -889,7 +969,7 @@ struct SettingsView: View {
             Task {
                 // Check if archive is encrypted
                 let isEncrypted = ArchiveManager.shared.isArchiveEncrypted(at: url)
-                var password: String? = nil
+                var password: String?
 
                 if isEncrypted {
                     // Prompt for password

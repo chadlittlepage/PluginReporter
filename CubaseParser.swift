@@ -3,7 +3,7 @@
 //  Plugin Reporter
 //
 //  Parser for Cubase and Nuendo project files (.cpr, .npr)
-//  Both use the same XML-based format (Steinberg products)
+//  Binary RIFF-like format (Steinberg products)
 //
 
 import Foundation
@@ -21,25 +21,18 @@ class CubaseParser: DAWParser {
             throw ParserError.invalidFileType
         }
 
-        // Read the file
+        // Read the binary file
         let data = try Data(contentsOf: url)
 
-        // Parse XML
-        let parser = CubaseXMLParser()
+        // Parse binary format
+        let parser = CubaseBinaryParser()
         try parser.parse(data: data)
 
         // Determine DAW type based on extension
         let dawType: DAWType = url.pathExtension.lowercased() == "npr" ? .nuendo : .cubase
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: dawType,
-            tracks: parser.tracks,
-            tempo: parser.tempo,
-            sampleRate: parser.sampleRate,
-            version: parser.version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: dawType, tracks: parser.tracks, tempo: parser.tempo, sampleRate: parser.sampleRate, version: parser.version, key: nil
         )
     }
 }
@@ -58,9 +51,9 @@ class NuendoParser: DAWParser {
     }
 }
 
-// MARK: - XML Parser
+// MARK: - Binary Parser
 
-private class CubaseXMLParser: NSObject, XMLParserDelegate {
+private class CubaseBinaryParser {
 
     var tempo: Double?
     var sampleRate: Int?
@@ -71,235 +64,205 @@ private class CubaseXMLParser: NSObject, XMLParserDelegate {
     private var currentTrackIndex = 0
     private var currentPlugins: [ParsedPlugin] = []
     private var currentDeviceIndex = 0
-
-    // XML parsing state
-    private var elementStack: [String] = []
-    private var characterBuffer = ""
-    private var currentAttributes: [String: String] = [:]
-
-    // Plugin parsing state
-    private var inPluginSlot = false
-    private var inVSTPlugin = false
-    private var currentPluginName = ""
-    private var currentManufacturer = ""
-    private var currentPluginFormat: PluginFormat = .VST3
+    private var currentPreset: String?
 
     func parse(data: Data) throws {
-        let xmlParser = XMLParser(data: data)
-        xmlParser.delegate = self
+        print("\n🎹 CUBASE BINARY PARSING STARTED")
+        print("   File size: \(data.count) bytes")
 
-        guard xmlParser.parse() else {
-            throw ParserError.xmlParsingFailed
+        // Extract all strings from binary data
+        let strings = extractStrings(from: data)
+        print("   Extracted \(strings.count) strings")
+
+        // Parse version
+        if let versionString = strings.first(where: { $0.contains("Cubase") && $0.contains("Version") }) {
+            version = versionString
+        }
+
+        // Find plugin patterns
+        var i = 0
+        while i < strings.count {
+            let str = strings[i]
+
+            // Detect track names (preceded by "VST" or contains "DSP")
+            if str.contains("VST") && str.contains("DSP") && !str.contains("Plugin") {
+                currentTrackName = str
+                print("🎵 Found track: \(str)")
+            }
+
+            // Detect "Plugin Name" marker
+            if str == "Plugin Name" && i + 1 < strings.count {
+                var pluginName = strings[i + 1]
+
+                // Remove leading "#" (Cubase internal marker)
+                if pluginName.hasPrefix("#") {
+                    pluginName = String(pluginName.dropFirst())
+                }
+
+                // Look back for GUID
+                var guid = ""
+                if i >= 2 && strings[i - 2] == "GUID" {
+                    guid = strings[i - 1]
+                }
+
+                // Determine format from GUID
+                let format = detectFormat(from: guid, pluginName: pluginName)
+
+                // Extract manufacturer (not always available in Cubase format)
+                let manufacturer = extractManufacturer(from: pluginName, guid: guid)
+
+                // Look ahead for preset information
+                var preset = ""
+                if i + 2 < strings.count {
+                    // Look for preset_nameSi pattern followed by preset name
+                    for j in (i + 2)..<min(i + 20, strings.count) {
+                        if strings[j].contains("preset_name") && j + 1 < strings.count {
+                            // Next string should be the preset name
+                            var presetName = strings[j + 1]
+
+                            // Filter out metadata strings
+                            if !presetName.contains("Si") && !presetName.contains("preset") {
+                                // Clean up Cubase delimiters (ends with "i" or contains "ipreset")
+                                if presetName.hasSuffix("i") && !presetName.hasSuffix("Reverb i") {
+                                    presetName = String(presetName.dropLast())
+                                }
+
+                                // Split on "ipreset" if it exists (e.g., "Defaultipreset_dirtyFi")
+                                if let range = presetName.range(of: "ipreset") {
+                                    presetName = String(presetName[..<range.lowerBound])
+                                }
+
+                                preset = presetName
+                                print("   🎨 Found preset: \(presetName)")
+                                break
+                            }
+                        }
+                    }
+                }
+
+                // Skip built-in plugins unless it's a real plugin
+                if !isBuiltInPlugin(pluginName) {
+                    let plugin = ParsedPlugin(
+                        name: pluginName, publisher: manufacturer, trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)", trackIndex: currentTrackIndex, deviceIndex: currentDeviceIndex, format: format, preset: preset
+                    )
+                    currentPlugins.append(plugin)
+                    currentDeviceIndex += 1
+                    print("   ✅ Added plugin: \(pluginName) [\(format.rawValue)] by \(manufacturer)\(preset.isEmpty ? "" : " - Preset: \(preset)")")
+                }
+
+                i += 1 // Skip the plugin name string
+            }
+
+            i += 1
+        }
+
+        // Create final track with plugins
+        if !currentPlugins.isEmpty {
+            let track = ParsedTrack(
+                name: currentTrackName ?? "Main Track", index: 0, plugins: currentPlugins
+            )
+            tracks.append(track)
         }
 
         print("\n📊 CUBASE PARSING COMPLETE")
         print("   Total tracks: \(tracks.count)")
         print("   Total plugins: \(tracks.flatMap { $0.plugins }.count)")
-        print("   Tempo: \(tempo.map { String($0) } ?? "not found")")
-        print("   Sample Rate: \(sampleRate.map { String($0) } ?? "not found")")
         print("   Version: \(version ?? "not found")")
         print("---\n")
     }
 
-    // MARK: - XMLParserDelegate
-
-    func parser(_ parser: XMLParser, didStartElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
-
-        elementStack.append(elementName)
-        characterBuffer = ""
-        currentAttributes = attributeDict
-
-        // Project metadata
-        if elementName == "Project" {
-            if let versionString = attributeDict["version"] {
-                version = "Cubase \(versionString)"
-            }
-        }
-
-        // Tempo detection
-        if elementName == "Tempo" {
-            if let value = attributeDict["value"], let tempoValue = Double(value) {
-                tempo = tempoValue
-            }
-        }
-
-        // Sample rate detection
-        if elementName == "SampleRate" {
-            if let value = attributeDict["value"], let rate = Int(value) {
-                sampleRate = rate
-            }
-        }
-
-        // Track detection
-        if elementName == "Track" || elementName == "AudioTrack" || elementName == "MIDITrack" || elementName == "InstrumentTrack" {
-            currentTrackName = attributeDict["name"] ?? "Track \(currentTrackIndex + 1)"
-            currentPlugins = []
-            currentDeviceIndex = 0
-        }
-
-        // Plugin/Insert detection
-        if elementName == "PluginSlot" || elementName == "Insert" || elementName == "Inserts" {
-            inPluginSlot = true
-            currentPluginName = ""
-            currentManufacturer = ""
-            currentPluginFormat = .VST3
-        }
-
-        // VST plugin detection - handle both nested and standalone
-        if elementName == "VSTPlugin" || elementName == "Plugin" {
-            inVSTPlugin = true
-            inPluginSlot = true  // Treat VSTPlugin as being in a plugin slot
-
-            // Extract plugin info from attributes
-            if let name = attributeDict["name"] {
-                currentPluginName = name
-            }
-            if let vendor = attributeDict["vendor"] {
-                currentManufacturer = vendor
-            }
-            if let uid = attributeDict["uid"] {
-                currentPluginName = currentPluginName.isEmpty ? uid : currentPluginName
-            }
-
-            // Determine format from attributes
-            if let pluginType = attributeDict["type"] {
-                currentPluginFormat = parsePluginType(pluginType)
-            } else if attributeDict["classID"] != nil {
-                // VST3 plugins have a classID
-                currentPluginFormat = .VST3
-            }
-
-            // If we have a name, add the plugin immediately (for simple format)
-            if !currentPluginName.isEmpty {
-                let plugin = ParsedPlugin(
-                    name: currentPluginName,
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentPluginFormat
-                )
-                currentPlugins.append(plugin)
-                currentDeviceIndex += 1
-                print("   ✅ Added plugin: \(currentPluginName) by \(currentManufacturer)")
-
-                // Reset for next plugin
-                currentPluginName = ""
-                currentManufacturer = ""
-            }
-        }
-
-        // Plugin name in different locations
-        if (elementName == "Name" || elementName == "PluginName") && (inVSTPlugin || inPluginSlot) {
-            if let name = attributeDict["value"], !name.isEmpty {
-                currentPluginName = name
-            }
-        }
-
-        // Manufacturer/Vendor
-        if (elementName == "Vendor" || elementName == "Manufacturer") && (inVSTPlugin || inPluginSlot) {
-            if let vendor = attributeDict["value"], !vendor.isEmpty {
-                currentManufacturer = vendor
-            }
-        }
-    }
-
-    func parser(_ parser: XMLParser, didEndElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?) {
-
-        // End of VST Plugin
-        if elementName == "VSTPlugin" || elementName == "Plugin" {
-            inVSTPlugin = false
-        }
-
-        // End of plugin slot
-        if elementName == "PluginSlot" || elementName == "Insert" {
-            inPluginSlot = false
-
-            // Add plugin if we have valid data
-            if !currentPluginName.isEmpty {
-                let plugin = ParsedPlugin(
-                    name: currentPluginName,
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentPluginFormat
-                )
-                currentPlugins.append(plugin)
-                currentDeviceIndex += 1
-                print("   ✅ Added plugin: \(currentPluginName) by \(currentManufacturer)")
-            }
-
-            // Reset state
-            currentPluginName = ""
-            currentManufacturer = ""
-            currentPluginFormat = .VST3
-        }
-
-        // End of track
-        if elementName == "Track" || elementName == "AudioTrack" || elementName == "MIDITrack" || elementName == "InstrumentTrack" {
-            // Always add track, even if it has no plugins
-            let trackName = currentTrackName ?? "Track \(currentTrackIndex + 1)"
-            let track = ParsedTrack(
-                name: trackName,
-                index: currentTrackIndex,
-                plugins: currentPlugins
-            )
-            tracks.append(track)
-
-            if currentPlugins.isEmpty {
-                print("🎵 Added track '\(trackName)' (no plugins)")
-            } else {
-                print("🎵 Added track '\(trackName)' with \(currentPlugins.count) plugins")
-            }
-
-            currentTrackIndex += 1
-            currentTrackName = nil
-            currentPlugins = []
-            currentDeviceIndex = 0
-        }
-
-        // Handle character data for elements
-        if !characterBuffer.isEmpty {
-            let trimmed = characterBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if elementName == "Name" && (inVSTPlugin || inPluginSlot) && !trimmed.isEmpty {
-                currentPluginName = trimmed
-            }
-
-            if elementName == "Vendor" && (inVSTPlugin || inPluginSlot) && !trimmed.isEmpty {
-                currentManufacturer = trimmed
-            }
-        }
-
-        elementStack.removeLast()
-        characterBuffer = ""
-    }
-
-    func parser(_ parser: XMLParser, foundCharacters string: String) {
-        characterBuffer += string
-    }
-
     // MARK: - Helper Methods
 
-    private func parsePluginType(_ typeString: String) -> PluginFormat {
-        let lower = typeString.lowercased()
+    /// Extract readable strings from binary data
+    private func extractStrings(from data: Data) -> [String] {
+        var strings: [String] = []
+        var currentString = ""
+        let minLength = 3 // Minimum string length to consider
 
-        if lower.contains("vst3") {
-            return .VST3
-        } else if lower.contains("vst") {
-            return .VST
-        } else if lower.contains("au") || lower.contains("audiounit") {
-            return .AU
-        } else if lower.contains("aax") {
-            return .AAX
-        } else if lower.contains("clap") {
-            return .CLAP
-        } else {
-            return .VST3  // Default for Cubase
+        for byte in data {
+            // Printable ASCII range (32-126) plus newline/tab
+            if (byte >= 32 && byte <= 126) || byte == 9 || byte == 10 {
+                currentString.append(Character(UnicodeScalar(byte)))
+            } else {
+                // End of string
+                if currentString.count >= minLength {
+                    let trimmed = currentString.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        strings.append(trimmed)
+                    }
+                }
+                currentString = ""
+            }
         }
+
+        // Add final string if any
+        if currentString.count >= minLength {
+            let trimmed = currentString.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                strings.append(trimmed)
+            }
+        }
+
+        return strings
+    }
+
+    /// Detect plugin format from GUID pattern
+    private func detectFormat(from guid: String, pluginName: String) -> PluginFormat {
+        // VST3 GUIDs are 32-character hex strings
+        if guid.count == 32 || guid.hasPrefix("$") && guid.count == 33 {
+            // Check if it looks like a VST2 ID (starts with numeric)
+            let cleanGuid = guid.replacingOccurrences(of: "$", with: "")
+            if cleanGuid.prefix(8).allSatisfy({ $0.isHexDigit }) {
+                // VST2 uses 4-byte integers, VST3 uses full GUIDs
+                return cleanGuid.count == 32 ? .VST3 : .VST
+            }
+            return .VST3
+        }
+
+        // Check plugin name for hints
+        if pluginName.lowercased().contains("vst3") {
+            return .VST3
+        } else if pluginName.lowercased().contains("vst") {
+            return .VST
+        } else if pluginName.lowercased().contains("au") {
+            return .AU
+        }
+
+        return .VST3 // Default for Cubase
+    }
+
+    /// Extract manufacturer from plugin name or GUID
+    private func extractManufacturer(from pluginName: String, guid: String) -> String {
+        // Try to extract from GUID if it contains readable text
+        if guid.contains("UAD") || guid.contains("uad") {
+            return "Universal Audio"
+        }
+
+        // Extract from plugin name prefix (# already stripped at this point)
+        if pluginName.hasPrefix("UAD") {
+            return "Universal Audio"
+        }
+
+        // Common manufacturer prefixes
+        let prefixes = [
+            "UADx": "Universal Audio", "UAD": "Universal Audio", "FabFilter": "FabFilter", "Waves": "Waves", "Soundtoys": "Soundtoys", "iZotope": "iZotope"
+        ]
+
+        for (prefix, manufacturer) in prefixes {
+            if pluginName.hasPrefix(prefix) {
+                return manufacturer
+            }
+        }
+
+        return "Unknown"
+    }
+
+    /// Check if this is a built-in Cubase plugin or parameter (filter out)
+    private func isBuiltInPlugin(_ name: String) -> Bool {
+        let builtIns = [
+            "Input Filter", "EQ", "Standard Panner", "Inserts", "Sends", "Audio Input Count", "Audio Output Count", "Audio Input Arrangement", "Audio Output Arrangement", "Event Input Count", "Event Output Count", "MIDI Input", "MIDI Output"
+        ]
+
+        return builtIns.contains(name)
     }
 }

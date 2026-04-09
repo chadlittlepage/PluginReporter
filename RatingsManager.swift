@@ -109,8 +109,7 @@ class RatingsManager: ObservableObject {
     // MARK: - Persistence
 
     private func loadRatings() {
-        guard let data = CloudSyncStorage.shared.getData(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([String: Int].self, from: data) else {
+        guard let data = CloudSyncStorage.shared.getData(forKey: storageKey), let decoded = try? JSONDecoder().decode([String: Int].self, from: data) else {
             print("⭐ No saved ratings found")
             return
         }
@@ -130,8 +129,7 @@ class RatingsManager: ObservableObject {
 
     /// Export ratings to JSON
     func exportRatings() -> String? {
-        guard let data = try? JSONEncoder().encode(ratings),
-              let json = String(data: data, encoding: .utf8) else {
+        guard let data = try? JSONEncoder().encode(ratings), let json = String(data: data, encoding: .utf8) else {
             return nil
         }
         return json

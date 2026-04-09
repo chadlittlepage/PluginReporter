@@ -6,8 +6,8 @@
 //  Provides efficient memory usage and smooth scrolling
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Manages pagination state and logic for large datasets
 @MainActor
@@ -104,9 +104,21 @@ class PaginationManager<Item: Identifiable>: ObservableObject {
     /// Update the full dataset and reset to first page
     /// - Parameter items: Complete array of items to paginate
     func updateItems(_ items: [Item]) {
+        // BUGFIX: Only update @Published properties if values actually changed
+        // This prevents "Modifying state during view update" warnings when called from computed properties
+        let newTotalItems = items.count
+        let newIsEnabled = items.count > paginationThreshold
+
         self.allItems = items
-        self.totalItems = items.count
-        self.isEnabled = items.count > paginationThreshold
+
+        // Only trigger @Published changes if values changed
+        if self.totalItems != newTotalItems {
+            self.totalItems = newTotalItems
+        }
+
+        if self.isEnabled != newIsEnabled {
+            self.isEnabled = newIsEnabled
+        }
 
         // Clear cache when data changes
         pageCache.removeAll()

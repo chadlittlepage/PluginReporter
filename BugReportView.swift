@@ -54,11 +54,8 @@ struct BugReportView: View {
     private var gradientBackground: some View {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(red: 0.15, green: 0.15, blue: 0.17),
-                Color(red: 0.10, green: 0.10, blue: 0.12)
-            ]),
-            startPoint: .top,
-            endPoint: .bottom
+                Color(red: 0.15, green: 0.15, blue: 0.17), Color(red: 0.10, green: 0.10, blue: 0.12)
+            ]), startPoint: .top, endPoint: .bottom
         )
         .ignoresSafeArea()
     }
@@ -108,7 +105,7 @@ struct BugReportView: View {
             .navigationTitle("Report a Bug")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         dismiss()
                     }) {
@@ -346,16 +343,7 @@ struct BugReportView: View {
         Task {
             do {
                 let report = BugReport(
-                    title: title,
-                    description: description,
-                    stepsToReproduce: stepsToReproduce.isEmpty ? nil : stepsToReproduce,
-                    expectedBehavior: expectedBehavior.isEmpty ? nil : expectedBehavior,
-                    actualBehavior: actualBehavior.isEmpty ? nil : actualBehavior,
-                    severity: severity.rawValue,
-                    email: email.isEmpty ? nil : email,
-                    systemInfo: includeSystemInfo ? collectSystemInfo() : nil,
-                    crashLog: includeCrashLog ? collectRecentCrashLogs() : nil,
-                    timestamp: Date()
+                    title: title, description: description, stepsToReproduce: stepsToReproduce.isEmpty ? nil : stepsToReproduce, expectedBehavior: expectedBehavior.isEmpty ? nil : expectedBehavior, actualBehavior: actualBehavior.isEmpty ? nil : actualBehavior, severity: severity.rawValue, email: email.isEmpty ? nil : email, systemInfo: includeSystemInfo ? collectSystemInfo() : nil, crashLog: includeCrashLog ? collectRecentCrashLogs() : nil, timestamp: Date()
                 )
 
                 try await UserFeedbackClient.shared.sendBugReport(report)
@@ -399,10 +387,7 @@ struct BugReportView: View {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
 
         return BugReport.SystemInfo(
-            appVersion: version,
-            appBuild: build,
-            osVersion: "macOS \(processInfo.operatingSystemVersionString)",
-            deviceModel: modelString
+            appVersion: version, appBuild: build, osVersion: "macOS \(processInfo.operatingSystemVersionString)", deviceModel: modelString
         )
     }
     #endif
@@ -414,18 +399,14 @@ struct BugReportView: View {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
 
         return BugReport.SystemInfo(
-            appVersion: version,
-            appBuild: build,
-            osVersion: "\(device.systemName) \(device.systemVersion)",
-            deviceModel: device.model
+            appVersion: version, appBuild: build, osVersion: "\(device.systemName) \(device.systemVersion)", deviceModel: device.model
         )
     }
     #endif
 
     private func collectRecentCrashLogs() -> String? {
         // Retrieve recent error logs from dashboard system
-        guard let logsData = UserDefaults.standard.data(forKey: "error_logs"),
-              let logs = try? JSONDecoder().decode([DashboardReport.ErrorLog].self, from: logsData) else {
+        guard let logsData = UserDefaults.standard.data(forKey: "error_logs"), let logs = try? JSONDecoder().decode([DashboardReport.ErrorLog].self, from: logsData) else {
             return nil
         }
 

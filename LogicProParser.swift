@@ -21,10 +21,7 @@ class LogicProParser: DAWParser {
     static func parseProject(url: URL) throws -> ParsedProject {
         // Delegate to shared Apple DAW parser
         return try AppleDAWParser.parseAppleProject(
-            url: url,
-            dawType: .logicPro,
-            supportedExtensions: supportedExtensions,
-            dawName: "Logic Pro"
+            url: url, dawType: .logicPro, supportedExtensions: supportedExtensions, dawName: "Logic Pro"
         )
     }
 }

@@ -56,8 +56,7 @@ struct FormatsCloud: View {
         case .format(let format):
             let color = colorForPluginFormat(format)
             ChipView(title: format.rawValue, selected: selectedFormats.contains(format), accent: color) {
-                if selectedFormats.contains(format) { selectedFormats.remove(format) }
-                else { selectedFormats.insert(format) }
+                if selectedFormats.contains(format) { selectedFormats.remove(format) } else { selectedFormats.insert(format) }
             }
         case .obsolete:
             let label = useFullObsoleteLabel ? "OBSOLETE" : "OBSLT"
@@ -91,7 +90,7 @@ private struct ChipView: View {
     let title: String
     let selected: Bool
     var accent: Color = .accentColor
-    var accessibilityTitle: String? = nil
+    var accessibilityTitle: String?
     let action: () -> Void
 
     var body: some View {
@@ -147,7 +146,7 @@ struct FlowLayout<Data: RandomAccessCollection, Content: View, ID: Hashable>: Vi
                 content(item)
                     .padding(4)
                     .alignmentGuide(.leading, computeValue: { d in
-                        if (abs(width - d.width) > size.width) {
+                        if abs(width - d.width) > size.width {
                             width = 0
                             height -= d.height
                         }

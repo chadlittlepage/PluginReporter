@@ -274,7 +274,7 @@ struct DashboardSettingsView: View {
 
     // MARK: - Actions
 
-    private func testConnection() {
+    func testConnection() {
         testingConnection = true
         testResult = ""
         showTestResult = false
@@ -287,9 +287,9 @@ struct DashboardSettingsView: View {
                 showTestResult = true
 
                 switch result {
-                case .success(let message):
+                case .success(let message): 
                     testResult = message
-                case .failure(let error):
+                case .failure(let error): 
                     testResult = error.localizedDescription
                 }
             }

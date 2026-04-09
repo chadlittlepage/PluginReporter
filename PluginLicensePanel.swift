@@ -119,24 +119,13 @@ struct PluginLicensePanel: View {
                         // Serial Number Section - only show if editing or has data
                         if isEditing {
                             licenseSection(
-                                title: "Serial Number",
-                                icon: "number",
-                                value: Binding(
-                                    get: { editedLicense?.serialNumber ?? "" },
-                                    set: { editedLicense?.serialNumber = $0.isEmpty ? nil : $0 }
-                                ),
-                                placeholder: "Enter serial number or license key",
-                                canCopy: true,
-                                isEditing: true
+                                title: "Serial Number", icon: "number", value: Binding(
+                                    get: { editedLicense?.serialNumber ?? "" }, set: { editedLicense?.serialNumber = $0.isEmpty ? nil : $0 }
+                                ), placeholder: "Enter serial number or license key", canCopy: true, isEditing: true
                             )
                         } else if license.serialNumber != nil {
                             licenseSection(
-                                title: "Serial Number",
-                                icon: "number",
-                                value: .constant(license.serialNumber ?? ""),
-                                placeholder: "",
-                                canCopy: true,
-                                isEditing: false
+                                title: "Serial Number", icon: "number", value: .constant(license.serialNumber ?? ""), placeholder: "", canCopy: true, isEditing: false
                             )
                         }
 
@@ -160,8 +149,7 @@ struct PluginLicensePanel: View {
 
                                         if isEditing {
                                             TextField("Account email", text: Binding(
-                                                get: { editedLicense?.accountEmail ?? "" },
-                                                set: { editedLicense?.accountEmail = $0.isEmpty ? nil : $0 }
+                                                get: { editedLicense?.accountEmail ?? "" }, set: { editedLicense?.accountEmail = $0.isEmpty ? nil : $0 }
                                             ))
                                             .textFieldStyle(.roundedBorder)
                                         } else if let email = license.accountEmail {
@@ -220,8 +208,7 @@ struct PluginLicensePanel: View {
 
                                         if isEditing {
                                             TextField("0", value: Binding(
-                                                get: { editedLicense?.activationsUsed ?? 0 },
-                                                set: { editedLicense?.activationsUsed = $0 }
+                                                get: { editedLicense?.activationsUsed ?? 0 }, set: { editedLicense?.activationsUsed = $0 }
                                             ), format: .number)
                                             .textFieldStyle(.roundedBorder)
                                             .frame(width: 60)
@@ -229,8 +216,7 @@ struct PluginLicensePanel: View {
                                             Text("of")
 
                                             TextField("0", value: Binding(
-                                                get: { editedLicense?.maxActivations ?? 0 },
-                                                set: { editedLicense?.maxActivations = $0 }
+                                                get: { editedLicense?.maxActivations ?? 0 }, set: { editedLicense?.maxActivations = $0 }
                                             ), format: .number)
                                             .textFieldStyle(.roundedBorder)
                                             .frame(width: 60)
@@ -248,8 +234,7 @@ struct PluginLicensePanel: View {
 
                                 if isEditing {
                                     TextField("Activation code (optional)", text: Binding(
-                                        get: { editedLicense?.activationCode ?? "" },
-                                        set: { editedLicense?.activationCode = $0.isEmpty ? nil : $0 }
+                                        get: { editedLicense?.activationCode ?? "" }, set: { editedLicense?.activationCode = $0.isEmpty ? nil : $0 }
                                     ))
                                     .textFieldStyle(.roundedBorder)
                                 } else if let code = license.activationCode {
@@ -285,8 +270,7 @@ struct PluginLicensePanel: View {
 
                                         if isEditing {
                                             DatePicker("", selection: Binding(
-                                                get: { editedLicense?.purchaseDate ?? Date() },
-                                                set: { editedLicense?.purchaseDate = $0 }
+                                                get: { editedLicense?.purchaseDate ?? Date() }, set: { editedLicense?.purchaseDate = $0 }
                                             ), displayedComponents: .date)
                                             .labelsHidden()
                                         } else if let date = license.purchaseDate {
@@ -297,8 +281,7 @@ struct PluginLicensePanel: View {
 
                                 if isEditing {
                                     TextField("Invoice number (optional)", text: Binding(
-                                        get: { editedLicense?.invoiceNumber ?? "" },
-                                        set: { editedLicense?.invoiceNumber = $0.isEmpty ? nil : $0 }
+                                        get: { editedLicense?.invoiceNumber ?? "" }, set: { editedLicense?.invoiceNumber = $0.isEmpty ? nil : $0 }
                                     ))
                                     .textFieldStyle(.roundedBorder)
                                 } else if let invoice = license.invoiceNumber {
@@ -367,8 +350,7 @@ struct PluginLicensePanel: View {
 
                             if isEditing {
                                 TextEditor(text: Binding(
-                                    get: { editedLicense?.notes ?? "" },
-                                    set: { editedLicense?.notes = $0.isEmpty ? nil : $0 }
+                                    get: { editedLicense?.notes ?? "" }, set: { editedLicense?.notes = $0.isEmpty ? nil : $0 }
                                 ))
                                 .frame(minHeight: 60)
                                 .border(Color.secondary.opacity(0.3))

@@ -60,11 +60,11 @@ struct ExportManager {
     // MARK: Public API
     @MainActor
     static func exportCSV(rows: [PluginItem], ratingsManager: RatingsManager? = nil, notesManager: NotesManager? = nil) {
-        let ratingsManager = ratingsManager ?? .shared
-        let notesManager = notesManager ?? .shared
+        let ratings = ratingsManager ?? .shared
+        let notes = notesManager ?? .shared
         let defaultName = defaultFileName(prefix: "Plugins", ext: "csv")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["csv"]) else { return }
-        let csv = makeCSV(rows: rows, ratingsManager: ratingsManager, notesManager: notesManager)
+        let csv = makeCSV(rows: rows, ratingsManager: ratings, notesManager: notes)
         do {
             try csv.data(using: .utf8)?.write(to: url)
             dashboardTrackExport()
@@ -84,14 +84,14 @@ struct ExportManager {
 
     @MainActor
     static func exportJSON(rows: [PluginItem], ratingsManager: RatingsManager? = nil, notesManager: NotesManager? = nil) {
-        let ratingsManager = ratingsManager ?? .shared
-        let notesManager = notesManager ?? .shared
+        let ratings = ratingsManager ?? .shared
+        let notes = notesManager ?? .shared
         let defaultName = defaultFileName(prefix: "Plugins", ext: "json")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["json"]) else { return }
         do {
             let enc = JSONEncoder()
             enc.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let jsonRows = rows.map { JSONRow($0, ratingsManager: ratingsManager, notesManager: notesManager) }
+            let jsonRows = rows.map { JSONRow($0, ratingsManager: ratings, notesManager: notes) }
             let data = try enc.encode(jsonRows)
             try data.write(to: url)
             dashboardTrackExport()
@@ -111,11 +111,11 @@ struct ExportManager {
 
     @MainActor
     static func exportHTML(rows: [PluginItem], ratingsManager: RatingsManager? = nil, notesManager: NotesManager? = nil) {
-        let ratingsManager = ratingsManager ?? .shared
-        let notesManager = notesManager ?? .shared
+        let ratings = ratingsManager ?? .shared
+        let notes = notesManager ?? .shared
         let defaultName = defaultFileName(prefix: "Plugins", ext: "html")
         guard let url = runSavePanel(suggestedName: defaultName, allowedFileTypes: ["html", "htm"]) else { return }
-        let html = makeHTML(rows: rows, ratingsManager: ratingsManager, notesManager: notesManager)
+        let html = makeHTML(rows: rows, ratingsManager: ratings, notesManager: notes)
         do {
             try html.data(using: .utf8)?.write(to: url)
             dashboardTrackExport()
@@ -243,69 +243,45 @@ struct ExportManager {
         }
     }
     
+    // MARK: ScannerPluginItem Conversion
+
+    /// Convert ScannerPluginItem to PluginItem
+    private static func convertToPluginItem(_ item: ScannerPluginItem) -> PluginItem {
+        PluginItem(
+            id: item.id,
+            name: item.name,
+            publisher: item.publisher,
+            version: item.version,
+            type: item.type,
+            style: item.style,
+            architectures: item.architectures,
+            date: item.date,
+            sizeBytes: Int64(item.sizeBytes),
+            path: item.path,
+            runtimeRequirement: item.runtimeRequirement,
+            obsolete: item.obsolete
+        )
+    }
+
     // Overloads to accept ScannerPluginItem arrays
     @MainActor
-    static func exportCSV(rows: [ScannerPluginItem]) { exportCSV(rows: rows.map { PluginItem(
-        id: $0.id,
-        name: $0.name,
-        publisher: $0.publisher,
-        version: $0.version,
-        type: $0.type,
-        style: $0.style,
-        architectures: $0.architectures,
-        date: $0.date,
-        sizeBytes: Int64($0.sizeBytes),
-        path: $0.path,
-        runtimeRequirement: $0.runtimeRequirement,
-        obsolete: $0.obsolete
-    ) }) }
+    static func exportCSV(rows: [ScannerPluginItem]) {
+        exportCSV(rows: rows.map(convertToPluginItem))
+    }
 
     @MainActor
-    static func exportJSON(rows: [ScannerPluginItem]) { exportJSON(rows: rows.map { PluginItem(
-        id: $0.id,
-        name: $0.name,
-        publisher: $0.publisher,
-        version: $0.version,
-        type: $0.type,
-        style: $0.style,
-        architectures: $0.architectures,
-        date: $0.date,
-        sizeBytes: Int64($0.sizeBytes),
-        path: $0.path,
-        runtimeRequirement: $0.runtimeRequirement,
-        obsolete: $0.obsolete
-    ) }) }
+    static func exportJSON(rows: [ScannerPluginItem]) {
+        exportJSON(rows: rows.map(convertToPluginItem))
+    }
 
     @MainActor
-    static func exportHTML(rows: [ScannerPluginItem]) { exportHTML(rows: rows.map { PluginItem(
-        id: $0.id,
-        name: $0.name,
-        publisher: $0.publisher,
-        version: $0.version,
-        type: $0.type,
-        style: $0.style,
-        architectures: $0.architectures,
-        date: $0.date,
-        sizeBytes: Int64($0.sizeBytes),
-        path: $0.path,
-        runtimeRequirement: $0.runtimeRequirement,
-        obsolete: $0.obsolete
-    ) }) }
+    static func exportHTML(rows: [ScannerPluginItem]) {
+        exportHTML(rows: rows.map(convertToPluginItem))
+    }
 
-    static func exportPDF(rows: [ScannerPluginItem], options: PDFExportOptions) { exportPDF(rows: rows.map { PluginItem(
-        id: $0.id,
-        name: $0.name,
-        publisher: $0.publisher,
-        version: $0.version,
-        type: $0.type,
-        style: $0.style,
-        architectures: $0.architectures,
-        date: $0.date,
-        sizeBytes: Int64($0.sizeBytes),
-        path: $0.path,
-        runtimeRequirement: $0.runtimeRequirement,
-        obsolete: $0.obsolete
-    ) }, options: options) }
+    static func exportPDF(rows: [ScannerPluginItem], options: PDFExportOptions) {
+        exportPDF(rows: rows.map(convertToPluginItem), options: options)
+    }
 
     // MARK: Save Panel
     private static func runSavePanel(suggestedName: String, allowedFileTypes: [String]) -> URL? {
@@ -348,9 +324,9 @@ struct ExportManager {
     // MARK: CSV
     @MainActor
     private static func makeCSV(rows: [PluginItem], ratingsManager: RatingsManager, notesManager: NotesManager) -> String {
-        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, License, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
+        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, License, Preset, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
         let headers = [
-            "Rating","Name","Publisher","Type","Style","Version","License","Arch","Date","Size","Requirement","Obsolete","Missing","Track","Notes","Path"
+            "Rating", "Name", "Publisher", "Type", "Style", "Version", "License", "Preset", "Date", "Size", "Requirement", "Obsolete", "Missing", "Track", "Notes", "Path"
         ]
         let metadataManager = MetadataManager.shared
         let lines: [String] = [csvLine(headers)] + rows.map { r in
@@ -367,7 +343,7 @@ struct ExportManager {
                 metadataManager.getDisplayStyle(for: r),
                 metadataManager.getDisplayVersion(for: r),
                 license,
-                r.architectures,
+                r.preset,
                 r.dateString,
                 r.sizeString,
                 r.runtimeRequirement,
@@ -396,7 +372,7 @@ struct ExportManager {
     // MARK: JSON encoding row
     private struct JSONRow: Codable {
         let id: UUID
-        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, License, Arch, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
+        // Column order matches plugin listing: Rating, Name, Publisher, Type, Style, Version, License, Preset, Date, Size, Requirement, Obsolete, Missing, Track, Notes, Path
         let rating: Int
         let name: String
         let publisher: String
@@ -404,7 +380,7 @@ struct ExportManager {
         let style: String
         let version: String
         let license: String
-        let architectures: String
+        let preset: String
         let date: String
         let size: String
         let requirement: String
@@ -425,7 +401,7 @@ struct ExportManager {
             style = metadataManager.getDisplayStyle(for: r)
             version = metadataManager.getDisplayVersion(for: r)
             license = getLicenseType(for: r)
-            architectures = r.architectures
+            preset = r.preset
             date = r.dateString
             size = r.sizeString
             requirement = r.runtimeRequirement
@@ -465,7 +441,7 @@ struct ExportManager {
         <table>
           <thead>
             <tr>
-              <th>Rating</th><th>Name</th><th>Publisher</th><th>Type</th><th>Style</th><th>Version</th><th>License</th><th>Arch</th><th>Date</th><th>Size</th><th>Requirement</th><th>Obsolete</th><th>Missing</th><th>Track</th><th>Notes</th><th>Path</th>
+              <th>Rating</th><th>Name</th><th>Publisher</th><th>Type</th><th>Style</th><th>Version</th><th>License</th><th>Preset</th><th>Date</th><th>Size</th><th>Requirement</th><th>Obsolete</th><th>Missing</th><th>Track</th><th>Notes</th><th>Path</th>
             </tr>
           </thead>
           <tbody>
@@ -486,7 +462,7 @@ struct ExportManager {
               <td>\(escapeHTML(metadataManager.getDisplayStyle(for: r)))</td>
               <td>\(escapeHTML(metadataManager.getDisplayVersion(for: r)))</td>
               <td>\(escapeHTML(license))</td>
-              <td>\(escapeHTML(r.architectures))</td>
+              <td>\(escapeHTML(r.preset))</td>
               <td>\(escapeHTML(r.dateString))</td>
               <td>\(escapeHTML(r.sizeString))</td>
               <td>\(escapeHTML(r.runtimeRequirement))</td>
@@ -512,41 +488,15 @@ struct ExportManager {
         let map: [(String, String)] = [
             ("&", "&amp;"), ("\"", "&quot;"), ("'", "&#39;"), ("<", "&lt;"), (">", "&gt;")
         ]
-        for (a,b) in map { out = out.replacingOccurrences(of: a, with: b) }
+        for (a, b) in map { out = out.replacingOccurrences(of: a, with: b) }
         return out
-    }
-
-    // MARK: License Type Helper
-    @MainActor
-    private static func getLicenseType(for plugin: PluginItem) -> String {
-        let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
-            .replacingOccurrences(of: " ", with: "_")
-
-        if let license = LicenseManager.shared.getLicense(for: pluginID) {
-            // Check if it mentions iLok anywhere (imported from iLok)
-            if let notes = license.notes?.lowercased(), notes.contains("ilok") {
-                return "iLok"
-            }
-            if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
-                return "iLok"
-            }
-            // Check if it has a serial number or license key
-            if license.serialNumber?.isEmpty == false || license.licenseKey?.isEmpty == false {
-                return "Serial"
-            }
-            // If we have a license entry but no specific data, still show something was imported
-            if license.notes?.isEmpty == false {
-                return "iLok"  // Default to iLok if we have notes but no serial
-            }
-        }
-        return ""
     }
 
     // MARK: PDF (simple text rendering)
     @MainActor
     private static func makeTabularText(rows: [PluginItem], capacity: Int) -> String {
         // All columns in correct order matching table display
-        let headers = ["Rating", "Name", "Publisher", "Type", "Style", "Version", "License", "Arch", "Date", "Size", "Requirement", "Obsolete", "Missing", "Track", "Notes", "Path"]
+        let headers = ["Rating", "Name", "Publisher", "Type", "Style", "Version", "License", "Preset", "Date", "Size", "Requirement", "Obsolete", "Missing", "Track", "Notes", "Path"]
         let columnCount = headers.count
         let sep = "  " // two spaces between columns
         let sepWidth = (columnCount - 1) * sep.count
@@ -571,7 +521,7 @@ struct ExportManager {
                 metadataManager.getDisplayStyle(for: i),
                 metadataManager.getDisplayVersion(for: i),
                 license,
-                i.architectures,
+                i.preset,
                 i.dateString,
                 i.sizeString,
                 i.runtimeRequirement,
@@ -663,4 +613,3 @@ struct ExportManager {
     }
 }
 #endif
-

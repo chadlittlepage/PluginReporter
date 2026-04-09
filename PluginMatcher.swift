@@ -16,10 +16,7 @@ class PluginMatcher {
     /// Match a parsed plugin name against installed plugins
     /// Returns the matching PluginItem if found, nil otherwise
     static func findMatch(
-        pluginName: String,
-        manufacturer: String,
-        format: PluginFormat,
-        in installedPlugins: [PluginItem]
+        pluginName: String, manufacturer: String, format: PluginFormat, in installedPlugins: [PluginItem]
     ) -> PluginItem? {
 
         // 1. Try exact name match with same format
@@ -47,7 +44,17 @@ class PluginMatcher {
             }
         }
 
-        // 4. Try fuzzy match (remove common suffixes/prefixes)
+        // 4. Try manufacturer prefix match (e.g., "Pro-Q 4" from FabFilter → "FabFilter Pro-Q 4")
+        if !manufacturer.isEmpty && manufacturer.lowercased() != "unknown" {
+            let combinedName = "\(manufacturer) \(pluginName)"
+            if let match = installedPlugins.first(where: {
+                $0.name.lowercased() == combinedName.lowercased()
+            }) {
+                return match
+            }
+        }
+
+        // 5. Try fuzzy match (remove common suffixes/prefixes)
         let cleanedName = cleanPluginName(pluginName)
         if let match = installedPlugins.first(where: {
             cleanPluginName($0.name).lowercased() == cleanedName.lowercased()
@@ -55,7 +62,17 @@ class PluginMatcher {
             return match
         }
 
-        // 5. Try partial match (contains)
+        // 5a. Try fuzzy match with manufacturer prefix
+        if !manufacturer.isEmpty && manufacturer.lowercased() != "unknown" {
+            let combinedCleanedName = cleanPluginName("\(manufacturer) \(pluginName)")
+            if let match = installedPlugins.first(where: {
+                cleanPluginName($0.name).lowercased() == combinedCleanedName.lowercased()
+            }) {
+                return match
+            }
+        }
+
+        // 6. Try partial match (contains)
         if pluginName.count > 4 { // Avoid matching very short names
             if let match = installedPlugins.first(where: {
                 $0.name.lowercased().contains(pluginName.lowercased()) ||
@@ -70,27 +87,21 @@ class PluginMatcher {
 
     /// Create entries from parsed plugins, matching with installed plugins
     static func createEntries(
-        from parsedPlugins: [ParsedPlugin],
-        installedPlugins: [PluginItem]
+        from parsedPlugins: [ParsedPlugin], installedPlugins: [PluginItem]
     ) -> [DAWPlaylistEntry] {
 
         return parsedPlugins.map { parsed in
             let match = findMatch(
-                pluginName: parsed.name,
-                manufacturer: parsed.manufacturer,
-                format: parsed.format,
-                in: installedPlugins
+                pluginName: parsed.name, manufacturer: parsed.manufacturer, format: parsed.format, in: installedPlugins
             )
 
+            // Copy metadata from matched plugin if found
+            let version = match?.version ?? ""
+            let style = match?.style ?? ""
+            let architectures = match?.architectures ?? ""
+
             return DAWPlaylistEntry(
-                pluginName: parsed.name,
-                pluginManufacturer: parsed.manufacturer,
-                trackName: parsed.trackName,
-                trackIndex: parsed.trackIndex,
-                deviceIndex: parsed.deviceIndex,
-                pluginFormat: parsed.format,
-                isInstalled: match != nil,
-                matchedPluginPath: match?.path
+                name: parsed.name, publisher: parsed.manufacturer, trackName: parsed.trackName, trackIndex: parsed.trackIndex, deviceIndex: parsed.deviceIndex, type: parsed.format.rawValue, isInstalled: match != nil, matchedPluginPath: match?.path, version: version, style: style, architectures: architectures
             )
         }
     }
@@ -102,10 +113,7 @@ class PluginMatcher {
         var cleaned = name
 
         // Remove common suffixes
-        let suffixes = [" VST", " VST3", " AU", " AAX", " x64", " x86",
-                       " (VST)", " (VST3)", " (AU)", " (AAX)",
-                       " v2", " v3", " v4", " v5",
-                       " 2", " 3", " 4", " 5"]
+        let suffixes = [" VST", " VST3", " AU", " AAX", " x64", " x86", " (VST)", " (VST3)", " (AU)", " (AAX)", " v2", " v3", " v4", " v5", " 2", " 3", " 4", " 5"]
 
         for suffix in suffixes {
             if cleaned.hasSuffix(suffix) {
@@ -148,10 +156,7 @@ class PluginMatcher {
         let rate = total > 0 ? Double(matched) / Double(total) : 0.0
 
         return MatchStats(
-            totalPlugins: total,
-            matchedPlugins: matched,
-            missingPlugins: missing,
-            matchRate: rate
+            totalPlugins: total, matchedPlugins: matched, missingPlugins: missing, matchRate: rate
         )
     }
 

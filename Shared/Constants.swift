@@ -5,8 +5,8 @@
 //  Shared constants across all platforms
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 enum Constants {
     enum PDF {

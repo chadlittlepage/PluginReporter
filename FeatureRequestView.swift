@@ -58,11 +58,8 @@ struct FeatureRequestView: View {
     private var gradientBackground: some View {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(red: 0.15, green: 0.15, blue: 0.17),
-                Color(red: 0.10, green: 0.10, blue: 0.12)
-            ]),
-            startPoint: .top,
-            endPoint: .bottom
+                Color(red: 0.15, green: 0.15, blue: 0.17), Color(red: 0.10, green: 0.10, blue: 0.12)
+            ]), startPoint: .top, endPoint: .bottom
         )
         .ignoresSafeArea()
     }
@@ -112,7 +109,7 @@ struct FeatureRequestView: View {
             .navigationTitle("Request a Feature")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         dismiss()
                     }) {
@@ -321,13 +318,7 @@ struct FeatureRequestView: View {
         Task {
             do {
                 let request = FeatureRequest(
-                    title: title,
-                    description: description,
-                    useCase: useCase.isEmpty ? nil : useCase,
-                    priority: priority.rawValue,
-                    category: category.rawValue,
-                    email: email.isEmpty ? nil : email,
-                    timestamp: Date()
+                    title: title, description: description, useCase: useCase.isEmpty ? nil : useCase, priority: priority.rawValue, category: category.rawValue, email: email.isEmpty ? nil : email, timestamp: Date()
                 )
 
                 try await UserFeedbackClient.shared.sendFeatureRequest(request)

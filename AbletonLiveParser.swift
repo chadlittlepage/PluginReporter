@@ -40,14 +40,7 @@ class AbletonLiveParserV2: DAWParser {
         // 4. Create result using standardized ParsedProject
         let projectName = url.deletingPathExtension().lastPathComponent
         return ParsedProject(
-            name: projectName,
-            sourceFile: url,
-            dawType: .abletonLive,
-            tracks: parser.tracks,
-            tempo: parser.tempo,
-            sampleRate: parser.sampleRate,
-            version: parser.version,
-            key: parser.key
+            name: projectName, sourceFile: url, dawType: .abletonLive, tracks: parser.tracks, tempo: parser.tempo, sampleRate: parser.sampleRate, version: parser.version, key: parser.key
         )
     }
 
@@ -119,9 +112,12 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
     private var currentPluginName = ""
     private var currentManufacturer = ""
     private var currentFormat: PluginFormat = .AU  // Default to AU like the old parser
+    private var currentPluginPath = ""
+    private var currentBrowserContentPath = ""
 
     private var elementStack: [String] = []
     private var characterBuffer = ""
+    private var inVstPluginInfo = false
 
     func parse(_ data: Data) throws {
         let parser = XMLParser(data: data)
@@ -144,9 +140,7 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
 
     // MARK: - XMLParserDelegate
 
-    func parser(_ parser: XMLParser, didStartElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
 
         elementStack.append(elementName)
         characterBuffer = ""
@@ -167,6 +161,8 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
             currentPluginName = ""
             currentManufacturer = ""
             currentFormat = .AU  // Reset to AU default
+            currentPluginPath = ""
+            currentBrowserContentPath = ""
         }
 
         // Plugin description
@@ -174,6 +170,13 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
             print("📝 Found PluginDesc")
             print("   Attributes: \(attributeDict)")
             inPluginDesc = true
+        }
+
+        // VST2 Plugin Info
+        if inPluginDesc && elementName == "VstPluginInfo" {
+            print("🔷 Found VstPluginInfo (VST2)")
+            inVstPluginInfo = true
+            currentFormat = .VST
         }
 
         // VST3 Plugin Info
@@ -208,8 +211,34 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
         // Extract manufacturer
         if (inVst3PluginInfo || inAuPluginInfo) && elementName == "Manufacturer" {
             if let value = attributeDict["Value"], !value.isEmpty {
-                print("   ✅ Found manufacturer: \(value)")
+                print("   ✅ Found publisher: \(value)")
                 currentManufacturer = value
+            }
+        }
+
+        // VST2: Extract plugin name from PlugName
+        if inVstPluginInfo && elementName == "PlugName" {
+            if let value = attributeDict["Value"], !value.isEmpty {
+                print("   ✅ Found VST2 plugin name: \(value)")
+                currentPluginName = value
+            }
+        }
+
+        // VST2: Extract file path
+        if inVstPluginInfo && elementName == "Path" {
+            if let value = attributeDict["Value"], !value.isEmpty {
+                print("   ✅ Found VST2 path: \(value)")
+                currentPluginPath = value
+            }
+        }
+
+        // VST3: Extract BrowserContentPath for plugin name/manufacturer
+        if inPluginDevice && elementName == "BrowserContentPath" {
+            if let value = attributeDict["Value"], !value.isEmpty {
+                print("   ✅ Found BrowserContentPath: \(value)")
+                currentBrowserContentPath = value
+                // Parse VST3 plugin name and manufacturer from BrowserContentPath
+                parseVST3BrowserPath(value)
             }
         }
 
@@ -246,8 +275,7 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
         }
     }
 
-    func parser(_ parser: XMLParser, didEndElement elementName: String,
-                namespaceURI: String?, qualifiedName qName: String?) {
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
 
         // End of plugin device
         if elementName == "PluginDevice" {
@@ -257,12 +285,7 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
             // Add plugin if we have valid data
             if !currentPluginName.isEmpty {
                 let plugin = ParsedPlugin(
-                    name: currentPluginName,
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
-                    trackName: currentTrackName.isEmpty ? "Track \(currentTrackIndex + 1)" : currentTrackName,
-                    trackIndex: currentTrackIndex,
-                    deviceIndex: currentDeviceIndex,
-                    format: currentFormat
+                    name: currentPluginName, publisher: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer, trackName: currentTrackName.isEmpty ? "Track \(currentTrackIndex + 1)" : currentTrackName, trackIndex: currentTrackIndex, deviceIndex: currentDeviceIndex, format: currentFormat
                 )
                 currentPlugins.append(plugin)
                 print("   ✅ Added plugin: \(currentPluginName)")
@@ -272,7 +295,10 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
             }
         }
 
-        // End of Vst3PluginInfo or AuPluginInfo
+        // End of VstPluginInfo, Vst3PluginInfo, or AuPluginInfo
+        if elementName == "VstPluginInfo" {
+            inVstPluginInfo = false
+        }
         if elementName == "Vst3PluginInfo" {
             inVst3PluginInfo = false
         }
@@ -294,9 +320,7 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
             if !currentPlugins.isEmpty {
                 let trackName = currentTrackName.isEmpty ? "Track \(currentTrackIndex + 1)" : currentTrackName
                 let track = ParsedTrack(
-                    name: trackName,
-                    index: currentTrackIndex,
-                    plugins: currentPlugins
+                    name: trackName, index: currentTrackIndex, plugins: currentPlugins
                 )
                 tracks.append(track)
                 print("   ✅ Added track with \(currentPlugins.count) plugins")
@@ -342,5 +366,36 @@ private class ALSXMLParser: NSObject, XMLParserDelegate {
         let keys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         let normalizedValue = value % 12
         return keys[normalizedValue]
+    }
+
+    /// Parse VST3 plugin name and manufacturer from BrowserContentPath
+    /// Format: "view:X-Plugins#Universal%20Audio:UAD%20Lexicon%20224"
+    /// or: "view:X-Plugins#Universal%20Audio%20(UADx):UADx%20Lexicon%20224%20Digital%20Reverb"
+    private func parseVST3BrowserPath(_ path: String) {
+        // Split by '#' to get the part after it
+        let components = path.components(separatedBy: "#")
+        guard components.count > 1 else { return }
+
+        // Get the part after '#': "Universal%20Audio:UAD%20Lexicon%20224"
+        let afterHash = components[1]
+
+        // Split by ':' to separate manufacturer from plugin name
+        let parts = afterHash.components(separatedBy: ":")
+        guard parts.count > 1 else { return }
+
+        // Decode URL encoding (%20 -> space, etc.)
+        let manufacturer = parts[0].removingPercentEncoding ?? parts[0]
+        let pluginName = parts[1].removingPercentEncoding ?? parts[1]
+
+        // Only set if we don't already have values (prefer explicit values)
+        if currentManufacturer.isEmpty {
+            currentManufacturer = manufacturer
+            print("   ✅ Extracted manufacturer from path: \(manufacturer)")
+        }
+
+        if currentPluginName.isEmpty {
+            currentPluginName = pluginName
+            print("   ✅ Extracted plugin name from path: \(pluginName)")
+        }
     }
 }

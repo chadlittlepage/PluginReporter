@@ -61,8 +61,7 @@ class NotesManager: ObservableObject {
     // MARK: - Persistence
 
     private func loadNotes() {
-        guard let data = CloudSyncStorage.shared.getData(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
+        guard let data = CloudSyncStorage.shared.getData(forKey: storageKey), let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
             print("📝 No saved notes found")
             return
         }
@@ -82,8 +81,7 @@ class NotesManager: ObservableObject {
 
     /// Export notes to JSON file
     func exportNotes() -> String? {
-        guard let data = try? JSONEncoder().encode(notes),
-              let json = String(data: data, encoding: .utf8) else {
+        guard let data = try? JSONEncoder().encode(notes), let json = String(data: data, encoding: .utf8) else {
             return nil
         }
         return json

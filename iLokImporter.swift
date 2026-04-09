@@ -83,9 +83,7 @@ class iLokImporter {
 
     /// Import iLok licenses from CSV file and match to existing plugins
     static func importFromCSV(
-        url: URL,
-        plugins: [ScannerPluginItem],
-        autoMatch: Bool = true
+        url: URL, plugins: [ScannerPluginItem], autoMatch: Bool = true
     ) async throws -> iLokImportResult {
 
         // Read CSV file
@@ -96,11 +94,7 @@ class iLokImporter {
 
         guard !iLokLicenses.isEmpty else {
             return iLokImportResult(
-                totalLicenses: 0,
-                matchedPlugins: 0,
-                unmatchedLicenses: [],
-                importedLicenses: [],
-                errors: ["No licenses found in CSV file"]
+                totalLicenses: 0, matchedPlugins: 0, unmatchedLicenses: [], importedLicenses: [], errors: ["No licenses found in CSV file"]
             )
         }
 
@@ -113,13 +107,11 @@ class iLokImporter {
             // Try to match iLok licenses to existing plugins
             for iLokLicense in iLokLicenses {
                 if let matchedPlugin = findMatchingPlugin(
-                    iLokLicense: iLokLicense,
-                    plugins: plugins
+                    iLokLicense: iLokLicense, plugins: plugins
                 ) {
                     // Convert iLok license to PluginLicense and save
                     let pluginLicense = convertToPluginLicense(
-                        iLokLicense: iLokLicense,
-                        plugin: matchedPlugin
+                        iLokLicense: iLokLicense, plugin: matchedPlugin
                     )
 
                     // Merge with existing license data if present
@@ -127,8 +119,7 @@ class iLokImporter {
                         for: pluginLicense.pluginID
                     )
                     let mergedLicense = mergeLicenses(
-                        existing: existingLicense,
-                        imported: pluginLicense
+                        existing: existingLicense, imported: pluginLicense
                     )
 
                     LicenseManager.shared.setLicense(mergedLicense)
@@ -143,11 +134,7 @@ class iLokImporter {
         }
 
         return iLokImportResult(
-            totalLicenses: iLokLicenses.count,
-            matchedPlugins: matchedCount,
-            unmatchedLicenses: unmatchedLicenses,
-            importedLicenses: importedLicenses,
-            errors: errors
+            totalLicenses: iLokLicenses.count, matchedPlugins: matchedCount, unmatchedLicenses: unmatchedLicenses, importedLicenses: importedLicenses, errors: errors
         )
     }
 
@@ -268,29 +255,7 @@ class iLokImporter {
             let publisherLicenseID = publisherLicenseIDIndex.map { columns[safe: $0] } ?? nil
 
             let license = iLokLicense(
-                productName: productName,
-                publisher: publisher,
-                serialNumber: serialNumber?.isEmpty == false ? serialNumber : nil,
-                location: location?.isEmpty == false ? location : nil,
-                licenseType: licenseType?.isEmpty == false ? licenseType : nil,
-                quantity: quantity,
-                version: version?.isEmpty == false ? version : nil,
-                expirationDate: expirationDate,
-                validLocations: validLocations?.isEmpty == false ? validLocations : nil,
-                activations: activations?.isEmpty == false ? activations : nil,
-                licenseStatus: licenseStatus?.isEmpty == false ? licenseStatus : nil,
-                activationLocation: activationLocation?.isEmpty == false ? activationLocation : nil,
-                subtype: subtype?.isEmpty == false ? subtype : nil,
-                depositDate: depositDate?.isEmpty == false ? depositDate : nil,
-                licensePeriod: licensePeriod?.isEmpty == false ? licensePeriod : nil,
-                launchCount: launchCount?.isEmpty == false ? launchCount : nil,
-                owner: owner?.isEmpty == false ? owner : nil,
-                activateByDate: activateByDate?.isEmpty == false ? activateByDate : nil,
-                groupName: groupName?.isEmpty == false ? groupName : nil,
-                allocatedSeats: allocatedSeats?.isEmpty == false ? allocatedSeats : nil,
-                totalSeats: totalSeats?.isEmpty == false ? totalSeats : nil,
-                activationStatus: activationStatus?.isEmpty == false ? activationStatus : nil,
-                publisherLicenseID: publisherLicenseID?.isEmpty == false ? publisherLicenseID : nil
+                productName: productName, publisher: publisher, serialNumber: serialNumber?.isEmpty == false ? serialNumber : nil, location: location?.isEmpty == false ? location : nil, licenseType: licenseType?.isEmpty == false ? licenseType : nil, quantity: quantity, version: version?.isEmpty == false ? version : nil, expirationDate: expirationDate, validLocations: validLocations?.isEmpty == false ? validLocations : nil, activations: activations?.isEmpty == false ? activations : nil, licenseStatus: licenseStatus?.isEmpty == false ? licenseStatus : nil, activationLocation: activationLocation?.isEmpty == false ? activationLocation : nil, subtype: subtype?.isEmpty == false ? subtype : nil, depositDate: depositDate?.isEmpty == false ? depositDate : nil, licensePeriod: licensePeriod?.isEmpty == false ? licensePeriod : nil, launchCount: launchCount?.isEmpty == false ? launchCount : nil, owner: owner?.isEmpty == false ? owner : nil, activateByDate: activateByDate?.isEmpty == false ? activateByDate : nil, groupName: groupName?.isEmpty == false ? groupName : nil, allocatedSeats: allocatedSeats?.isEmpty == false ? allocatedSeats : nil, totalSeats: totalSeats?.isEmpty == false ? totalSeats : nil, activationStatus: activationStatus?.isEmpty == false ? activationStatus : nil, publisherLicenseID: publisherLicenseID?.isEmpty == false ? publisherLicenseID : nil
             )
 
             licenses.append(license)
@@ -372,11 +337,7 @@ class iLokImporter {
         guard !trimmed.isEmpty else { return nil }
 
         let formatters = [
-            "yyyy-MM-dd",
-            "MM/dd/yyyy",
-            "dd/MM/yyyy",
-            "M/d/yyyy",
-            "d/M/yyyy"
+            "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy", "M/d/yyyy", "d/M/yyyy"
         ]
 
         for format in formatters {
@@ -392,8 +353,7 @@ class iLokImporter {
 
     /// Find matching plugin for an iLok license
     private static func findMatchingPlugin(
-        iLokLicense: iLokLicense,
-        plugins: [ScannerPluginItem]
+        iLokLicense: iLokLicense, plugins: [ScannerPluginItem]
     ) -> ScannerPluginItem? {
 
         // Exact match by name and publisher
@@ -424,8 +384,7 @@ class iLokImporter {
 
     /// Convert iLok license to PluginLicense
     private static func convertToPluginLicense(
-        iLokLicense: iLokLicense,
-        plugin: ScannerPluginItem
+        iLokLicense: iLokLicense, plugin: ScannerPluginItem
     ) -> PluginLicense {
         // Generate plugin ID locally to avoid main actor issues
         let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
@@ -490,8 +449,7 @@ class iLokImporter {
 
         // Create base license with required fields
         var license = PluginLicense(
-            pluginName: plugin.name,
-            pluginID: pluginID
+            pluginName: plugin.name, pluginID: pluginID
         )
 
         // Set optional fields
@@ -504,8 +462,7 @@ class iLokImporter {
 
     /// Merge existing license with imported data (preserve existing data, add missing fields)
     private static func mergeLicenses(
-        existing: PluginLicense?,
-        imported: PluginLicense
+        existing: PluginLicense?, imported: PluginLicense
     ) -> PluginLicense {
         guard let existing = existing else {
             return imported
@@ -543,11 +500,11 @@ class iLokImporter {
 
         var errorDescription: String? {
             switch self {
-            case .invalidCSVFormat(let message):
+            case .invalidCSVFormat(let message): 
                 return "Invalid CSV format: \(message)"
-            case .missingRequiredColumn(let column):
+            case .missingRequiredColumn(let column): 
                 return "Missing required column: \(column)"
-            case .fileReadError:
+            case .fileReadError: 
                 return "Failed to read CSV file"
             }
         }

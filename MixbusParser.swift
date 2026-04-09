@@ -91,7 +91,7 @@ private class MixbusXMLParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
+                attributes attributeDict: [String: String] = [:]) {
 
         elementStack.append(elementName)
         characterBuffer = ""
@@ -131,7 +131,7 @@ private class MixbusXMLParser: NSObject, XMLParserDelegate {
         if elementName == "Processor" {
             // Check if this is a plugin (not a built-in processor)
             if let type = attributeDict["type"],
-               (type.contains("lv2") || type.contains("vst") || type.contains("au") || type.contains("ladspa")) {
+               type.contains("lv2") || type.contains("vst") || type.contains("au") || type.contains("ladspa") {
                 inPlugin = true
                 currentPluginName = ""
                 currentManufacturer = ""
@@ -196,7 +196,7 @@ private class MixbusXMLParser: NSObject, XMLParserDelegate {
             if !currentPluginName.isEmpty && !isBuiltInProcessor(currentPluginName) {
                 let plugin = ParsedPlugin(
                     name: cleanPluginName(currentPluginName),
-                    manufacturer: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
+                    publisher: currentManufacturer.isEmpty ? "Unknown" : currentManufacturer,
                     trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
                     trackIndex: currentTrackIndex,
                     deviceIndex: currentDeviceIndex,
@@ -204,7 +204,7 @@ private class MixbusXMLParser: NSObject, XMLParserDelegate {
                 )
                 currentPlugins.append(plugin)
                 currentDeviceIndex += 1
-                print("   ✅ Added plugin: \(plugin.name) by \(plugin.manufacturer)")
+                print("   ✅ Added plugin: \(plugin.name) by \(plugin.publisher)")
             }
 
             // Reset state

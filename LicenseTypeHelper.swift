@@ -24,7 +24,7 @@ enum LicenseTypeHelper {
 
     // MARK: - License Type Detection
 
-    /// Get the license type for a plugin (iLok, Serial, or empty)
+    /// Get the license type for a plugin (iLok Computer, iLok USB, iLok Cloud, Serial, or empty)
     /// This is the SINGLE SOURCE OF TRUTH - eliminates 9 duplicate implementations
     static func getLicenseType(for plugin: PluginItem) -> String {
         let pluginID = "\(plugin.publisher.lowercased())_\(plugin.name.lowercased())"
@@ -36,7 +36,17 @@ enum LicenseTypeHelper {
 
         // Check if it mentions iLok anywhere (imported from iLok)
         if let notes = license.notes?.lowercased(), notes.contains("ilok") {
-            return "iLok"
+            // Parse location from notes to determine iLok type
+            if notes.contains("location: ilok cloud") {
+                return "iLok Cloud"
+            } else if notes.contains("location: local computer") {
+                return "iLok Computer"
+            } else if notes.contains("location: ilok") {
+                return "iLok USB"
+            } else {
+                // Generic iLok if we can't determine location
+                return "iLok"
+            }
         }
         if let activationCode = license.activationCode?.lowercased(), activationCode.contains("ilok") {
             return "iLok"

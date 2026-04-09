@@ -34,8 +34,7 @@ struct PlaylistMetadataPanel: View {
     }
 
     var body: some View {
-        if isVisible, let initialPlaylist = playlist,
-           let currentPlaylist = playlistManager.playlists.first(where: { $0.id == initialPlaylist.id }) {
+        if isVisible, let initialPlaylist = playlist, let currentPlaylist = playlistManager.playlists.first(where: { $0.id == initialPlaylist.id }) {
             VStack(alignment: .leading, spacing: 0) {
                 // Title (matching DAW Playlists sidebar style)
                 HStack(spacing: 12) {
@@ -81,8 +80,7 @@ struct PlaylistMetadataPanel: View {
             .overlay(
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
-                    .frame(width: 1),
-                alignment: .leading
+                    .frame(width: 1), alignment: .leading
             )
             .onAppear {
                 // Initialize edit fields with current values
@@ -108,9 +106,7 @@ struct PlaylistMetadataPanel: View {
                     .fill(LinearGradient(
                         colors: playlist.playlistType == .custom ?
                             [Color.yellow.opacity(0.6), Color.yellow.opacity(0.3)] :
-                            [Color.green.opacity(0.6), Color.green.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                            [Color.green.opacity(0.6), Color.green.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
 
                 Image(systemName: playlist.playlistType == .custom ? "folder.fill" : "music.note.list")
@@ -415,29 +411,11 @@ struct PlaylistMetadataPanel: View {
         let updated: DAWPlaylist
         if playlist.playlistType == .custom {
             updated = DAWPlaylist(
-                id: playlist.id,
-                name: playlist.name,
-                dateImported: playlist.dateImported,
-                entries: playlist.entries,
-                tempo: playlist.tempo,
-                sampleRate: playlist.sampleRate,
-                version: playlist.version,
-                key: playlist.key,
-                rating: rating
+                id: playlist.id, name: playlist.name, dateImported: playlist.dateImported, entries: playlist.entries, tempo: playlist.tempo, sampleRate: playlist.sampleRate, version: playlist.version, key: playlist.key, rating: rating
             )
         } else {
             updated = DAWPlaylist(
-                id: playlist.id,
-                name: playlist.name,
-                sourceFile: playlist.sourceFile!,
-                dawType: playlist.dawType!,
-                dateImported: playlist.dateImported,
-                entries: playlist.entries,
-                tempo: playlist.tempo,
-                sampleRate: playlist.sampleRate,
-                version: playlist.version,
-                key: playlist.key,
-                rating: rating
+                id: playlist.id, name: playlist.name, sourceFile: playlist.sourceFile!, dawType: playlist.dawType!, dateImported: playlist.dateImported, entries: playlist.entries, tempo: playlist.tempo, sampleRate: playlist.sampleRate, version: playlist.version, key: playlist.key, rating: rating
             )
         }
 
@@ -446,40 +424,17 @@ struct PlaylistMetadataPanel: View {
     }
 
     private func updatePlaylistMetadata(
-        _ playlist: DAWPlaylist,
-        name: String? = nil,
-        tempo: Double? = nil,
-        sampleRate: Int? = nil,
-        key: String? = nil,
-        version: String? = nil
+        _ playlist: DAWPlaylist, name: String? = nil, tempo: Double? = nil, sampleRate: Int? = nil, key: String? = nil, version: String? = nil
     ) {
         // Create updated playlist based on type
         let updated: DAWPlaylist
         if playlist.playlistType == .custom {
             updated = DAWPlaylist(
-                id: playlist.id,
-                name: name ?? playlist.name,
-                dateImported: playlist.dateImported,
-                entries: playlist.entries,
-                tempo: tempo ?? playlist.tempo,
-                sampleRate: sampleRate ?? playlist.sampleRate,
-                version: version ?? playlist.version,
-                key: key ?? playlist.key,
-                rating: playlist.rating
+                id: playlist.id, name: name ?? playlist.name, dateImported: playlist.dateImported, entries: playlist.entries, tempo: tempo ?? playlist.tempo, sampleRate: sampleRate ?? playlist.sampleRate, version: version ?? playlist.version, key: key ?? playlist.key, rating: playlist.rating
             )
         } else {
             updated = DAWPlaylist(
-                id: playlist.id,
-                name: name ?? playlist.name,
-                sourceFile: playlist.sourceFile!,
-                dawType: playlist.dawType!,
-                dateImported: playlist.dateImported,
-                entries: playlist.entries,
-                tempo: tempo ?? playlist.tempo,
-                sampleRate: sampleRate ?? playlist.sampleRate,
-                version: version ?? playlist.version,
-                key: key ?? playlist.key,
-                rating: playlist.rating
+                id: playlist.id, name: name ?? playlist.name, sourceFile: playlist.sourceFile!, dawType: playlist.dawType!, dateImported: playlist.dateImported, entries: playlist.entries, tempo: tempo ?? playlist.tempo, sampleRate: sampleRate ?? playlist.sampleRate, version: version ?? playlist.version, key: key ?? playlist.key, rating: playlist.rating
             )
         }
 
@@ -493,16 +448,8 @@ struct PlaylistMetadataPanel_Previews: PreviewProvider {
     static var previews: some View {
         PlaylistMetadataPanel(
             playlist: DAWPlaylist(
-                name: "Test Project",
-                sourceFile: URL(fileURLWithPath: "/test.als"),
-                dawType: .abletonLive,
-                entries: [],
-                tempo: 120.0,
-                sampleRate: 44100,
-                version: "Ableton Live 11",
-                key: "C"
-            ),
-            isVisible: .constant(true)
+                name: "Test Project", sourceFile: URL(fileURLWithPath: "/test.als"), dawType: .abletonLive, entries: [], tempo: 120.0, sampleRate: 44100, version: "Ableton Live 11", key: "C"
+            ), isVisible: .constant(true)
         )
         .frame(height: 600)
     }

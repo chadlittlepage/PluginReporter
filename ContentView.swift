@@ -30,11 +30,67 @@ struct ImportedJSONPlugin: Codable {
     let path: String
 }
 
+/// Shared image cache to prevent reloading
+class ImageCacheManager: ObservableObject {
+    static let shared = ImageCacheManager()
+    @Published private(set) var cache: [URL: NSImage] = [:]
+
+    func getImage(for url: URL) async -> NSImage? {
+        if let cached = cache[url] {
+            return cached
+        }
+
+        if let (data, _) = try? await URLSession.shared.data(from: url),
+           let image = NSImage(data: data) {
+            await MainActor.run {
+                cache[url] = image
+            }
+            return image
+        }
+        return nil
+    }
+}
+
+/// Cached async image view that prevents flashing between images
+struct CachedAsyncImage: View {
+    let url: URL
+    @StateObject private var imageCache = ImageCacheManager.shared
+    @State private var displayedImage: NSImage? = nil
+
+    var body: some View {
+        Group {
+            if let displayedImage = displayedImage {
+                Image(nsImage: displayedImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)  // LOCKED: Never stretch
+                    .frame(maxWidth: .infinity, maxHeight: 400)
+                    .clipped()  // Prevent overflow
+            } else {
+                Color.clear
+                    .frame(height: 400)
+            }
+        }
+        .animation(nil, value: displayedImage)  // LOCKED: No animation on image changes
+        .task(id: url) {
+            // Check cache first
+            if let cached = imageCache.cache[url] {
+                displayedImage = cached
+            } else {
+                // Load from network
+                if let image = await imageCache.getImage(for: url) {
+                    displayedImage = image
+                }
+            }
+        }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject private var scanner: PluginScanner
     @EnvironmentObject private var prefs: AppPreferences
     @EnvironmentObject private var zoomState: ZoomState
     @StateObject private var appState = AppState()
+    @StateObject private var tagsManager = TagsManager.shared
     @State private var searchText: String = ""
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var isExporting = false
@@ -52,6 +108,9 @@ struct ContentView: View {
 
     // Force immediate bar graph display
     @State private var forceBarGraphDisplay: Bool = true
+    private let imageCache = ImageCacheManager.shared
+    @State private var currentDisplayedImage: NSImage? = nil
+    @State private var currentImageURL: URL? = nil
 
     // INSTANT bar graph - cached counts (only updates on batch completion)
     @State private var cachedBarCounts = FormatCounts()
@@ -90,26 +149,25 @@ struct ContentView: View {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         // ALL 18 DAW formats supported!
-        let dawExtensions = [
-            "als",          // Ableton Live
-            "song",         // Studio One
-            "rpp",          // Reaper
-            "bwproject",    // Bitwig
-            "txt", "ptx",   // Pro Tools
-            "cpr", "npr",   // Cubase/Nuendo
-            "reason", "rns",// Reason
-            "motu",         // Digital Performer
-            "xrns",         // Renoise
-            "flp",          // FL Studio
-            "tracktionedit",// Tracktion
-            "ardour",       // Ardour
-            "mixbus",       // Mixbus
-            "drp",          // Fairlight
-            "band",         // GarageBand
-            "logicx",       // Logic Pro
-            "concert"       // MainStage
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "als")!,          // Ableton Live
+            UTType(filenameExtension: "song")!,         // Studio One
+            UTType(filenameExtension: "rpp")!,          // Reaper
+            UTType(filenameExtension: "bwproject")!,    // Bitwig
+            UTType(filenameExtension: "txt")!, UTType(filenameExtension: "ptx")!,   // Pro Tools
+            UTType(filenameExtension: "cpr")!, UTType(filenameExtension: "npr")!,   // Cubase/Nuendo
+            UTType(filenameExtension: "reason")!, UTType(filenameExtension: "rns")!,// Reason
+            UTType(filenameExtension: "motu")!,         // Digital Performer
+            UTType(filenameExtension: "xrns")!,         // Renoise
+            UTType(filenameExtension: "flp")!,          // FL Studio
+            UTType(filenameExtension: "tracktionedit")!,// Tracktion
+            UTType(filenameExtension: "ardour")!,       // Ardour
+            UTType(filenameExtension: "mixbus")!,       // Mixbus
+            UTType(filenameExtension: "drp")!,          // Fairlight
+            UTType(filenameExtension: "band")!,         // GarageBand
+            UTType(filenameExtension: "logicx")!,       // Logic Pro
+            UTType(filenameExtension: "concert")!       // MainStage
         ]
-        panel.allowedContentTypes = dawExtensions.compactMap { UTType(filenameExtension: $0) }
         return panel
     }()
     #endif
@@ -123,8 +181,70 @@ struct ContentView: View {
         }
     }
 
+    private func enrichPluginsWithFirebase() {
+        Task { @MainActor in
+            guard !scanner.plugins.isEmpty else {
+                print("⚠️ [Mac] Skipping Firebase enrichment - no plugins loaded yet")
+                return
+            }
+            print("🔄 [Mac] Starting Firebase enrichment for \(scanner.plugins.count) plugins...")
+
+            // Convert ScannerPluginItem to PluginItem for enrichment
+            var pluginItems = scanner.plugins.map { AppPluginItem($0) }
+            await PluginEnrichmentService.shared.batchFetchEnrichment(for: &pluginItems)
+
+            // Debug: Check enrichment before updating scanner
+            let enrichedCount = pluginItems.filter { $0.screenshotUrl != nil || $0.thumbnailUrl != nil }.count
+            print("🔍 DEBUG: After enrichment, \(enrichedCount) plugins have image URLs")
+
+            // Check first few plugins
+            for i in 0..<min(5, pluginItems.count) {
+                let plugin = pluginItems[i]
+                print("  - \(plugin.name): screenshot=\(plugin.screenshotUrl != nil ? "✅" : "❌"), thumbnail=\(plugin.thumbnailUrl != nil ? "✅" : "❌")")
+            }
+
+            // Update scanner plugins with enriched data
+            scanner.updateEnrichmentData(from: pluginItems)
+
+            // Debug: Check scanner after update
+            let scannerEnrichedCount = scanner.plugins.filter { $0.screenshotUrl != nil || $0.thumbnailUrl != nil }.count
+            print("🔍 DEBUG: After scanner update, \(scannerEnrichedCount) scanner plugins have image URLs")
+
+            // CRITICAL: Save enriched plugins to cache so they persist across app restarts
+            scanner.saveEnrichedCache()
+
+            updateDisplayedPlugins()
+
+            // CRITICAL: Refresh selection to get enriched data OR auto-select first plugin
+            if let selectedPlugin = appState.selected.first {
+                // Find the same plugin in the updated displayedPlugins array
+                if let updatedPlugin = displayedPlugins.first(where: { $0.id == selectedPlugin.id }) {
+                    appState.selected = [updatedPlugin]
+                    appState.updateSelectionIDs()  // CRITICAL: Update IDs to persist selection
+                    print("🔄 Refreshed selection with enriched data for: \(updatedPlugin.name)")
+                }
+            } else if !displayedPlugins.isEmpty {
+                // No plugin selected (e.g., after fresh scan), auto-select first
+                appState.selected = [displayedPlugins[0]]
+                appState.updateSelectionIDs()  // CRITICAL: Update IDs to persist selection
+                print("🎯 Auto-selected first plugin after enrichment: \(displayedPlugins[0].name)")
+
+                // Trigger image load immediately
+                loadCurrentPluginImage()
+            }
+
+            print("✅ [Mac] Enrichment complete - plugins updated with enriched data")
+        }
+    }
+
     private func updateDisplayedPlugins() {
+        AppLogger.logSection("UPDATE DISPLAYED PLUGINS")
         let allPlugins = scanner.plugins.map(AppPluginItem.init)
+        AppLogger.info("Total scanned plugins: \(scanner.plugins.count)")
+
+        // Update AppState with ALL plugins (for AI Suggestions)
+        appState.all = allPlugins
+        print("📊 [ContentView] Updated appState.all with \(allPlugins.count) plugins")
 
         // Check if playlist is active - if so, skip ALL filters initially and apply them after playlist filtering
         #if os(macOS)
@@ -188,15 +308,15 @@ struct ContentView: View {
             // Single-pass: create missing plugins with deduplication
             let uniqueMissing = FilterUtils.deduplicatePlugins(
                 allPlaylistEntries.compactMap { entry -> AppPluginItem? in
-                    let key = FilterUtils.makePluginKey(name: entry.pluginName, format: entry.pluginFormat)
+                    let key = FilterUtils.makePluginKey(name: entry.name, type: entry.type)
                     guard !installedKeys.contains(key) else { return nil }
 
                     let trackNames = playlistTrackMap[key]?.joined(separator: ", ") ?? ""
                     return AppPluginItem(
-                        name: entry.pluginName,
-                        publisher: "",
-                        version: "",
-                        type: entry.pluginFormat.rawValue,
+                        name: entry.name,
+                        publisher: entry.publisher,
+                        version: entry.version,
+                        type: entry.type,
                         style: "",
                         architectures: "",
                         date: nil,
@@ -235,6 +355,15 @@ struct ContentView: View {
         #endif
 
         displayedPlugins = filtered
+
+        AppLogger.logFilterApplied(
+            searchText: searchText,
+            formats: Set(prefs.selectedFormats.map { $0.rawValue }),
+            publishers: prefs.selectedPublishers,
+            resultCount: filtered.count,
+            totalCount: allPlugins.count
+        )
+        AppLogger.info("✅ displayedPlugins updated: \(displayedPlugins.count) plugins")
 
         // Restore selection from IDs after filtering
         appState.restoreSelection(from: displayedPlugins)
@@ -340,7 +469,10 @@ struct ContentView: View {
                 }
 
                 Button("Scan") {
-                    Task { @MainActor in
+                    AppLogger.info("🔘 Scan button clicked")
+                    // CRITICAL: Don't use @MainActor - let scanner manage its own threading
+                    // to prevent UI freezing (beachball)
+                    Task {
                         scanner.scan(extraPaths: prefs.extraScanPaths.map(URL.init(fileURLWithPath:)))
                     }
                 }
@@ -352,7 +484,7 @@ struct ContentView: View {
                     #endif
 
                 if let firstSelected = appState.selected.first {
-                    AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
+                    AISuggestionsButton(plugin: firstSelected, ownedPlugins: appState.all)
                 }
             }
 
@@ -372,9 +504,9 @@ struct ContentView: View {
                 }
 
                 Menu {
-                    Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
-                    Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
-                    Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
+                    Button("Export CSV") { Task { @MainActor in ExportManager.exportCSV(rows: displayedPlugins) } }
+                    Button("Export JSON") { Task { @MainActor in ExportManager.exportJSON(rows: displayedPlugins) } }
+                    Button("Export HTML") { Task { @MainActor in ExportManager.exportHTML(rows: displayedPlugins) } }
                     #if os(macOS)
                     Button("Export PDF") {
                         // Use Quick Export with Page Setup settings
@@ -463,7 +595,7 @@ struct ContentView: View {
             Spacer()
 
             if let firstSelected = appState.selected.first {
-                AISuggestionsButton(plugin: firstSelected, ownedPlugins: [])
+                AISuggestionsButton(plugin: firstSelected, ownedPlugins: appState.all)
             }
 
             Spacer()
@@ -489,9 +621,9 @@ struct ContentView: View {
                     quickExportPDF(plugins: displayedPlugins, preferences: prefs)
                 }
                 #endif
-                Button("Export CSV") { ExportManager.exportCSV(rows: displayedPlugins) }
-                Button("Export HTML") { ExportManager.exportHTML(rows: displayedPlugins) }
-                Button("Export JSON") { ExportManager.exportJSON(rows: displayedPlugins) }
+                Button("Export CSV") { Task { @MainActor in ExportManager.exportCSV(rows: displayedPlugins) } }
+                Button("Export HTML") { Task { @MainActor in ExportManager.exportHTML(rows: displayedPlugins) } }
+                Button("Export JSON") { Task { @MainActor in ExportManager.exportJSON(rows: displayedPlugins) } }
             } label: {
                 Text("Export")
             }
@@ -500,7 +632,7 @@ struct ContentView: View {
 
             Button(action: toggleDetailPanel) {
                 Image(systemName: "sidebar.right")
-                    .foregroundColor((showDetailPanel && showPlaylistSidebar && activePlaylistFilters.count == 1) ? .accentColor : .white)
+                    .foregroundColor(showDetailPanel ? .accentColor : .white)
             }
             .buttonStyle(.bordered)
             .accessibilityLabel(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
@@ -519,12 +651,121 @@ struct ContentView: View {
                 wideHeaderView
             }
 
-            instantBarsWithBatchedCounts(rows: displayedPlugins)
-                    .padding(.top, 12)
-                    .padding(.bottom, 6)
-                    .background(appBG)
-                    
+            // Show bar graph or single plugin image based on toggle state
+            if forceBarGraphDisplay {
+                VStack(spacing: 0) {
+                    // Toggle button aligned above bar labels (matching BarRow label width)
+                    HStack(spacing: 0) {
+                        Button(action: {
+                            forceBarGraphDisplay.toggle()
+                        }) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Image(systemName: "photo.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                Text("Image")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Show Image")
+                        .frame(width: 50, alignment: .leading)
+                        .padding(.leading, 16)
+
+                        Spacer()
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+
+                    // Bar graph
+                    instantBarsWithBatchedCounts(rows: displayedPlugins)
+                            .padding(.bottom, 6)
+                            .background(appBG)
+                }
                 Divider()
+            } else {
+                // When bar graph is hidden, show single selected plugin image
+                VStack(spacing: 0) {
+                    // Header area with Chart button and plugin name
+                    ZStack(alignment: .leading) {
+                        // Chart button - positioned exactly like Image button
+                        HStack(spacing: 0) {
+                            Button(action: {
+                                forceBarGraphDisplay.toggle()
+                            }) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Image(systemName: "chart.bar.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                    Text("Chart")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Show Chart")
+                            .frame(width: 50, alignment: .leading)
+                            .padding(.leading, 16)
+
+                            Spacer()
+                        }
+
+                        // Plugin name and publisher centered in full width
+                        if let selectedPlugin = appState.selected.first {
+                            VStack(spacing: 2) {
+                                Text(selectedPlugin.name)
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+
+                                Text(selectedPlugin.publisher)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+
+                    // Hairline divider
+                    Divider()
+
+                    // Single plugin image - persistent state to prevent flashing
+                    ZStack {
+                        if let currentDisplayedImage = currentDisplayedImage {
+                            Image(nsImage: currentDisplayedImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)  // LOCKED: Never stretch
+                                .frame(maxWidth: .infinity, maxHeight: 400)
+                                .clipped()  // Prevent overflow
+                        } else {
+                            // No plugin selected or no image available
+                            Image(systemName: "photo.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.secondary.opacity(0.3))
+                        }
+                    }
+                    .animation(nil, value: currentDisplayedImage)  // LOCKED: No animation on image changes
+                    .frame(height: 400)
+                    .frame(maxWidth: .infinity)  // Fill width but respect aspect ratio
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 16)
+                    .background(appBG)
+                    .onChange(of: appState.selected.first?.id) { _ in
+                        loadCurrentPluginImage()
+                    }
+                    .onAppear {
+                        loadCurrentPluginImage()
+                    }
+                }
+                Divider()
+            }
+
                 mainContentWithDetailPanel
                 Divider()
                 ZStack {
@@ -550,7 +791,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var bodyWithoutModifiers: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             Spacer().frame(width: 10)
             mainContentView
             Spacer().frame(width: 10)
@@ -617,15 +858,27 @@ struct ContentView: View {
                 // Defer heavy processing to let UI appear instantly
                 setupNotificationListeners()
 
-                // Update plugins after a tiny delay for instant UI
+                // Update plugins and auto-select first
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
                     updateDisplayedPlugins()
+
+                    // Wait a bit more for displayedPlugins to update
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+
+                    // Auto-select first plugin
+                    if !displayedPlugins.isEmpty {
+                        appState.selected = [displayedPlugins[0]]
+                    }
+
+                    // Focus search field after selection
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                    searchFocused = true
                 }
             }
             #if os(macOS)
             .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-                _ = handleFileDrop(providers: providers)
+                handleFileDrop(providers: providers)
                 return true
             }
             #endif
@@ -635,11 +888,34 @@ struct ContentView: View {
             .onChange(of: prefs.selectedStyles) { _ in updateDisplayedPlugins() }
             .onChange(of: prefs.selectedStarRatings) { _ in updateDisplayedPlugins() }
             .onChange(of: searchText) { newValue in handleSearchTextChange(newValue) }
-            .onChange(of: scanner.plugins.count) { _ in
+            .onChange(of: scanner.plugins.count) { newCount in
+                // CRITICAL: Don't update UI while scan is in progress
+                // This prevents the table from flashing blank when scan() clears plugins
+                guard !scanner.isScanning else {
+                    AppLogger.debug("Skipping UI update - scan in progress (count: \(newCount))")
+                    return
+                }
+
                 updateDisplayedPlugins()
                 // Update total unfiltered counts for playlist mode bar graph
                 let allPlugins = scanner.plugins.map(AppPluginItem.init)
                 totalPluginCounts = quickCount(rows: allPlugins)
+            }
+            .onChange(of: scanner.isScanning) { isScanning in
+                // When scan completes, update UI immediately
+                if !isScanning && !scanner.plugins.isEmpty {
+                    AppLogger.info("Scan completed - updating UI with \(scanner.plugins.count) plugins")
+                    updateDisplayedPlugins()
+                    let allPlugins = scanner.plugins.map(AppPluginItem.init)
+                    totalPluginCounts = quickCount(rows: allPlugins)
+
+                    // Enrich plugins with Firebase data after scan completes
+                    enrichPluginsWithFirebase()
+                }
+            }
+            .onReceive(tagsManager.objectWillChange) { _ in
+                // Refresh plugins when custom tags change
+                updateDisplayedPlugins()
             }
             #if os(macOS)
             .overlay {
@@ -727,6 +1003,41 @@ struct ContentView: View {
             showDetailSheet = (appState.selected.first != nil)
         }
         appState.updateSelectionIDs()
+    }
+
+    private func loadCurrentPluginImage() {
+        guard let selectedPlugin = appState.selected.first,
+              let urlString = selectedPlugin.screenshotUrl ?? selectedPlugin.thumbnailUrl,
+              let url = URL(string: urlString) else {
+            currentDisplayedImage = nil
+            currentImageURL = nil
+            return
+        }
+
+        // Skip if same URL
+        if currentImageURL == url {
+            return
+        }
+
+        currentImageURL = url
+
+        // Check cache first
+        if let cached = imageCache.cache[url] {
+            currentDisplayedImage = cached
+            return
+        }
+
+        // Load from network in background
+        Task {
+            if let image = await imageCache.getImage(for: url) {
+                await MainActor.run {
+                    // Only update if this is still the current URL
+                    if currentImageURL == url {
+                        currentDisplayedImage = image
+                    }
+                }
+            }
+        }
     }
 
     private func handleAppearanceChange(_ newValue: AppPreferences.Appearance) {
@@ -917,12 +1228,13 @@ struct ContentView: View {
                     // Create custom playlist entries from imported JSON
                     let entries = importedPlugins.map { plugin in
                         DAWPlaylistEntry(
-                            pluginName: plugin.name,
-                            pluginManufacturer: plugin.publisher,
+                            id: UUID(),
+                            name: plugin.name,
+                            publisher: plugin.publisher,
                             trackName: plugin.track ?? "Imported",
                             trackIndex: 0,
                             deviceIndex: 0,
-                            pluginFormat: PluginFormat(rawValue: plugin.type) ?? .VST3,
+                            type: plugin.type,
                             isInstalled: !plugin.missing,
                             matchedPluginPath: plugin.path
                         )
@@ -978,6 +1290,7 @@ struct ContentView: View {
         }
     }
 
+    @discardableResult
     private func handleFileDrop(providers: [NSItemProvider]) -> Bool {
         // Supported DAW file extensions
         let supportedExtensions = [
@@ -1067,6 +1380,7 @@ struct ContentView: View {
                         .padding(.horizontal, 4)
 
                         Divider()
+                            .padding(.top, 8)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Type")
@@ -1286,16 +1600,22 @@ struct ContentView: View {
             Task { @MainActor in
                 self.lastBarUpdateCount = currentCount
                 self.cachedBarCounts = self.quickCount(rows: rows)
-                // Also update total unfiltered counts for playlist mode
-                let allPlugins = scanner.plugins.map(AppPluginItem.init)
-                self.totalPluginCounts = self.quickCount(rows: allPlugins)
+
+                // CRITICAL: Don't update counts during scan - keeps chart stable
+                if !scanner.isScanning {
+                    // Also update total unfiltered counts for playlist mode
+                    let allPlugins = scanner.plugins.map(AppPluginItem.init)
+                    self.totalPluginCounts = self.quickCount(rows: allPlugins)
+                }
             }
         }
 
         // When playlists are open, show total counts; otherwise show filtered counts
         let displayCounts = showPlaylistSidebar ? totalPluginCounts : cachedBarCounts
         let playlistCounts = cachedBarCounts  // Filtered counts for playlist mode
-        let isEmpty = scanner.plugins.isEmpty
+
+        // CRITICAL: Use cached counts to determine if empty (don't read scanner.plugins during scan)
+        let isEmpty = cachedBarCounts.au == 0 && cachedBarCounts.vst == 0 && cachedBarCounts.vst3 == 0 && cachedBarCounts.aax == 0 && cachedBarCounts.clap == 0 && cachedBarCounts.lv2 == 0
 
         // Use MAX count method (like normal mode) for consistent bar sizing
         let maxCount = Swift.max(1, playlistCounts.au, playlistCounts.vst, playlistCounts.vst3, playlistCounts.aax, playlistCounts.clap, playlistCounts.lv2, playlistCounts.obsolete, playlistCounts.missing)
@@ -1482,6 +1802,7 @@ struct ContentView: View {
                 appBG
                 PlatformTable(
                     rows: displayedPlugins,
+                    allPlugins: appState.all,
                     selection: $appState.selected,
                     sortStatus: $sortStatus,
                     showDetailPanel: $showDetailPanel,
@@ -1492,7 +1813,7 @@ struct ContentView: View {
                         }
                     }
                 )
-                .id(displayedPlugins.map(\.id))
+                .id(displayedPlugins.count)  // Force view rebuild when data changes
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
             }
@@ -1633,21 +1954,15 @@ struct ContentView: View {
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportCSV"), object: nil, queue: .main) { [self] _ in
-            MainActor.assumeIsolated {
-                ExportManager.exportCSV(rows: self.displayedPlugins)
-            }
+            Task { await ExportManager.exportCSV(rows: self.displayedPlugins) }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportJSON"), object: nil, queue: .main) { [self] _ in
-            MainActor.assumeIsolated {
-                ExportManager.exportJSON(rows: self.displayedPlugins)
-            }
+            Task { await ExportManager.exportJSON(rows: self.displayedPlugins) }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportHTML"), object: nil, queue: .main) { [self] _ in
-            MainActor.assumeIsolated {
-                ExportManager.exportHTML(rows: self.displayedPlugins)
-            }
+            Task { await ExportManager.exportHTML(rows: self.displayedPlugins) }
         }
 
         NotificationCenter.default.addObserver(forName: NSNotification.Name("ExportPDF"), object: nil, queue: .main) { [self] _ in

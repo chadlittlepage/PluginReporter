@@ -121,25 +121,8 @@ struct DAWImportView: View {
 
         // All 18 supported DAW file extensions
         panel.allowedContentTypes = [
-            .init(filenameExtension: "als"),        // Ableton Live
-            .init(filenameExtension: "logicx"),     // Logic Pro
-            .init(filenameExtension: "band"),       // GarageBand
-            .init(filenameExtension: "concert"),    // MainStage
-            .init(filenameExtension: "cpr"),        // Cubase
-            .init(filenameExtension: "npr"),        // Nuendo
-            .init(filenameExtension: "song"),       // Studio One
-            .init(filenameExtension: "ptx"),        // Pro Tools (binary)
-            .init(filenameExtension: "txt"),        // Pro Tools (text export)
-            .init(filenameExtension: "bwproject"),  // Bitwig
-            .init(filenameExtension: "reason"),     // Reason
-            .init(filenameExtension: "rpp"),        // Reaper
-            .init(filenameExtension: "motu"),       // Digital Performer
-            .init(filenameExtension: "flp"),        // FL Studio
-            .init(filenameExtension: "tracktionedit"), // Tracktion
-            .init(filenameExtension: "ardour"),     // Ardour
-            .init(filenameExtension: "mixbus"),     // Mixbus
-            .init(filenameExtension: "xrns"),       // Renoise
-            .init(filenameExtension: "drp")         // Fairlight
+            .init(filenameExtension: "als"), .init(filenameExtension: "logicx"), .init(filenameExtension: "band"), .init(filenameExtension: "concert"), .init(filenameExtension: "cpr"), .init(filenameExtension: "npr"), .init(filenameExtension: "song"), .init(filenameExtension: "ptx"), .init(filenameExtension: "txt"), .init(filenameExtension: "bwproject"), .init(filenameExtension: "reason"), .init(filenameExtension: "rpp"), .init(filenameExtension: "motu"), .init(filenameExtension: "flp"), .init(filenameExtension: "tracktionedit"), // Tracktion
+            .init(filenameExtension: "ardour"), .init(filenameExtension: "mixbus"), .init(filenameExtension: "xrns")        // Renoise
         ].compactMap { $0 }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -157,11 +140,13 @@ struct DAWImportView: View {
         do {
             let plugins = scanner.plugins.map(AppPluginItem.init)
             let playlist = try await playlistManager.importProject(
-                url: url,
-                installedPlugins: plugins
+                url: url, installedPlugins: plugins
             )
 
             await MainActor.run {
+                // Add playlist to manager (triggers AI enrichment)
+                playlistManager.addPlaylists([playlist])
+
                 importedPlaylist = playlist
                 showSuccess = true
             }
@@ -264,7 +249,6 @@ private struct PlaylistRow: View {
         case .ardour: return "waveform.circle"
         case .mixbus: return "slider.vertical.3"
         case .renoise: return "square.grid.3x2"
-        case .fairlight: return "film"
         }
     }
 }

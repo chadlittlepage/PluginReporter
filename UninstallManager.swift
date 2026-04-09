@@ -64,15 +64,15 @@ class UninstallManager: ObservableObject {
 
         var errorDescription: String? {
             switch self {
-            case .fileNotFound(let path):
+            case .fileNotFound(let path): 
                 return "File not found: \(path)"
-            case .permissionDenied(let path):
+            case .permissionDenied(let path): 
                 return "Permission denied: \(path)\n\nYou may need administrator privileges to delete this file."
-            case .fileInUse(let path):
+            case .fileInUse(let path): 
                 return "File is in use: \(path)\n\nClose any applications using this plugin and try again."
-            case .dawRunning(let daws):
+            case .dawRunning(let daws): 
                 return "Active DAW detected: \(daws.joined(separator: ", "))\n\nPlease close these applications before uninstalling plugins."
-            case .unknown(let message):
+            case .unknown(let message): 
                 return "Error: \(message)"
             }
         }
@@ -84,21 +84,7 @@ class UninstallManager: ObservableObject {
     func checkForRunningDAWs() -> [String] {
         #if os(macOS)
         let knownDAWs = [
-            "Logic Pro",
-            "Logic Pro X",
-            "Ableton Live",
-            "Pro Tools",
-            "Cubase",
-            "Nuendo",
-            "Studio One",
-            "FL Studio",
-            "Reaper",
-            "Digital Performer",
-            "MainStage",
-            "GarageBand",
-            "Bitwig Studio",
-            "Reason",
-            "Live"
+            "Logic Pro", "Logic Pro X", "Ableton Live", "Pro Tools", "Cubase", "Nuendo", "Studio One", "FL Studio", "Reaper", "Digital Performer", "MainStage", "GarageBand", "Bitwig Studio", "Reason", "Live"
         ]
 
         let workspace = NSWorkspace.shared
@@ -126,10 +112,7 @@ class UninstallManager: ObservableObject {
 
     /// Uninstall plugins with the specified deletion type
     func uninstallPlugins(
-        _ plugins: [PluginItem],
-        deletionType: DeletionType,
-        checkDAWs: Bool = true,
-        onProgress: ((String, Double) -> Void)? = nil
+        _ plugins: [PluginItem], deletionType: DeletionType, checkDAWs: Bool = true, onProgress: ((String, Double) -> Void)? = nil
     ) async throws -> UninstallResult {
 
         // Check for running DAWs first
@@ -156,20 +139,14 @@ class UninstallManager: ObservableObject {
 
                 // Log success
                 logDeletion(
-                    plugin: plugin,
-                    deletionType: deletionType,
-                    success: true,
-                    error: nil
+                    plugin: plugin, deletionType: deletionType, success: true, error: nil
                 )
             } catch {
                 failedPlugins.append((plugin, error))
 
                 // Log failure
                 logDeletion(
-                    plugin: plugin,
-                    deletionType: deletionType,
-                    success: false,
-                    error: error.localizedDescription
+                    plugin: plugin, deletionType: deletionType, success: false, error: error.localizedDescription
                 )
             }
         }
@@ -182,16 +159,13 @@ class UninstallManager: ObservableObject {
         saveDeletionLog()
 
         return UninstallResult(
-            totalPlugins: plugins.count,
-            successCount: successCount,
-            failedPlugins: failedPlugins
+            totalPlugins: plugins.count, successCount: successCount, failedPlugins: failedPlugins
         )
     }
 
     /// Uninstall a single plugin
     private func uninstallSinglePlugin(
-        _ plugin: PluginItem,
-        deletionType: DeletionType
+        _ plugin: PluginItem, deletionType: DeletionType
     ) async throws {
 
         let fileManager = FileManager.default
@@ -205,10 +179,10 @@ class UninstallManager: ObservableObject {
         // Try to delete
         do {
             switch deletionType {
-            case .moveToTrash:
+            case .moveToTrash: 
                 try await moveToTrash(path: filePath)
 
-            case .permanentDelete:
+            case .permanentDelete: 
                 try await permanentlyDelete(path: filePath)
             }
         } catch let error as NSError {
@@ -251,8 +225,7 @@ class UninstallManager: ObservableObject {
 
     /// Delete file with admin privileges using AppleScript
     private func deleteWithAdminPrivileges(
-        path: String,
-        deletionType: DeletionType
+        path: String, deletionType: DeletionType
     ) async throws {
         #if os(macOS)
 
@@ -289,19 +262,10 @@ class UninstallManager: ObservableObject {
     // MARK: - Deletion Logging
 
     private func logDeletion(
-        plugin: PluginItem,
-        deletionType: DeletionType,
-        success: Bool,
-        error: String?
+        plugin: PluginItem, deletionType: DeletionType, success: Bool, error: String?
     ) {
         let entry = DeletionLogEntry(
-            timestamp: Date(),
-            pluginName: plugin.name,
-            pluginPath: plugin.path,
-            pluginSize: plugin.sizeBytes,
-            deletionType: deletionType,
-            success: success,
-            errorMessage: error
+            timestamp: Date(), pluginName: plugin.name, pluginPath: plugin.path, pluginSize: plugin.sizeBytes, deletionType: deletionType, success: success, errorMessage: error
         )
 
         deletionLog.append(entry)
@@ -315,13 +279,7 @@ class UninstallManager: ObservableObject {
     private func saveDeletionLog() {
         let codableEntries = deletionLog.map { entry in
             CodableLogEntry(
-                timestamp: entry.timestamp,
-                pluginName: entry.pluginName,
-                pluginPath: entry.pluginPath,
-                pluginSize: entry.pluginSize,
-                deletionType: entry.deletionType,
-                success: entry.success,
-                errorMessage: entry.errorMessage
+                timestamp: entry.timestamp, pluginName: entry.pluginName, pluginPath: entry.pluginPath, pluginSize: entry.pluginSize, deletionType: entry.deletionType, success: entry.success, errorMessage: entry.errorMessage
             )
         }
         guard let encoded = try? JSONEncoder().encode(codableEntries) else { return }
@@ -330,19 +288,12 @@ class UninstallManager: ObservableObject {
     }
 
     func loadDeletionLog() {
-        guard let data = UserDefaults.standard.data(forKey: "deletion_log"),
-              let codableEntries = try? JSONDecoder().decode([CodableLogEntry].self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: "deletion_log"), let codableEntries = try? JSONDecoder().decode([CodableLogEntry].self, from: data) else {
             return
         }
         deletionLog = codableEntries.map { entry in
             DeletionLogEntry(
-                timestamp: entry.timestamp,
-                pluginName: entry.pluginName,
-                pluginPath: entry.pluginPath,
-                pluginSize: entry.pluginSize,
-                deletionType: entry.deletionType,
-                success: entry.success,
-                errorMessage: entry.errorMessage
+                timestamp: entry.timestamp, pluginName: entry.pluginName, pluginPath: entry.pluginPath, pluginSize: entry.pluginSize, deletionType: entry.deletionType, success: entry.success, errorMessage: entry.errorMessage
             )
         }
         print("📝 Loaded deletion log: \(deletionLog.count) entries")

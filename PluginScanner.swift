@@ -19,6 +19,17 @@ public struct ScannerPluginItem: Identifiable, Hashable, Codable {
     public let runtimeRequirement: String
     public let obsolete: Bool
 
+    // Enrichment data from Firebase
+    public var thumbnailUrl: String?
+    public var screenshotUrl: String?
+    public var description: String?
+    public var colorScheme: String?
+    public var tags: [String]?
+    public var features: [String]?
+    public var fullFeatures: String?
+    public var specs: String?
+    public var enrichedPresets: [EnrichedPreset]?
+
     // Cached formatters for better performance
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -76,7 +87,7 @@ public final class PluginScanner: ObservableObject {
         // Note: These are deferred to run on MainActor after initialization
         Task { @MainActor in
             self.checkPrivacyDisclosureStatus()
-            self.loadCachedPlugins()
+            await self.loadCachedPlugins()
         }
     }
 
@@ -92,42 +103,132 @@ public final class PluginScanner: ObservableObject {
         shouldShowPrivacyDisclosure = false
     }
 
+    // MARK: - Enrichment
+
+    public func updateEnrichmentData(from enrichedPlugins: [PluginItem]) {
+        for (index, enrichedPlugin) in enrichedPlugins.enumerated() {
+            if index < plugins.count {
+                plugins[index].thumbnailUrl = enrichedPlugin.thumbnailUrl
+                plugins[index].screenshotUrl = enrichedPlugin.screenshotUrl
+                plugins[index].description = enrichedPlugin.description
+                plugins[index].colorScheme = enrichedPlugin.colorScheme
+                plugins[index].tags = enrichedPlugin.tags
+                plugins[index].features = enrichedPlugin.features
+                plugins[index].fullFeatures = enrichedPlugin.fullFeatures
+                plugins[index].specs = enrichedPlugin.specs
+                plugins[index].enrichedPresets = enrichedPlugin.enrichedPresets
+            }
+        }
+    }
+
     // MARK: - Persistent Storage
 
-    private func loadCachedPlugins() {
+    private func loadCachedPlugins() async {
+        // Try file-based cache first (new system)
+        let cacheURL = FileManager.default
+            .urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("enrichedPlugins.json")
+
+        if FileManager.default.fileExists(atPath: cacheURL.path) {
+            do {
+                // CRITICAL: Load file data off main thread to avoid beach ball
+                let data = try await Task.detached {
+                    try Data(contentsOf: cacheURL)
+                }.value
+
+                // CRITICAL: Decode off main thread (expensive operation)
+                let cachedPlugins = try await Task.detached {
+                    let decoder = JSONDecoder()
+                    return try decoder.decode([ScannerPluginItem].self, from: data)
+                }.value
+
+                // Update UI on main thread
+                await MainActor.run {
+                    self.plugins = cachedPlugins
+                    self.totalToScan = cachedPlugins.count
+
+                    if let lastScanDate = UserDefaults.standard.object(forKey: Self.lastScanDateKey) as? Date {
+                        let formatter = DateFormatter()
+                        formatter.dateStyle = .medium
+                        formatter.timeStyle = .short
+                        self.status = "Loaded \(cachedPlugins.count) plugins (scanned \(formatter.string(from: lastScanDate)))"
+                    } else {
+                        self.status = "Loaded \(cachedPlugins.count) plugins"
+                    }
+
+                    let sizeInMB = Double(data.count) / 1_048_576.0
+                    AppLogger.info("Loaded \(cachedPlugins.count) cached plugins from file (\(String(format: "%.2f", sizeInMB)) MB)")
+                    AppLogger.logPluginLoad(source: "File Cache", count: cachedPlugins.count, fileSize: sizeInMB)
+                }
+                return
+            } catch {
+                AppLogger.error("Failed to load file cache: \(error.localizedDescription)")
+            }
+        }
+
+        // Fallback to UserDefaults (old system) for migration
         guard let data = UserDefaults.standard.data(forKey: Self.pluginsCacheKey) else {
             return
         }
 
         do {
-            let decoder = JSONDecoder()
-            let cachedPlugins = try decoder.decode([ScannerPluginItem].self, from: data)
-            self.plugins = cachedPlugins
-            self.totalToScan = cachedPlugins.count
+            // CRITICAL: Decode off main thread
+            let cachedPlugins = try await Task.detached {
+                let decoder = JSONDecoder()
+                return try decoder.decode([ScannerPluginItem].self, from: data)
+            }.value
 
-            if let lastScanDate = UserDefaults.standard.object(forKey: Self.lastScanDateKey) as? Date {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                formatter.timeStyle = .short
-                self.status = "Loaded \(cachedPlugins.count) plugins (scanned \(formatter.string(from: lastScanDate)))"
-            } else {
-                self.status = "Loaded \(cachedPlugins.count) plugins"
+            await MainActor.run {
+                self.plugins = cachedPlugins
+                self.totalToScan = cachedPlugins.count
+
+                if let lastScanDate = UserDefaults.standard.object(forKey: Self.lastScanDateKey) as? Date {
+                    let formatter = DateFormatter()
+                    formatter.dateStyle = .medium
+                    formatter.timeStyle = .short
+                    self.status = "Loaded \(cachedPlugins.count) plugins (scanned \(formatter.string(from: lastScanDate)))"
+                } else {
+                    self.status = "Loaded \(cachedPlugins.count) plugins"
+                }
+
+                AppLogger.info("Loaded \(cachedPlugins.count) cached plugins from UserDefaults (migrating to file cache)")
+
+                // Migrate to file cache
+                saveCachedPlugins()
+
+                // Clear old UserDefaults cache
+                UserDefaults.standard.removeObject(forKey: Self.pluginsCacheKey)
             }
-
-            AppLogger.info("Loaded \(cachedPlugins.count) cached plugins from persistent storage")
         } catch {
             AppLogger.error("Failed to load cached plugins: \(error.localizedDescription)")
             dashboardLogError(message: "Failed to load cached plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Cache Load")
         }
     }
 
+    /// Save enriched plugin cache (call after enrichment completes)
+    public func saveEnrichedCache() {
+        saveCachedPlugins()
+    }
+
     private func saveCachedPlugins() {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(plugins)
-            UserDefaults.standard.set(data, forKey: Self.pluginsCacheKey)
+
+            // Use file-based cache instead of UserDefaults (no 4MB limit)
+            let cacheURL = FileManager.default
+                .urls(for: .cachesDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("enrichedPlugins.json")
+
+            try data.write(to: cacheURL, options: [.atomic])
+
+            // Also save metadata to UserDefaults (small data only)
             UserDefaults.standard.set(Date(), forKey: Self.lastScanDateKey)
-            AppLogger.info("Saved \(plugins.count) plugins to persistent storage")
+            UserDefaults.standard.set(plugins.count, forKey: "cachedPluginsCount")
+
+            let sizeInMB = Double(data.count) / 1_048_576.0
+            AppLogger.info("Saved \(plugins.count) plugins to file cache (\(String(format: "%.2f", sizeInMB)) MB)")
+            AppLogger.logPluginSave(destination: "File Cache", count: plugins.count, fileSize: sizeInMB)
         } catch {
             AppLogger.error("Failed to save cached plugins: \(error.localizedDescription)")
             dashboardLogError(message: "Failed to save cached plugins: \(error.localizedDescription)", severity: "error", context: "Plugin Scanner - Cache Save")
@@ -178,11 +279,19 @@ public final class PluginScanner: ObservableObject {
 
     /// Scans the given roots. If `roots` is nil or empty, uses default plugin locations.
     public func scan(extraPaths roots: [URL]?) {
-        if isScanning { return }
-        
+        if isScanning {
+            AppLogger.warning("⚠️ Scan already in progress - ignoring duplicate scan request")
+            return
+        }
+
+        AppLogger.info("🔍 Starting scan...")
+
         // Cancel any existing scan task
         scanTask?.cancel()
-        
+
+        // Capture plugins list before clearing (lightweight - just the array reference)
+        let pluginsToPreserve = plugins
+
         // Reset state immediately on main thread
         self.isScanning = true
         self.plugins = []
@@ -192,11 +301,16 @@ public final class PluginScanner: ObservableObject {
 
         // Launch async scanning task
         scanTask = Task {
-            await performScan(extraPaths: roots)
+            // Build enrichment dictionary off main thread (expensive operation)
+            let existingEnrichment = pluginsToPreserve.reduce(into: [String: ScannerPluginItem]()) { dict, plugin in
+                dict[plugin.path] = plugin
+            }
+
+            await performScan(extraPaths: roots, existingEnrichment: existingEnrichment)
         }
     }
     
-    private func performScan(extraPaths roots: [URL]?) async {
+    private func performScan(extraPaths roots: [URL]?, existingEnrichment: [String: ScannerPluginItem]) async {
         // Phase 1: Fast discovery of plugin URLs
         let urls = await withTaskGroup(of: [URL].self) { group in
             let rootsToUse = (roots?.isEmpty == false) ? dedupe(roots!) : defaultPluginRoots()
@@ -234,10 +348,10 @@ public final class PluginScanner: ObservableObject {
         }
         
         // Phase 2: Process plugins with optimized batching
-        await processBatchedPlugins(urls: urls)
+        await processBatchedPlugins(urls: urls, existingEnrichment: existingEnrichment)
     }
     
-    private func processBatchedPlugins(urls: [URL]) async {
+    private func processBatchedPlugins(urls: [URL], existingEnrichment: [String: ScannerPluginItem]) async {
         let batchSize = 100 // Larger batches for better throughput
         let maxConcurrency = ProcessInfo.processInfo.activeProcessorCount * 2 // More aggressive concurrency
 
@@ -290,17 +404,48 @@ public final class PluginScanner: ObservableObject {
 
             let progress = Double(processedCount) / Double(urls.count)
 
-            // INSTANT UI UPDATE - no animation delay
+            // Update progress only - DON'T update plugins list until scan complete
             await MainActor.run {
                 self.progress = progress
                 self.status = "Scanning… \(processedCount) / \(urls.count)"
-                // INSTANT plugin list update with inferred metadata
-                self.plugins = allItems
+                // DO NOT update self.plugins here - wait until scan complete
             }
         }
 
         // Final inference pass (just to be safe)
         allItems = inferMissingMetadata(allItems)
+
+        // Deduplicate plugins by path (keep first occurrence)
+        var seen = Set<String>()
+        allItems = allItems.filter { item in
+            if seen.contains(item.path) {
+                return false
+            }
+            seen.insert(item.path)
+            return true
+        }
+
+        // Restore enrichment data from previous scan
+        allItems = allItems.map { freshPlugin in
+            if let existingPlugin = existingEnrichment[freshPlugin.path],
+               existingPlugin.screenshotUrl != nil || existingPlugin.enrichedPresets != nil {
+                // Copy enrichment data from existing plugin
+                var enriched = freshPlugin
+                enriched.screenshotUrl = existingPlugin.screenshotUrl
+                enriched.thumbnailUrl = existingPlugin.thumbnailUrl
+                enriched.description = existingPlugin.description
+                enriched.colorScheme = existingPlugin.colorScheme
+                enriched.tags = existingPlugin.tags
+                enriched.features = existingPlugin.features
+                enriched.fullFeatures = existingPlugin.fullFeatures
+                enriched.specs = existingPlugin.specs
+                enriched.enrichedPresets = existingPlugin.enrichedPresets
+                return enriched
+            }
+            return freshPlugin
+        }
+
+        AppLogger.info("Restored enrichment for \(allItems.filter { $0.screenshotUrl != nil }.count) plugins")
 
         // Final update
         await MainActor.run {
@@ -318,6 +463,26 @@ public final class PluginScanner: ObservableObject {
 
             // Track scan completion for dashboard reporting
             dashboardTrackScan()
+
+            #if os(macOS)
+            // Upload to CloudKit to sync with iOS devices
+            Task {
+                let pluginItems = allItems.map { PluginItem(
+                    name: $0.name,
+                    publisher: $0.publisher,
+                    version: $0.version,
+                    type: $0.type,
+                    style: $0.style,
+                    architectures: $0.architectures,
+                    date: $0.date,
+                    sizeBytes: $0.sizeBytes,
+                    path: $0.path,
+                    runtimeRequirement: $0.runtimeRequirement,
+                    obsolete: $0.obsolete
+                )}
+                await CloudSyncManager.shared.uploadPlugins(pluginItems)
+            }
+            #endif
         }
     }
 

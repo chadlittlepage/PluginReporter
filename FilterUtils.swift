@@ -16,8 +16,7 @@ struct FilterUtils {
     /// Efficiently extract unique, non-empty values from plugins for a given string keypath
     /// Uses a single-pass algorithm with Set-based deduplication and inline sorting
     static func uniqueValues<T: PluginProtocol>(
-        from plugins: [T],
-        keyPath: KeyPath<T, String>
+        from plugins: [T], keyPath: KeyPath<T, String>
     ) -> [String] {
         var seen = Set<String>()
         var result: [String] = []
@@ -52,7 +51,9 @@ struct FilterUtils {
         var map: [String: Set<String>] = [:]
 
         for entry in entries {
-            let key = makePluginKey(name: entry.pluginName, format: entry.pluginFormat)
+            // Convert type string to PluginFormat for key generation
+            let format = PluginFormat(rawValue: entry.type) ?? .VST3
+            let key = makePluginKey(name: entry.name, format: format)
             map[key, default: []].insert(entry.trackName)
         }
 
@@ -75,8 +76,7 @@ struct FilterUtils {
 
     /// Deduplicate plugins by key (name + format) - single pass
     static func deduplicatePlugins<T: PluginProtocol>(
-        _ plugins: [T],
-        keyExtractor: (T) -> String
+        _ plugins: [T], keyExtractor: (T) -> String
     ) -> [T] {
         var seen = Set<String>()
         var result: [T] = []

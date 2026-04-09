@@ -139,6 +139,7 @@ struct ContentView: View {
             let loadedPlugins = try SharedStorage.loadPlugins()
             AppLogger.info("Loaded \(loadedPlugins.count) plugins on iPhone")
 
+            // Show plugins immediately
             plugins = loadedPlugins
             isLoading = false
 
@@ -151,6 +152,16 @@ struct ContentView: View {
 
             // Always show the debug alert when manually triggered
             showDebugAlert = true
+
+            // Enrich plugins with metadata and screenshots from Firebase in background
+            Task {
+                print("🔄 Starting enrichment in background...")
+                let enrichedPlugins = await enrichPlugins(loadedPlugins)
+                await MainActor.run {
+                    plugins = enrichedPlugins
+                    print("✅ Enrichment complete, updated plugins list")
+                }
+            }
         } catch {
             AppLogger.error("Failed to load plugins: \(error.localizedDescription)")
             debugMessage += "\n\n❌ Error: \(error.localizedDescription)"
@@ -166,14 +177,38 @@ struct ContentView: View {
         loadPlugins()
     }
 
+    /// Enriches plugins with metadata and screenshot URLs from Firebase using PluginEnrichmentService
+    func enrichPlugins(_ plugins: [PluginItem]) async -> [PluginItem] {
+        print("🔄 Starting enrichment for \(plugins.count) plugins using PluginEnrichmentService...")
+
+        var mutablePlugins = plugins
+        await PluginEnrichmentService.shared.batchFetchEnrichment(for: &mutablePlugins)
+
+        print("✅ Enrichment complete - plugins updated with Firebase data")
+        return mutablePlugins
+    }
+
     @MainActor
     func loadPluginsSilently() {
         // Auto-load on launch without showing alerts
         do {
             let loadedPlugins = try SharedStorage.loadPlugins()
+
+            // Show plugins immediately
             plugins = loadedPlugins
             isLoading = false
             AppLogger.info("Auto-loaded \(plugins.count) plugins on launch")
+
+            // Enrich plugins with metadata and screenshots from Firebase in background
+            Task {
+                print("🔄 [iOS] Starting Firebase enrichment for \(loadedPlugins.count) plugins...")
+                var mutablePlugins = loadedPlugins
+                await PluginEnrichmentService.shared.batchFetchEnrichment(for: &mutablePlugins)
+                await MainActor.run {
+                    plugins = mutablePlugins
+                    print("✅ [iOS] Enrichment complete - plugins updated with screenshot URLs")
+                }
+            }
         } catch {
             AppLogger.error("Failed to auto-load plugins: \(error.localizedDescription)")
             plugins = []
@@ -202,7 +237,7 @@ struct ContentView: View {
                 return
             }
 
-            plugins = jsonArray.compactMap { dict -> PluginItem? in
+            let loadedPlugins = jsonArray.compactMap { dict -> PluginItem? in
                 guard let name = dict["Name"] as? String,
                       let type = dict["Type"] as? String else {
                     return nil
@@ -225,7 +260,21 @@ struct ContentView: View {
                     obsolete: dict["Obsolete"] as? Bool ?? false
                 )
             }
+
+            // Show plugins immediately
+            plugins = loadedPlugins
             isLoading = false
+
+            // Enrich plugins with metadata and screenshots from Firebase in background
+            Task {
+                print("🔄 [iOS] Starting Firebase enrichment for imported plugins...")
+                var mutablePlugins = loadedPlugins
+                await PluginEnrichmentService.shared.batchFetchEnrichment(for: &mutablePlugins)
+                await MainActor.run {
+                    plugins = mutablePlugins
+                    print("✅ [iOS] Enrichment complete - imported plugins updated with screenshot URLs")
+                }
+            }
         } catch let error as NSError {
             let errorDescription: String
             switch error.domain {

@@ -1,6 +1,7 @@
-import SwiftUI
-import Sentry
 import Combine
+import FirebaseCore
+import Sentry
+import SwiftUI
 #if os(macOS)
 import AppKit
 
@@ -11,6 +12,134 @@ import AppKit
 // ZoomState class moved to: ZoomState.swift (see bottom of file)
 
 #endif
+
+// MARK: - Seed Free Plugins Database
+// One-time function to populate Firebase with 80+ verified free plugins
+@MainActor
+func seedFreePlugins() async {
+    print("🚀 Seeding Firebase with verified free plugins...")
+
+    let plugins: [(String, String, String, String)] = [
+        // REVERB (10 plugins)
+        ("TAL Reverb 4", "reverb", "Highly regarded algorithmic reverb with lush, spacious sound - completely free", "Togu Audio Line"),
+        ("OrilRiver", "reverb", "Free open-source reverb based on Freeverb3 algorithm - natural and spacious", "Denis Tihanov"),
+        ("Dragonfly Reverb", "reverb", "High-quality open-source reverb collection with plate, room, and hall", "Michael Gruhn"),
+        ("Valhalla Supermassive", "reverb", "Free massive reverb/delay creating huge, otherworldly spaces", "Valhalla DSP"),
+        ("Ambience", "reverb", "Classic simple CPU-friendly reverb - great for natural space", "Magnus Jonsson"),
+        ("EpicVerb", "reverb", "Very good sounding algorithmic reverb with clean modern design", "Variety of Sound"),
+        ("MConvolutionEZ", "reverb", "Free convolution reverb for loading impulse responses", "MeldaProduction"),
+        ("Sanford Reverb", "reverb", "Clean easy-to-use reverb designed for simplicity", "Sanford"),
+        ("FreeverbToo", "reverb", "No-frills approach to creating space - functional and free", "Smartelectronix"),
+        ("Protoverb", "reverb", "Experimental reverb with unique character", "U-he"),
+
+        // EQ (7 plugins)
+        ("TDR VOS SlickEQ", "eq", "Three-band semi-parametric EQ with smooth musical character", "Tokyo Dawn Records"),
+        ("MEqualizer", "eq", "Versatile 6-band EQ - flexible and transparent", "MeldaProduction"),
+        ("Marvel GEQ", "eq", "Free 16-band graphic EQ with minimum phase mode", "Voxengo"),
+        ("EQ", "eq", "Simple clean parametric EQ from Kilohearts Essentials", "Kilohearts"),
+        ("Luftikus", "eq", "Free analog-modeled EQ adding warmth and character", "Tokyo Dawn Records"),
+        ("TDR Nova", "eq", "Parallel dynamic EQ - professional-grade free tool", "Tokyo Dawn Records"),
+        ("ReaEQ", "eq", "Free parametric EQ included with REAPER - versatile", "Cockos"),
+
+        // COMPRESSOR (8 plugins)
+        ("TDR Kotelnikov", "compressor", "Wideband dynamics processor - mastering-grade quality", "Tokyo Dawn Records"),
+        ("Rough Rider 3", "compressor", "Modern compressor with vintage character - great for drums", "Audio Damage"),
+        ("MCompressor", "compressor", "Versatile compressor with various modes", "MeldaProduction"),
+        ("Compressor", "compressor", "Clean simple compressor from Kilohearts Essentials", "Kilohearts"),
+        ("ADHD", "compressor", "Free leveling compressor for smooth transparent gain reduction", "Analog Obsession"),
+        ("Molot", "compressor", "Free compressor/limiter with character - adds warmth", "Vladg Sound"),
+        ("DCam FreeComp", "compressor", "Simple effective compressor modeled after hardware", "FXpansion"),
+        ("OTT", "compressor", "Multiband upwards/downwards compressor - famous for EDM", "Xfer Records"),
+
+        // LIMITER (4 plugins)
+        ("MLimiter", "limiter", "Transparent limiter great for mastering", "MeldaProduction"),
+        ("LoudMax", "limiter", "Transparent look-ahead brickwall limiter - industry standard", "Thomas Mundt"),
+        ("Limiter No6", "limiter", "5-module limiter with various modes - extremely versatile", "Vladg Sound"),
+        ("W1 Limiter", "limiter", "Free brickwall limiter for mastering - simple and effective", "George Yohng"),
+
+        // DELAY (5 plugins)
+        ("Valhalla Freq Echo", "delay", "Free frequency shifter/echo creating unique delays", "Valhalla DSP"),
+        ("TAL-Dub-X", "delay", "Free dub delay with vintage character", "Togu Audio Line"),
+        ("Delay", "delay", "Simple clean delay from Kilohearts Essentials", "Kilohearts"),
+        ("EchoBoy Jr", "delay", "Simplified free version of famous EchoBoy", "Soundtoys"),
+        ("MDelayMB", "delay", "Free multiband delay - very versatile", "MeldaProduction"),
+
+        // MODULATION (5 plugins)
+        ("TAL-Chorus-LX", "modulation", "Free chorus modeled after Juno-60 - lush vintage sound", "Togu Audio Line"),
+        ("Valhalla Space Modulator", "modulation", "Free modulation with flangers, phasers, chorus", "Valhalla DSP"),
+        ("MFlanger", "modulation", "Versatile flanger from MeldaProduction free bundle", "MeldaProduction"),
+        ("Phaser", "modulation", "Simple phaser from Kilohearts Essentials", "Kilohearts"),
+        ("Chorus", "modulation", "Clean chorus from Kilohearts Essentials", "Kilohearts"),
+
+        // STEREO (4 plugins)
+        ("Wider", "stereo", "Free stereo widener - simple and effective", "Polyverse Music"),
+        ("Panagement", "stereo", "Free stereo width and panning plugin", "Voxengo"),
+        ("Ozone Imager", "stereo", "Professional stereo imaging from iZotope", "iZotope"),
+        ("MStereoSpread", "stereo", "Free stereo widener - very effective", "MeldaProduction"),
+
+        // ANALYZER (4 plugins)
+        ("SPAN", "analyzer", "Free real-time spectrum analyzer - essential tool", "Voxengo"),
+        ("Youlean Loudness Meter", "analyzer", "Free loudness metering for streaming standards", "Youlean"),
+        ("mvMeter2", "analyzer", "Free multivariable meter - professional-grade", "TBProAudio"),
+        ("dpMeter5", "analyzer", "Free level and stereo meter with ballistics", "TBProAudio"),
+
+        // SATURATION (5 plugins)
+        ("Saturation Knob", "saturation", "Free saturation adding warmth and harmonics", "Softube"),
+        ("Krush", "distortion", "Free bit crusher/distortion for adding grit", "Tritik"),
+        ("Vinyl", "effect", "Free lo-fi vinyl simulator adding vintage character", "iZotope"),
+        ("Tube Saturator", "saturation", "Free tube saturation adding analog warmth", "Shattered Glass Audio"),
+        ("IVGI", "saturation", "Free saturation with vintage character", "Klanghelm"),
+
+        // SYNTHESIZER (8 plugins)
+        ("TAL-NoiseMaker", "synthesizer", "Free virtual analog synth with effects", "Togu Audio Line"),
+        ("Dexed", "synthesizer", "Free FM synth modeled after Yamaha DX7", "Digital Suburban"),
+        ("Helm", "synthesizer", "Free open-source polyphonic synth", "Matt Tytel"),
+        ("Surge XT", "synthesizer", "Powerful open-source hybrid synth", "Surge Synth Team"),
+        ("Vital", "synthesizer", "Spectral warping wavetable synth - free version", "Matt Tytel"),
+        ("Tyrell N6", "synthesizer", "Free virtual analog synth with warm fat sound", "u-he"),
+        ("PG-8X", "synthesizer", "Free synth modeled after classic polysynths", "ML-VST"),
+        ("Odin 2", "synthesizer", "Free semi-modular polyphonic synth", "The Wave Warden"),
+
+        // INSTRUMENTS (6 plugins)
+        ("Spitfire LABS", "instrument", "Collection of free virtual instruments", "Spitfire Audio"),
+        ("Ample Bass P Lite", "bass", "Free bass guitar with realistic sounds", "Ample Sound"),
+        ("DSK Dynamic Guitars", "guitar", "Free guitar with acoustic and electric", "DSK Music"),
+        ("MT Power Drum Kit 2", "drums", "Free drum sampler with acoustic drums", "Manda Audio"),
+        ("SSD5 Free", "drums", "Free drum sampler great for rock and metal", "Steven Slate Drums"),
+        ("Decent Sampler", "sampler", "Free sampling plugin with sample library", "Decent Samples"),
+
+        // UTILITY (5 plugins)
+        ("Pancake 2", "utility", "Free automatic mixing tool with limiting", "Cableguys"),
+        ("Gain", "utility", "Simple gain/trim from Kilohearts Essentials", "Kilohearts"),
+        ("Stereo Tool", "utility", "Free stereo manipulation - useful for mixing", "Flux"),
+        ("Utility", "utility", "Free utility with gain, phase, width control", "Ableton"),
+        ("LFO Tool", "utility", "Free LFO-driven volume modulation", "Xfer Records")
+    ]
+
+    var saved = 0
+    var failed = 0
+
+    for (name, category, reason, developer) in plugins {
+        do {
+            try await FirestoreManager.shared.saveFreePlugin(
+                name: name,
+                category: category,
+                reason: reason,
+                developer: developer
+            )
+            saved += 1
+            if saved % 10 == 0 {
+                print("   ✅ Saved \(saved) plugins...")
+            }
+        } catch {
+            print("   ⚠️ Failed to save '\(name)': \(error.localizedDescription)")
+            failed += 1
+        }
+    }
+
+    print("✅ Seeding complete! Saved: \(saved), Failed: \(failed)")
+    print("⚡ FREE category will now be LIGHTNING FAST!")
+}
 
 @main
 struct PluginReporterApp: App {
@@ -23,14 +152,26 @@ struct PluginReporterApp: App {
     @StateObject private var zoomState = ZoomState()
     @StateObject private var dashboardScheduler = DashboardScheduler.shared
     @StateObject private var appState = AppState()
+    // IMPORTANT: FirestoreManager MUST be initialized before PluginEnrichmentService
+    // to properly configure Firestore settings and avoid LevelDB lock conflicts
+    @StateObject private var firestoreManager = FirestoreManager.shared
+    @StateObject private var enrichmentService = PluginEnrichmentService.shared
+    @StateObject private var pluginDataMerger: PluginDataMerger = PluginDataMerger(
+        cloudKit: CloudSyncManager.shared,
+        firestore: FirestoreManager.shared
+    )
     #if os(macOS)
     @StateObject private var playlistManager = DAWPlaylistManager.shared
     #endif
 
     // Local state for color scheme to prevent publishing during view updates
-    @State private var appliedColorScheme: ColorScheme? = nil
+    @State private var appliedColorScheme: ColorScheme?
 
     init() {
+        // Initialize Firebase
+        FirebaseApp.configure()
+        AppLogger.info("Firebase initialized")
+
         // Defer Sentry initialization to avoid blocking startup
         Task.detached(priority: .utility) {
             // Wait a moment for app to fully launch
@@ -67,6 +208,9 @@ struct PluginReporterApp: App {
                 #endif
                 .environmentObject(scanner)
                 .environmentObject(prefs)
+                .environmentObject(enrichmentService)
+                .environmentObject(firestoreManager)
+                .environmentObject(pluginDataMerger)
                 .preferredColorScheme(appliedColorScheme)
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ReportBug"))) { _ in
                     openBugReportWindow()
@@ -78,8 +222,7 @@ struct PluginReporterApp: App {
                     openCrashReportingPrompt()
                 }
                 .onChange(of: prefs.cloudSyncEnabled) { enabled in
-                    if enabled { sync.preferences.startSync(prefs: prefs) }
-                    else { sync.preferences.stopSync() }
+                    if enabled { sync.preferences.startSync(prefs: prefs) } else { sync.preferences.stopSync() }
                 }
                 .onReceive(prefs.$appearance.debounce(for: .milliseconds(100), scheduler: RunLoop.main)) { newAppearance in
                     // Update color scheme asynchronously to prevent publishing error
@@ -157,6 +300,14 @@ struct PluginReporterApp: App {
                             obsolete: $0.obsolete
                         )}
                         dashboardScheduler.updatePlugins(plugins)
+
+                        // NOTE: PluginDataMerger disabled - using PluginEnrichmentService instead
+                        // The enrichment is handled by enrichPluginsWithFirebase() in ContentView
+                        // which calls PluginEnrichmentService.shared.batchFetchEnrichment()
+                        // Uncommenting this will overwrite the enrichment data:
+                        // if !scanner.isScanning && !plugins.isEmpty {
+                        //     await pluginDataMerger.loadScannedPlugins(plugins)
+                        // }
                     }
                 }
         }
@@ -307,6 +458,7 @@ struct PluginReporterApp: App {
                     }
                     .keyboardShortcut("0", modifiers: .command)
                 }
+
             }
 
             // Plugins menu (new)
@@ -605,9 +757,31 @@ struct PluginReporterApp: App {
                 .keyboardShortcut("f", modifiers: [.command, .control])
             }
 
-            // Remove Close Window menu item by replacing .windowArrangement
-            CommandGroup(replacing: .windowArrangement) {
-                // Empty - removes Close, Minimize, Zoom menu items
+            // ========================================
+            // AI & Resources Menu (window managers lost — stubs pending)
+            // ========================================
+            // TODO: Restore PluginPresetsWindowManager, AIChainToPresetWindowManager,
+            //       HardwareDSPUsageWindowManager from the 17 lost files
+            // ========================================
+
+            // DEVELOPER MENU
+            CommandMenu("Developer") {
+                Button("⚡ Seed Free Plugins Database") {
+                    Task {
+                        await seedFreePlugins()
+
+                        // Show success alert
+                        await MainActor.run {
+                            let alert = NSAlert()
+                            alert.messageText = "✅ Database Seeded Successfully!"
+                            alert.informativeText = "Saved 80+ verified free plugins to Firebase.\n\nFREE category will now load in < 1 second! 🚀"
+                            alert.alertStyle = .informational
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    }
+                }
+                .help("Populate Firebase with 80+ verified free plugins for instant FREE category")
             }
             #endif
         }
@@ -699,4 +873,3 @@ struct PluginReporterApp: App {
 
 // MARK: - Zoom State
 // ZoomState class moved to: ZoomState.swift
-

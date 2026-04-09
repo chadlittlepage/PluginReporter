@@ -3,10 +3,10 @@
 import AppKit
 
 enum SavePanelHelpers {
-    static func saveCSV() -> URL?  { save(suggested: "PluginReport.csv") }
+    static func saveCSV() -> URL? { save(suggested: "PluginReport.csv") }
     static func saveJSON() -> URL? { save(suggested: "PluginReport.json") }
     static func saveHTML() -> URL? { save(suggested: "PluginReport.html") }
-    static func savePDF() -> URL?  { save(suggested: "PluginReport.pdf") }
+    static func savePDF() -> URL? { save(suggested: "PluginReport.pdf") }
 
     private static func save(suggested: String) -> URL? {
         let p = NSSavePanel()

@@ -6,9 +6,9 @@
 //  Note: Uses ExportViewModel from iPad/ExportViewModel.swift (shared with iPad)
 //
 
+import Combine
 import SwiftUI
 import UIKit
-import Combine
 
 struct ExportView: View {
     let plugins: [PluginItem]

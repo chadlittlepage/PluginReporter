@@ -61,33 +61,23 @@ struct iLokImportView: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Step-by-step instructions
                 InstructionStep(
-                    number: 1,
-                    title: "Open iLok License Manager",
-                    description: "Launch the iLok License Manager application"
+                    number: 1, title: "Open iLok License Manager", description: "Launch the iLok License Manager application"
                 )
 
                 InstructionStep(
-                    number: 2,
-                    title: "View Your Licenses",
-                    description: "Make sure you're viewing your licenses in the main window"
+                    number: 2, title: "View Your Licenses", description: "Make sure you're viewing your licenses in the main window"
                 )
 
                 InstructionStep(
-                    number: 3,
-                    title: "Export to CSV",
-                    description: "Click the \"Export CSV\" button (usually in the toolbar or File menu)"
+                    number: 3, title: "Export to CSV", description: "Click the \"Export CSV\" button (usually in the toolbar or File menu)"
                 )
 
                 InstructionStep(
-                    number: 4,
-                    title: "Save the CSV File",
-                    description: "Save the exported CSV file to a location you can remember"
+                    number: 4, title: "Save the CSV File", description: "Save the exported CSV file to a location you can remember"
                 )
 
                 InstructionStep(
-                    number: 5,
-                    title: "Import Below",
-                    description: "Click the \"Select CSV File\" button below to import your licenses"
+                    number: 5, title: "Import Below", description: "Click the \"Select CSV File\" button below to import your licenses"
                 )
 
                 Divider()
@@ -161,21 +151,15 @@ struct iLokImportView: View {
                     // Statistics
                     HStack(spacing: 40) {
                         StatBox(
-                            value: "\(result.totalLicenses)",
-                            label: "Total Licenses",
-                            icon: "doc.text"
+                            value: "\(result.totalLicenses)", label: "Total Licenses", icon: "doc.text"
                         )
 
                         StatBox(
-                            value: "\(result.matchedPlugins)",
-                            label: "Matched Plugins",
-                            icon: "checkmark.circle"
+                            value: "\(result.matchedPlugins)", label: "Matched Plugins", icon: "checkmark.circle"
                         )
 
                         StatBox(
-                            value: "\(result.unmatchedLicenses.count)",
-                            label: "Unmatched",
-                            icon: "questionmark.circle"
+                            value: "\(result.unmatchedLicenses.count)", label: "Unmatched", icon: "questionmark.circle"
                         )
                     }
                 }
@@ -304,9 +288,7 @@ struct iLokImportView: View {
                 Task {
                     do {
                         let result = try await iLokImporter.importFromCSV(
-                            url: url,
-                            plugins: self.plugins,
-                            autoMatch: true
+                            url: url, plugins: self.plugins, autoMatch: true
                         )
 
                         await MainActor.run {
@@ -332,9 +314,7 @@ struct iLokImportView: View {
                 Task {
                     do {
                         let result = try await iLokImporter.importFromCSV(
-                            url: url,
-                            plugins: self.plugins,
-                            autoMatch: true
+                            url: url, plugins: self.plugins, autoMatch: true
                         )
 
                         await MainActor.run {

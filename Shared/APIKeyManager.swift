@@ -20,18 +20,13 @@ class APIKeyManager: ObservableObject {
 
     private func loadAPIKey() -> String {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "openai_api_key",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: "openai_api_key", kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let value = String(data: data, encoding: .utf8) else {
+        guard status == errSecSuccess, let data = result as? Data, let value = String(data: data, encoding: .utf8) else {
             return ""
         }
 
@@ -59,8 +54,7 @@ class APIKeyManager: ObservableObject {
 
         // Try to update first
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "openai_api_key"
+            kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: "openai_api_key"
         ]
 
         let attributes: [String: Any] = [
@@ -131,8 +125,7 @@ class APIKeyManager: ObservableObject {
 
     private func deleteAPIKey() {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "openai_api_key"
+            kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: "openai_api_key"
         ]
         SecItemDelete(query as CFDictionary)
     }

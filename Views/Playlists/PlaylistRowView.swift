@@ -19,8 +19,8 @@ struct PlaylistRowView: View {
     let isActive: Bool
     let isDropTarget: Bool  // New parameter for drop target state
     @State private var isHovered = false
-    var onDelete: (() -> Void)? = nil
-    var onRatingChange: ((Int) -> Void)? = nil
+    var onDelete: (() -> Void)?
+    var onRatingChange: ((Int) -> Void)?
     @EnvironmentObject private var prefs: AppPreferences
 
     private var rowBackground: Color {
@@ -152,9 +152,6 @@ struct PlaylistRowView: View {
                         lineWidth: isActive ? 2 : 1
                     )
             )
-            .onHover { hovering in
-                isHovered = hovering
-            }
 
             // Delete button in top-right corner (show on hover OR when active/selected)
             if isHovered || isActive {
@@ -171,6 +168,9 @@ struct PlaylistRowView: View {
                 .padding(8)
                 .offset(x: 4, y: -4)
             }
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }

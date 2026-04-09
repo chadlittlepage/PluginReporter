@@ -79,8 +79,7 @@ struct BulkEditPanel: View {
             .overlay(
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
-                    .frame(width: 1),
-                alignment: .leading
+                    .frame(width: 1), alignment: .leading
             )
             .alert("Reset to Original Metadata?", isPresented: $showResetConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -100,9 +99,7 @@ struct BulkEditPanel: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(LinearGradient(
-                        colors: [Color.accentColor.opacity(0.6), Color.accentColor.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                        colors: [Color.accentColor.opacity(0.6), Color.accentColor.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
 
                 Image(systemName: "square.stack.3d.up")

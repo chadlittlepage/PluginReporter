@@ -122,7 +122,7 @@ class ProToolsParser: DAWParser {
 
         for byte in data {
             // Printable ASCII range (including space)
-            if (byte >= 0x20 && byte <= 0x7E) {
+            if byte >= 0x20 && byte <= 0x7E {
                 currentString.append(byte)
             } else {
                 if currentString.count >= minLength {
@@ -333,7 +333,7 @@ private class ProToolsXMLParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,
-                attributes attributeDict: [String : String] = [:]) {
+                attributes attributeDict: [String: String] = [:]) {
 
         elementStack.append(elementName)
         currentAttributes = attributeDict
@@ -356,7 +356,13 @@ private class ProToolsXMLParser: NSObject, XMLParserDelegate {
         // Plugin detection
         if elementName == "Plugin" {
             currentPluginName = attributeDict["name"] ?? ""
-            currentManufacturer = attributeDict["manufacturer"] ?? "Unknown"
+            var manufacturer = attributeDict["manufacturer"] ?? "Unknown"
+
+            // If manufacturer is Unknown or empty, try to detect from plugin name
+            if manufacturer == "Unknown" || manufacturer.isEmpty {
+                manufacturer = detectManufacturerFromName(currentPluginName)
+            }
+            currentManufacturer = manufacturer
 
             // Determine format from type attribute
             if let type = attributeDict["type"] {
@@ -369,7 +375,7 @@ private class ProToolsXMLParser: NSObject, XMLParserDelegate {
             if !currentPluginName.isEmpty {
                 let plugin = ParsedPlugin(
                     name: currentPluginName,
-                    manufacturer: currentManufacturer,
+                    publisher: currentManufacturer,
                     trackName: currentTrackName ?? "Track \(currentTrackIndex + 1)",
                     trackIndex: currentTrackIndex,
                     deviceIndex: currentDeviceIndex,
@@ -377,7 +383,7 @@ private class ProToolsXMLParser: NSObject, XMLParserDelegate {
                 )
                 currentPlugins.append(plugin)
                 currentDeviceIndex += 1
-                print("   ✅ Added plugin: \(currentPluginName) (\(currentPluginFormat))")
+                print("   ✅ Added plugin: \(currentPluginName) (\(currentPluginFormat)) - Manufacturer: \(currentManufacturer)")
 
                 // Reset
                 currentPluginName = ""
@@ -420,6 +426,36 @@ private class ProToolsXMLParser: NSObject, XMLParserDelegate {
     }
 
     // MARK: - Helper Methods
+
+    private func detectManufacturerFromName(_ pluginName: String) -> String {
+        let lower = pluginName.lowercased()
+
+        // Known manufacturer patterns in plugin names
+        if lower.contains("fabfilter") { return "FabFilter" }
+        if lower.contains("waves") { return "Waves" }
+        if lower.contains("valhalla") { return "Valhalla DSP" }
+        if lower.contains("soundtoys") { return "Soundtoys" }
+        if lower.contains("izotope") { return "iZotope" }
+        if lower.contains("slate") { return "Slate Digital" }
+        if lower.contains("native instruments") || lower.contains("kontakt") || lower.contains("massive") { return "Native Instruments" }
+        if lower.contains("serum") { return "Xfer Records" }
+        if lower.contains("arturia") { return "Arturia" }
+        if lower.contains("omnisphere") || lower.contains("keyscape") { return "Spectrasonics" }
+        if lower.contains("output") { return "Output" }
+        if lower.contains("u-he") || lower.contains("diva") || lower.contains("zebra") { return "u-he" }
+        if lower.contains("plugin alliance") || lower.contains("bx_") || lower.contains("brainworx") { return "Plugin Alliance" }
+        if lower.contains("softube") { return "Softube" }
+        if lower.contains("celemony") || lower.contains("melodyne") { return "Celemony" }
+        if lower.contains("auto-tune") || lower.contains("antares") { return "Antares" }
+        if lower.contains("spitfire") { return "Spitfire Audio" }
+        if lower.contains("ssl ") || lower.starts(with: "ssl") { return "Solid State Logic" }
+        if lower.contains("uad ") || lower.contains("universal audio") { return "Universal Audio" }
+        if lower.contains("avid") || lower.contains("pro tools") { return "Avid" }
+        if lower.contains("lexicon") { return "Lexicon" }
+        if lower.contains("eventide") { return "Eventide" }
+
+        return "Unknown"
+    }
 
     private func parsePluginType(_ typeString: String) -> PluginFormat {
         let lower = typeString.lowercased()

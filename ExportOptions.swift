@@ -1,6 +1,6 @@
 // ExportOptions.swift — shared export options
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 public struct PDFExportOptions: Equatable {
@@ -53,4 +53,3 @@ public struct PDFExportOptions: Equatable {
 #if os(macOS)
 import AppKit
 #endif
-

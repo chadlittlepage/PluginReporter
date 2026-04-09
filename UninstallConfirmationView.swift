@@ -35,11 +35,8 @@ struct UninstallConfirmationView: View {
     private var gradientBackground: some View {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(red: 0.15, green: 0.15, blue: 0.17),
-                Color(red: 0.10, green: 0.10, blue: 0.12)
-            ]),
-            startPoint: .top,
-            endPoint: .bottom
+                Color(red: 0.15, green: 0.15, blue: 0.17), Color(red: 0.10, green: 0.10, blue: 0.12)
+            ]), startPoint: .top, endPoint: .bottom
         )
         .ignoresSafeArea()
     }
@@ -330,9 +327,7 @@ struct UninstallConfirmationView: View {
         Task {
             do {
                 let result = try await uninstallManager.uninstallPlugins(
-                    plugins,
-                    deletionType: deletionType,
-                    checkDAWs: checkDAWs
+                    plugins, deletionType: deletionType, checkDAWs: checkDAWs
                 )
 
                 await MainActor.run {

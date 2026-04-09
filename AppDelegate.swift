@@ -6,8 +6,14 @@
 //  Extracted from PluginReporterApp.swift
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
+
+// Firebase is optional - only import if installed
+#if canImport(FirebaseCore)
+import FirebaseCore
+#endif
+
 #if os(macOS)
 import AppKit
 
@@ -74,6 +80,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Firebase is now initialized in PluginReporterApp.swift init()
+        // No need to initialize here
+
         // Set default print orientation to landscape
         NSPrintInfo.shared.orientation = .landscape
 

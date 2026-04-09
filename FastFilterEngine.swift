@@ -87,20 +87,18 @@ struct FastFilterEngine {
                 // Regular search: Pre-compute lowercase query ONCE
                 let queryLower = trimmed.lowercased()
                 result = result.filter { plugin in
-                    let basicMatch = plugin.name.lowercased().contains(queryLower) ||
+                    plugin.name.lowercased().contains(queryLower) ||
                         plugin.publisher.lowercased().contains(queryLower) ||
                         plugin.style.lowercased().contains(queryLower) ||
                         plugin.architectures.lowercased().contains(queryLower) ||
                         plugin.version.lowercased().contains(queryLower) ||
-                        plugin.runtimeRequirement.lowercased().contains(queryLower)
-
-                    #if os(macOS)
-                    // License search only available on macOS
-                    let licenseMatch = LicenseTypeHelper.getCachedLicenseType(for: plugin).lowercased().contains(queryLower)
-                    return basicMatch || licenseMatch
-                    #else
-                    return basicMatch
-                    #endif
+                        plugin.runtimeRequirement.lowercased().contains(queryLower) ||
+                        // Search in Firebase tags
+                        (plugin.tags?.contains(where: { $0.lowercased().contains(queryLower) }) ?? false) ||
+                        // Search in GUI colors
+                        (plugin.colorScheme?.lowercased().contains(queryLower) ?? false) ||
+                        // Search in custom user tags (cached from TagsManager)
+                        plugin.customTags.contains(where: { $0.lowercased().contains(queryLower) })
                 }
             }
         }

@@ -25,107 +25,7 @@ class MetadataManager: ObservableObject {
     // Built-in publisher normalizations for common variations
     private let builtInNormalizations: [String: String] = [
         // Plugin Alliance
-        "Plugin-alliance": "Plugin Alliance",
-        "PluginAlliance": "Plugin Alliance",
-        "plugin alliance": "Plugin Alliance",
-        "PLUGIN ALLIANCE": "Plugin Alliance",
-
-        // Native Instruments
-        "Native Instruments Gmbh": "Native Instruments",
-        "Native Instruments GmbH": "Native Instruments",
-        "native instruments": "Native Instruments",
-        "NATIVE INSTRUMENTS": "Native Instruments",
-        "NI": "Native Instruments",
-
-        // FabFilter
-        "fabfilter": "FabFilter",
-        "FABFILTER": "FabFilter",
-        "Fab Filter": "FabFilter",
-
-        // Waves
-        "waves": "Waves",
-        "WAVES": "Waves",
-        "Waves Audio": "Waves",
-        "Waves Audio Ltd": "Waves",
-
-        // iZotope
-        "izotope": "iZotope",
-        "IZOTOPE": "iZotope",
-        "iZotope, Inc.": "iZotope",
-
-        // Universal Audio
-        "Universal Audio, Inc.": "Universal Audio",
-        "universal audio": "Universal Audio",
-        "UNIVERSAL AUDIO": "Universal Audio",
-        "UA": "Universal Audio",
-
-        // Softube
-        "softube": "Softube",
-        "SOFTUBE": "Softube",
-        "Softube AB": "Softube",
-
-        // Soundtoys
-        "soundtoys": "Soundtoys",
-        "SOUNDTOYS": "Soundtoys",
-        "SoundToys": "Soundtoys",
-
-        // Slate Digital
-        "Slate Digital LLC": "Slate Digital",
-        "slate digital": "Slate Digital",
-        "SLATE DIGITAL": "Slate Digital",
-
-        // SSL
-        "Solid State Logic": "SSL",
-        "solid state logic": "SSL",
-
-        // McDSP
-        "mcdsp": "McDSP",
-        "MCDSP": "McDSP",
-        "McDSP, Inc.": "McDSP",
-
-        // Valhalla DSP
-        "Valhalla": "Valhalla DSP",
-        "valhalla": "Valhalla DSP",
-        "VALHALLA": "Valhalla DSP",
-        "ValhallaVintageVerb": "Valhalla DSP",
-
-        // Arturia
-        "arturia": "Arturia",
-        "ARTURIA": "Arturia",
-        "Arturia SA": "Arturia",
-
-        // Spectrasonics
-        "spectrasonics": "Spectrasonics",
-        "SPECTRASONICS": "Spectrasonics",
-
-        // u-he
-        "u-he": "u-he",
-        "U-HE": "u-he",
-        "Urs Heckmann": "u-he",
-
-        // Eventide
-        "eventide": "Eventide",
-        "EVENTIDE": "Eventide",
-        "Eventide Inc.": "Eventide",
-
-        // Lexicon
-        "lexicon": "Lexicon",
-        "LEXICON": "Lexicon",
-
-        // Celemony
-        "celemony": "Celemony",
-        "CELEMONY": "Celemony",
-        "Celemony Software GmbH": "Celemony",
-
-        // Xfer Records
-        "Xfer": "Xfer Records",
-        "xfer": "Xfer Records",
-        "XFER": "Xfer Records",
-
-        // Sugar Bytes
-        "sugar bytes": "Sugar Bytes",
-        "SUGAR BYTES": "Sugar Bytes",
-        "SugarBytes": "Sugar Bytes"
+        "Plugin-alliance": "Plugin Alliance", "PluginAlliance": "Plugin Alliance", "plugin alliance": "Plugin Alliance", "PLUGIN ALLIANCE": "Plugin Alliance", "Native Instruments Gmbh": "Native Instruments", "Native Instruments GmbH": "Native Instruments", "native instruments": "Native Instruments", "NATIVE INSTRUMENTS": "Native Instruments", "NI": "Native Instruments", "fabfilter": "FabFilter", "FABFILTER": "FabFilter", "Fab Filter": "FabFilter", "waves": "Waves", "WAVES": "Waves", "Waves Audio": "Waves", "Waves Audio Ltd": "Waves", "izotope": "iZotope", "IZOTOPE": "iZotope", "iZotope, Inc.": "iZotope", "Universal Audio, Inc.": "Universal Audio", "universal audio": "Universal Audio", "UNIVERSAL AUDIO": "Universal Audio", "UA": "Universal Audio", "softube": "Softube", "SOFTUBE": "Softube", "Softube AB": "Softube", "soundtoys": "Soundtoys", "SOUNDTOYS": "Soundtoys", "SoundToys": "Soundtoys", "Slate Digital LLC": "Slate Digital", "slate digital": "Slate Digital", "SLATE DIGITAL": "Slate Digital", "Solid State Logic": "SSL", "solid state logic": "SSL", "mcdsp": "McDSP", "MCDSP": "McDSP", "McDSP, Inc.": "McDSP", "Valhalla": "Valhalla DSP", "valhalla": "Valhalla DSP", "VALHALLA": "Valhalla DSP", "ValhallaVintageVerb": "Valhalla DSP", "arturia": "Arturia", "ARTURIA": "Arturia", "Arturia SA": "Arturia", "spectrasonics": "Spectrasonics", "SPECTRASONICS": "Spectrasonics", "u-he": "u-he", "U-HE": "u-he", "Urs Heckmann": "u-he", "eventide": "Eventide", "EVENTIDE": "Eventide", "Eventide Inc.": "Eventide", "lexicon": "Lexicon", "LEXICON": "Lexicon", "celemony": "Celemony", "CELEMONY": "Celemony", "Celemony Software GmbH": "Celemony", "Xfer": "Xfer Records", "xfer": "Xfer Records", "XFER": "Xfer Records", "sugar bytes": "Sugar Bytes", "SUGAR BYTES": "Sugar Bytes", "SugarBytes": "Sugar Bytes"
     ]
 
     private init() {
@@ -236,8 +136,7 @@ class MetadataManager: ObservableObject {
     /// Get the display publisher (normalized or overridden)
     func getDisplayPublisher(for plugin: PluginItem) -> String {
         // First check for override
-        if let override = getOverride(for: plugin.path),
-           let publisher = override.publisher {
+        if let override = getOverride(for: plugin.path), let publisher = override.publisher {
             return publisher
         }
 
@@ -247,8 +146,7 @@ class MetadataManager: ObservableObject {
 
     /// Get the display version (overridden or original)
     func getDisplayVersion(for plugin: PluginItem) -> String {
-        if let override = getOverride(for: plugin.path),
-           let version = override.version {
+        if let override = getOverride(for: plugin.path), let version = override.version {
             return version
         }
         return plugin.version
@@ -256,8 +154,7 @@ class MetadataManager: ObservableObject {
 
     /// Get the display style (overridden or original)
     func getDisplayStyle(for plugin: PluginItem) -> String {
-        if let override = getOverride(for: plugin.path),
-           let style = override.style {
+        if let override = getOverride(for: plugin.path), let style = override.style {
             return style
         }
         return plugin.style
@@ -297,8 +194,7 @@ class MetadataManager: ObservableObject {
                 // Sort variants to pick the best canonical name
                 let canonical = pickCanonicalName(from: variants)
                 suggestions.append(PublisherMergeSuggestion(
-                    canonical: canonical,
-                    variants: variants.filter { $0 != canonical }.sorted()
+                    canonical: canonical, variants: variants.filter { $0 != canonical }.sorted()
                 ))
             }
 
@@ -351,9 +247,7 @@ class MetadataManager: ObservableObject {
                     matrix[i][j] = matrix[i - 1][j - 1]
                 } else {
                     matrix[i][j] = min(
-                        matrix[i - 1][j] + 1,      // deletion
-                        matrix[i][j - 1] + 1,      // insertion
-                        matrix[i - 1][j - 1] + 1   // substitution
+                        matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + 1   // substitution
                     )
                 }
             }
@@ -437,8 +331,7 @@ class MetadataManager: ObservableObject {
     }
 
     private func loadOverrides() {
-        guard let data = CloudSyncStorage.shared.getData(forKey: overridesKey),
-              let decoded = try? JSONDecoder().decode([String: PluginMetadataOverride].self, from: data) else {
+        guard let data = CloudSyncStorage.shared.getData(forKey: overridesKey), let decoded = try? JSONDecoder().decode([String: PluginMetadataOverride].self, from: data) else {
             return
         }
         overrides = decoded
@@ -451,8 +344,7 @@ class MetadataManager: ObservableObject {
     }
 
     private func loadNormalizations() {
-        guard let data = CloudSyncStorage.shared.getData(forKey: normalizationsKey),
-              let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
+        guard let data = CloudSyncStorage.shared.getData(forKey: normalizationsKey), let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
             return
         }
         publisherNormalizations = decoded

@@ -22,10 +22,7 @@ import Foundation
 class PluginMatcher {
 
     static func findMatch(
-        pluginName: String,
-        manufacturer: String,
-        format: PluginFormat,
-        in installedPlugins: [PluginItem]
+        pluginName: String, manufacturer: String, format: PluginFormat, in installedPlugins: [PluginItem]
     ) -> PluginItem? {
 
         if let match = installedPlugins.first(where: {
@@ -70,67 +67,99 @@ class PluginMatcher {
     }
 
     static func createEntries(
-        from parsedPlugins: [ParsedPlugin],
-        installedPlugins: [PluginItem]
+        from parsedPlugins: [ParsedPlugin], installedPlugins: [PluginItem]
     ) -> [DAWPlaylistEntry] {
+
+        print("🎯 [MATCHER] Creating DAWPlaylistEntries from \(parsedPlugins.count) parsed plugins")
+        print("   • Installed plugins available: \(installedPlugins.count)")
 
         // BUILD FAST LOOKUP DICTIONARIES - O(n) instead of O(n*m)!
         let nameFormatMap: [String: PluginItem] = Dictionary(
             installedPlugins.map { plugin in
                 let key = "\(plugin.name.lowercased())_\(plugin.type.lowercased())"
                 return (key, plugin)
-            },
-            uniquingKeysWith: { first, _ in first }
+            }, uniquingKeysWith: { first, _ in first }
         )
 
         let nameOnlyMap: [String: PluginItem] = Dictionary(
-            installedPlugins.map { ($0.name.lowercased(), $0) },
-            uniquingKeysWith: { first, _ in first }
+            installedPlugins.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { first, _ in first }
         )
 
         // Fast matching using dictionaries instead of linear search
-        return parsedPlugins.map { parsed in
-            var match: PluginItem? = nil
+        return parsedPlugins.enumerated().map { (index, parsed) in
+            print("\n🔄 [MATCHER] Processing plugin #\(index + 1):")
+            print("   📥 INPUT from Parser:")
+            print("      • name: '\(parsed.name)'")
+            print("      • publisher: '\(parsed.publisher)'")
+            print("      • type: '\(parsed.type)'")
+            print("      • track: '\(parsed.trackName)'")
 
-            // Try exact name + format match (FAST O(1) lookup)
-            let nameFormatKey = "\(parsed.name.lowercased())_\(parsed.format.rawValue.lowercased())"
-            match = nameFormatMap[nameFormatKey]
+            var match: PluginItem?
+
+            // Try exact name + type match (FAST O(1) lookup)
+            let nameTypeKey = "\(parsed.name.lowercased())_\(parsed.type.lowercased())"
+            match = nameFormatMap[nameTypeKey]
+
+            if match != nil {
+                print("   ✅ EXACT match found (name + type)")
+            }
 
             // Try name-only match
             if match == nil {
                 match = nameOnlyMap[parsed.name.lowercased()]
+                if match != nil {
+                    print("   ⚠️ NAME-ONLY match found (type differs)")
+                }
             }
 
             // Fall back to slow search only if needed
             if match == nil {
+                // Convert type string back to enum for legacy findMatch function
+                let format = PluginFormat(rawValue: parsed.type) ?? .VST3
                 match = findMatch(
-                    pluginName: parsed.name,
-                    manufacturer: parsed.manufacturer,
-                    format: parsed.format,
-                    in: installedPlugins
+                    pluginName: parsed.name, manufacturer: parsed.publisher, format: format, in: installedPlugins
                 )
+                if match != nil {
+                    print("   🔍 FUZZY match found (fallback search)")
+                }
             }
 
-            return DAWPlaylistEntry(
-                pluginName: parsed.name,
-                pluginManufacturer: parsed.manufacturer,
-                trackName: parsed.trackName,
-                trackIndex: parsed.trackIndex,
-                deviceIndex: parsed.deviceIndex,
-                pluginFormat: parsed.format,
-                isInstalled: match != nil,
-                matchedPluginPath: match?.path
+            if match == nil {
+                print("   ❌ NO match found - plugin not installed")
+            }
+
+            // If plugin is installed, pull metadata from the matched PluginItem
+            let version = match?.version ?? ""
+            let style = match?.style ?? ""
+            let architectures = match?.architectures ?? ""
+
+            if match != nil {
+                print("   📦 Pulling metadata from installed plugin:")
+                print("      • version: '\(version)'")
+                print("      • style: '\(style)'")
+                print("      • architectures: '\(architectures)'")
+            }
+
+            let entry = DAWPlaylistEntry(
+                name: parsed.name, publisher: parsed.publisher, trackName: parsed.trackName, trackIndex: parsed.trackIndex, deviceIndex: parsed.deviceIndex, type: parsed.type, isInstalled: match != nil, matchedPluginPath: match?.path, version: version, style: style, architectures: architectures, preset: parsed.preset
             )
+
+            print("   📤 OUTPUT DAWPlaylistEntry:")
+            print("      • name: '\(entry.name)'")
+            print("      • publisher: '\(entry.publisher)'")
+            print("      • type: '\(entry.type)'")
+            print("      • preset: '\(entry.preset)'")
+            print("      • isInstalled: \(entry.isInstalled)")
+            print("      • track: '\(entry.trackName)'")
+
+            return entry
         }
     }
 
     private static func cleanPluginName(_ name: String) -> String {
         var cleaned = name
 
-        let suffixes = [" VST", " VST3", " AU", " AAX", " x64", " x86",
-                       " (VST)", " (VST3)", " (AU)", " (AAX)",
-                       " v2", " v3", " v4", " v5",
-                       " 2", " 3", " 4", " 5"]
+        let suffixes = [" VST", " VST3", " AU", " AAX", " x64", " x86", " (VST)", " (VST3)", " (AU)", " (AAX)", " v2", " v3", " v4", " v5", " 2", " 3", " 4", " 5"]
 
         for suffix in suffixes {
             if cleaned.hasSuffix(suffix) {
@@ -168,10 +197,7 @@ class PluginMatcher {
         let rate = total > 0 ? Double(matched) / Double(total) : 0.0
 
         return MatchStats(
-            totalPlugins: total,
-            matchedPlugins: matched,
-            missingPlugins: missing,
-            matchRate: rate
+            totalPlugins: total, matchedPlugins: matched, missingPlugins: missing, matchRate: rate
         )
     }
 }

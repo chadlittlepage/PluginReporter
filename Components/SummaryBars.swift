@@ -46,12 +46,12 @@ func summaryBarsFromList(rows: [AppPluginItem]) -> some View {
     let hasData = !rows.isEmpty
 
     return VStack(alignment: .leading, spacing: 6) {
-        BarRow(label: "AU",    value: counts.au,       fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0, color: Color.blue)
-        BarRow(label: "VST",   value: counts.vst,      fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0, color: Color.green)
-        BarRow(label: "VST3",  value: counts.vst3,     fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0, color: Color.teal)
-        BarRow(label: "AAX",   value: counts.aax,      fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0, color: Color.purple)
-        BarRow(label: "CLAP",  value: counts.clap,     fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0, color: Color.orange)
-        BarRow(label: "LV2",   value: counts.lv2,      fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0, color: Color.gray)
+        BarRow(label: "AU", value: counts.au, fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0, color: Color.blue)
+        BarRow(label: "VST", value: counts.vst, fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0, color: Color.green)
+        BarRow(label: "VST3", value: counts.vst3, fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0, color: Color.teal)
+        BarRow(label: "AAX", value: counts.aax, fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0, color: Color.purple)
+        BarRow(label: "CLAP", value: counts.clap, fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0, color: Color.orange)
+        BarRow(label: "LV2", value: counts.lv2, fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0, color: Color.gray)
         BarRow(label: "OBSLT", value: counts.obsolete, fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0, color: Color.red)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,12 +68,12 @@ func summaryBars(rows: [ScannerPluginItem]) -> some View {
     let maxCount = Swift.max(1, counts.au, counts.vst, counts.vst3, counts.aax, counts.clap, counts.lv2, counts.obsolete)
 
     return VStack(alignment: .leading, spacing: 6) {
-        BarRow(label: "AU",    value: counts.au,       fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0, color: Color.blue)
-        BarRow(label: "VST",   value: counts.vst,      fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0, color: Color.green)
-        BarRow(label: "VST3",  value: counts.vst3,     fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0, color: Color.teal)
-        BarRow(label: "AAX",   value: counts.aax,      fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0, color: Color.purple)
-        BarRow(label: "CLAP",  value: counts.clap,     fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0, color: Color.orange)
-        BarRow(label: "LV2",   value: counts.lv2,      fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0, color: Color.gray)
+        BarRow(label: "AU", value: counts.au, fraction: hasData ? Double(counts.au) / Double(maxCount) : 0.0, color: Color.blue)
+        BarRow(label: "VST", value: counts.vst, fraction: hasData ? Double(counts.vst) / Double(maxCount) : 0.0, color: Color.green)
+        BarRow(label: "VST3", value: counts.vst3, fraction: hasData ? Double(counts.vst3) / Double(maxCount) : 0.0, color: Color.teal)
+        BarRow(label: "AAX", value: counts.aax, fraction: hasData ? Double(counts.aax) / Double(maxCount) : 0.0, color: Color.purple)
+        BarRow(label: "CLAP", value: counts.clap, fraction: hasData ? Double(counts.clap) / Double(maxCount) : 0.0, color: Color.orange)
+        BarRow(label: "LV2", value: counts.lv2, fraction: hasData ? Double(counts.lv2) / Double(maxCount) : 0.0, color: Color.gray)
         BarRow(label: "OBSLT", value: counts.obsolete, fraction: hasData ? Double(counts.obsolete) / Double(maxCount) : 0.0, color: Color.red)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,10 +109,10 @@ struct BarRow: View {
     let value: Int
     let fraction: Double
     let color: Color
-    var onTap: (() -> Void)? = nil  // Optional click handler
+    var onTap: (() -> Void)?  // Optional click handler
     var isSelected: Bool = false     // Show if this format is filtered
-    var onUninstall: (() -> Void)? = nil  // Optional uninstall handler
-    var playlistCount: Int? = nil  // Optional playlist-specific count
+    var onUninstall: (() -> Void)?  // Optional uninstall handler
+    var playlistCount: Int?  // Optional playlist-specific count
 
     @Environment(\.colorScheme) private var colorScheme
 

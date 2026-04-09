@@ -1,7 +1,7 @@
 // Preferences.swift — FULL FILE
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// App preferences (simple observable model).
 /// - Stores: extra scan folders, visible formats, appearance.
@@ -64,6 +64,24 @@ final class Preferences: ObservableObject {
         return baseSize + uiFontSizeOffset
     }
 
+    // MARK: Table Column Visibility
+    // Which columns to show in the main plugin table (all enabled by default)
+    @Published var showColumnRating: Bool = true
+    @Published var showColumnName: Bool = true
+    @Published var showColumnPublisher: Bool = true
+    @Published var showColumnVersion: Bool = true
+    @Published var showColumnType: Bool = true
+    @Published var showColumnStyle: Bool = true
+    @Published var showColumnLicense: Bool = true
+    @Published var showColumnDate: Bool = true
+    @Published var showColumnSize: Bool = true
+    @Published var showColumnPath: Bool = true
+    @Published var showColumnRequirement: Bool = true
+    @Published var showColumnObsolete: Bool = true
+    @Published var showColumnMissing: Bool = true
+    @Published var showColumnTrack: Bool = true
+    @Published var showColumnNotes: Bool = true
+
     // MARK: PDF Export Options - Column Visibility
     // Which columns to include in PDF export (all enabled by default)
     @Published var pdfShowRating: Bool = true
@@ -118,6 +136,25 @@ final class Preferences: ObservableObject {
         }
     }
 
+    // MARK: Column Visibility Helper
+
+    /// Check if a specific column should be visible
+    func isColumnVisible(_ column: PluginColumn) -> Bool {
+        switch column {
+        case .name: return showColumnName
+        case .publisher: return showColumnPublisher
+        case .version: return showColumnVersion
+        case .type: return showColumnType
+        case .style: return showColumnStyle
+        case .date: return showColumnDate
+        case .size: return showColumnSize
+        case .path: return showColumnPath
+        case .requirement: return showColumnRequirement
+        case .obsolete: return showColumnObsolete
+        case .missing: return showColumnMissing
+        }
+    }
+
     // MARK: Init
 
     init() {
@@ -155,6 +192,23 @@ final class Preferences: ObservableObject {
         if UserDefaults.standard.object(forKey: "uiFontSizeOffset") != nil {
             self.uiFontSizeOffset = CGFloat(savedFontOffset)
         }
+
+        // Load Table Column Visibility
+        self.showColumnRating = UserDefaults.standard.object(forKey: "showColumnRating") as? Bool ?? true
+        self.showColumnName = UserDefaults.standard.object(forKey: "showColumnName") as? Bool ?? true
+        self.showColumnPublisher = UserDefaults.standard.object(forKey: "showColumnPublisher") as? Bool ?? true
+        self.showColumnVersion = UserDefaults.standard.object(forKey: "showColumnVersion") as? Bool ?? true
+        self.showColumnType = UserDefaults.standard.object(forKey: "showColumnType") as? Bool ?? true
+        self.showColumnStyle = UserDefaults.standard.object(forKey: "showColumnStyle") as? Bool ?? true
+        self.showColumnLicense = UserDefaults.standard.object(forKey: "showColumnLicense") as? Bool ?? true
+        self.showColumnDate = UserDefaults.standard.object(forKey: "showColumnDate") as? Bool ?? true
+        self.showColumnSize = UserDefaults.standard.object(forKey: "showColumnSize") as? Bool ?? true
+        self.showColumnPath = UserDefaults.standard.object(forKey: "showColumnPath") as? Bool ?? true
+        self.showColumnRequirement = UserDefaults.standard.object(forKey: "showColumnRequirement") as? Bool ?? true
+        self.showColumnObsolete = UserDefaults.standard.object(forKey: "showColumnObsolete") as? Bool ?? true
+        self.showColumnMissing = UserDefaults.standard.object(forKey: "showColumnMissing") as? Bool ?? true
+        self.showColumnTrack = UserDefaults.standard.object(forKey: "showColumnTrack") as? Bool ?? true
+        self.showColumnNotes = UserDefaults.standard.object(forKey: "showColumnNotes") as? Bool ?? true
 
         // Load PDF Column Visibility
         self.pdfShowRating = UserDefaults.standard.object(forKey: "pdfShowRating") as? Bool ?? true
@@ -245,6 +299,23 @@ final class Preferences: ObservableObject {
         // UI Font Size
         $uiFontSizeOffset.sink { UserDefaults.standard.set(Double($0), forKey: "uiFontSizeOffset") }.store(in: &cancellables)
 
+        // Table Column Visibility
+        $showColumnRating.sink { UserDefaults.standard.set($0, forKey: "showColumnRating") }.store(in: &cancellables)
+        $showColumnName.sink { UserDefaults.standard.set($0, forKey: "showColumnName") }.store(in: &cancellables)
+        $showColumnPublisher.sink { UserDefaults.standard.set($0, forKey: "showColumnPublisher") }.store(in: &cancellables)
+        $showColumnVersion.sink { UserDefaults.standard.set($0, forKey: "showColumnVersion") }.store(in: &cancellables)
+        $showColumnType.sink { UserDefaults.standard.set($0, forKey: "showColumnType") }.store(in: &cancellables)
+        $showColumnStyle.sink { UserDefaults.standard.set($0, forKey: "showColumnStyle") }.store(in: &cancellables)
+        $showColumnLicense.sink { UserDefaults.standard.set($0, forKey: "showColumnLicense") }.store(in: &cancellables)
+        $showColumnDate.sink { UserDefaults.standard.set($0, forKey: "showColumnDate") }.store(in: &cancellables)
+        $showColumnSize.sink { UserDefaults.standard.set($0, forKey: "showColumnSize") }.store(in: &cancellables)
+        $showColumnPath.sink { UserDefaults.standard.set($0, forKey: "showColumnPath") }.store(in: &cancellables)
+        $showColumnRequirement.sink { UserDefaults.standard.set($0, forKey: "showColumnRequirement") }.store(in: &cancellables)
+        $showColumnObsolete.sink { UserDefaults.standard.set($0, forKey: "showColumnObsolete") }.store(in: &cancellables)
+        $showColumnMissing.sink { UserDefaults.standard.set($0, forKey: "showColumnMissing") }.store(in: &cancellables)
+        $showColumnTrack.sink { UserDefaults.standard.set($0, forKey: "showColumnTrack") }.store(in: &cancellables)
+        $showColumnNotes.sink { UserDefaults.standard.set($0, forKey: "showColumnNotes") }.store(in: &cancellables)
+
         // PDF Column Visibility
         $pdfShowRating.sink { UserDefaults.standard.set($0, forKey: "pdfShowRating") }.store(in: &cancellables)
         $pdfShowName.sink { UserDefaults.standard.set($0, forKey: "pdfShowName") }.store(in: &cancellables)
@@ -285,4 +356,3 @@ final class Preferences: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 }
-

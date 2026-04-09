@@ -1,8 +1,11 @@
 import Foundation
+#if canImport(FirebaseFirestore)
+import FirebaseFirestore
+#endif
 
-// MARK: - User Feedback HTTP Client
+// MARK: - User Feedback Firestore Client
 
-/// Handles sending bug reports and feature requests to the server
+/// Handles sending bug reports and feature requests directly to Firebase Firestore
 class UserFeedbackClient {
 
     static let shared = UserFeedbackClient()
@@ -12,105 +15,77 @@ class UserFeedbackClient {
     // MARK: - Send Bug Report
 
     func sendBugReport(_ report: BugReport) async throws {
-        let serverURL = UserDefaults.standard.string(forKey: "dashboard_server_url") ?? ""
-        guard !serverURL.isEmpty, let url = URL(string: "\(serverURL)/bug-report") else {
-            throw FeedbackError.invalidServerURL
-        }
+        #if canImport(FirebaseFirestore)
+        let db = Firestore.firestore()
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Add API key if available
-        if let apiKey = KeychainHelper.load(key: "dashboard_api_key") {
-            request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
-        }
-
+        // Convert report to dictionary
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try encoder.encode(report)
+        let data = try encoder.encode(report)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw FeedbackError.invalidResponse
+        guard let reportDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw FeedbackError.invalidData
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = String(data: data, encoding: .utf8) {
-                throw FeedbackError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
-            } else {
-                throw FeedbackError.serverError(statusCode: httpResponse.statusCode, message: "Unknown error")
-            }
-        }
+        // Add to Firestore
+        try await db.collection("bug_reports").addDocument(data: reportDict)
 
         // Log successful submission
         dashboardLogError(
-            message: "Bug report submitted: \(report.title)",
-            severity: "info",
-            context: "User Feedback"
+            message: "Bug report submitted to Firebase: \(report.title)", severity: "info", context: "User Feedback"
         )
+
+        // print("✅ Bug report submitted to Firebase Firestore: \(report.title)")
+        #else
+        throw FeedbackError.firebaseNotAvailable
+        #endif
     }
 
     // MARK: - Send Feature Request
 
     func sendFeatureRequest(_ request: FeatureRequest) async throws {
-        let serverURL = UserDefaults.standard.string(forKey: "dashboard_server_url") ?? ""
-        guard !serverURL.isEmpty, let url = URL(string: "\(serverURL)/feature-request") else {
-            throw FeedbackError.invalidServerURL
-        }
+        #if canImport(FirebaseFirestore)
+        let db = Firestore.firestore()
 
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Add API key if available
-        if let apiKey = KeychainHelper.load(key: "dashboard_api_key") {
-            urlRequest.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
-        }
-
+        // Convert request to dictionary
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        urlRequest.httpBody = try encoder.encode(request)
+        let data = try encoder.encode(request)
 
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw FeedbackError.invalidResponse
+        guard let requestDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw FeedbackError.invalidData
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = String(data: data, encoding: .utf8) {
-                throw FeedbackError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
-            } else {
-                throw FeedbackError.serverError(statusCode: httpResponse.statusCode, message: "Unknown error")
-            }
-        }
+        // Add to Firestore
+        try await db.collection("feature_requests").addDocument(data: requestDict)
 
         // Log successful submission
         dashboardLogError(
-            message: "Feature request submitted: \(request.title)",
-            severity: "info",
-            context: "User Feedback"
+            message: "Feature request submitted to Firebase: \(request.title)", severity: "info", context: "User Feedback"
         )
+
+        // print("✅ Feature request submitted to Firebase Firestore: \(request.title)")
+        #else
+        throw FeedbackError.firebaseNotAvailable
+        #endif
     }
 }
 
 // MARK: - Feedback Error
 
 enum FeedbackError: LocalizedError {
-    case invalidServerURL
-    case invalidResponse
-    case serverError(statusCode: Int, message: String)
+    case invalidData
+    case firebaseNotAvailable
+    case submissionFailed(String)
 
     var errorDescription: String? {
         switch self {
-        case .invalidServerURL:
-            return "Invalid server URL. Please configure your server in Dashboard Settings."
-        case .invalidResponse:
-            return "Invalid response from server."
-        case .serverError(let statusCode, let message):
-            return "Server error (\(statusCode)): \(message)"
+        case .invalidData: 
+            return "Failed to convert feedback data for submission."
+        case .firebaseNotAvailable:
+            return "Firebase is not available. Please ensure Firebase is properly configured."
+        case .submissionFailed(let message):
+            return "Failed to submit feedback: \(message)"
         }
     }
 }

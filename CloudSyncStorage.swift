@@ -24,10 +24,7 @@ class CloudSyncStorage {
     private init() {
         // Listen for iCloud changes
         NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleCloudUpdate),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: ubiquitousStore
+            self, selector: #selector(handleCloudUpdate), name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: ubiquitousStore
         )
 
         // Sync from cloud if available

@@ -45,3 +45,4 @@ AuthKey_*.p8
 
 # OS Files
 .DS_Store
+firebase vendor .bundle

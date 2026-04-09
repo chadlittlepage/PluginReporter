@@ -35,14 +35,7 @@ class ReaperParser: DAWParser {
         }
 
         return ParsedProject(
-            name: url.deletingPathExtension().lastPathComponent,
-            sourceFile: url,
-            dawType: .reaper,
-            tracks: projectData.tracks,
-            tempo: projectData.tempo,
-            sampleRate: projectData.sampleRate,
-            version: projectData.version,
-            key: nil
+            name: url.deletingPathExtension().lastPathComponent, sourceFile: url, dawType: .reaper, tracks: projectData.tracks, tempo: projectData.tempo, sampleRate: projectData.sampleRate, version: projectData.version, key: nil
         )
     }
 }
@@ -185,9 +178,7 @@ private class ReaperProjectParser {
         let track: ParsedTrack?
         if !plugins.isEmpty {
             track = ParsedTrack(
-                name: trackName,
-                index: currentTrackIndex,
-                plugins: plugins
+                name: trackName, index: currentTrackIndex, plugins: plugins
             )
             currentTrackIndex += 1
         } else {
@@ -218,12 +209,7 @@ private class ReaperProjectParser {
         let (name, manufacturer) = extractNameAndManufacturer(from: cleanInfo)
 
         return ParsedPlugin(
-            name: name,
-            manufacturer: manufacturer,
-            trackName: trackName,
-            trackIndex: trackIndex,
-            deviceIndex: deviceIndex,
-            format: .VST
+            name: name, publisher: manufacturer, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: .VST
         )
     }
 
@@ -240,12 +226,7 @@ private class ReaperProjectParser {
         let (name, manufacturer) = extractNameAndManufacturer(from: cleanInfo)
 
         return ParsedPlugin(
-            name: name,
-            manufacturer: manufacturer,
-            trackName: trackName,
-            trackIndex: trackIndex,
-            deviceIndex: deviceIndex,
-            format: .VST3
+            name: name, publisher: manufacturer, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: .VST3
         )
     }
 
@@ -262,12 +243,7 @@ private class ReaperProjectParser {
         let (name, manufacturer) = extractNameAndManufacturer(from: cleanInfo)
 
         return ParsedPlugin(
-            name: name,
-            manufacturer: manufacturer,
-            trackName: trackName,
-            trackIndex: trackIndex,
-            deviceIndex: deviceIndex,
-            format: .AU
+            name: name, publisher: manufacturer, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: .AU
         )
     }
 
@@ -283,12 +259,7 @@ private class ReaperProjectParser {
 
         // JS plugins are Reaper native
         return ParsedPlugin(
-            name: cleanInfo,
-            manufacturer: "Cockos (Reaper)",
-            trackName: trackName,
-            trackIndex: trackIndex,
-            deviceIndex: deviceIndex,
-            format: .VST3  // Treat as VST3 for compatibility
+            name: cleanInfo, publisher: "Cockos (Reaper)", trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: .VST3  // Treat as VST3 for compatibility
         )
     }
 
@@ -305,12 +276,7 @@ private class ReaperProjectParser {
         let (name, manufacturer) = extractNameAndManufacturer(from: cleanInfo)
 
         return ParsedPlugin(
-            name: name,
-            manufacturer: manufacturer,
-            trackName: trackName,
-            trackIndex: trackIndex,
-            deviceIndex: deviceIndex,
-            format: .CLAP
+            name: name, publisher: manufacturer, trackName: trackName, trackIndex: trackIndex, deviceIndex: deviceIndex, format: .CLAP
         )
     }
 
@@ -362,13 +328,11 @@ private class ReaperProjectParser {
         return String(line[afterFirstQuote..<secondQuote])
     }
 
-    private func extractNameAndManufacturer(from string: String) -> (name: String, manufacturer: String) {
+    private func extractNameAndManufacturer(from string: String) -> (name: String, publisher: String) {
         // Format: "PluginName (Manufacturer)" or just "PluginName"
 
         // Look for manufacturer in parentheses
-        if let openParen = string.lastIndex(of: "("),
-           let closeParen = string.lastIndex(of: ")"),
-           openParen < closeParen {
+        if let openParen = string.lastIndex(of: "("), let closeParen = string.lastIndex(of: ")"), openParen < closeParen {
 
             let name = string[..<openParen].trimmingCharacters(in: .whitespaces)
             let manufacturer = string[string.index(after: openParen)..<closeParen].trimmingCharacters(in: .whitespaces)

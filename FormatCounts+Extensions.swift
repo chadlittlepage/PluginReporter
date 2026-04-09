@@ -34,6 +34,7 @@ extension FormatCounts {
         case "AAX":  aax += 1
         case "CLAP": clap += 1
         case "LV2":  lv2 += 1
+        case "OBSLT", "OBSOLETE": obsolete += 1
         default: break
         }
     }
@@ -47,7 +48,9 @@ func countFormats(for items: [AppPluginItem]) -> FormatCounts {
     var counts = FormatCounts()
     for item in items {
         counts.increment(for: item.type)
-        if item.obsolete { counts.obsolete += 1 }
+        if item.obsolete && item.type.uppercased() != "OBSLT" && item.type.uppercased() != "OBSOLETE" {
+            counts.obsolete += 1
+        }
         if item.missing { counts.missing += 1 }
     }
     return counts
@@ -59,7 +62,9 @@ func countFormats(for items: [ScannerPluginItem]) -> FormatCounts {
     var counts = FormatCounts()
     for item in items {
         counts.increment(for: item.type)
-        if item.obsolete { counts.obsolete += 1 }
+        if item.obsolete && item.type.uppercased() != "OBSLT" && item.type.uppercased() != "OBSOLETE" {
+            counts.obsolete += 1
+        }
     }
     return counts
 }

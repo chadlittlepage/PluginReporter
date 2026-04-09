@@ -2,8 +2,8 @@
 // PRODUCTION-READY PREVIEW - Optimized for thousands of entries
 // Copy into Xcode Playground to preview
 
-import SwiftUI
 import PlaygroundSupport
+import SwiftUI
 
 // MARK: - Main View
 
