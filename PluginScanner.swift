@@ -144,6 +144,12 @@ public final class PluginScanner: ObservableObject {
 
                 // Update UI on main thread
                 await MainActor.run {
+                    let withScreenshots = cachedPlugins.filter { $0.screenshotUrl != nil }.count
+                    let withThumbs = cachedPlugins.filter { $0.thumbnailUrl != nil }.count
+                    print("📸 [CACHE] Decoded \(cachedPlugins.count) plugins: \(withScreenshots) with screenshotUrl, \(withThumbs) with thumbnailUrl")
+                    if withScreenshots > 0, let sample = cachedPlugins.first(where: { $0.screenshotUrl != nil }) {
+                        print("📸 [CACHE] Sample: \(sample.name) → \(sample.screenshotUrl ?? "nil")")
+                    }
                     self.plugins = cachedPlugins
                     self.totalToScan = cachedPlugins.count
 

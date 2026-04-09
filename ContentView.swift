@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import FirebaseStorage
 #if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
@@ -1006,9 +1007,16 @@ struct ContentView: View {
     }
 
     private func loadCurrentPluginImage() {
-        guard let selectedPlugin = appState.selected.first,
-              let urlString = selectedPlugin.screenshotUrl ?? selectedPlugin.thumbnailUrl,
+        guard let selectedPlugin = appState.selected.first else {
+            print("📸 loadCurrentPluginImage: no selection")
+            currentDisplayedImage = nil
+            currentImageURL = nil
+            return
+        }
+        print("📸 loadCurrentPluginImage: \(selectedPlugin.name) | screenshot=\(selectedPlugin.screenshotUrl ?? "nil") | thumb=\(selectedPlugin.thumbnailUrl ?? "nil")")
+        guard let urlString = selectedPlugin.screenshotUrl ?? selectedPlugin.thumbnailUrl,
               let url = URL(string: urlString) else {
+            print("📸 loadCurrentPluginImage: no URL for \(selectedPlugin.name)")
             currentDisplayedImage = nil
             currentImageURL = nil
             return
@@ -1020,6 +1028,7 @@ struct ContentView: View {
         }
 
         currentImageURL = url
+        print("📸 loadCurrentPluginImage: loading \(urlString.prefix(80))...")
 
         // Check cache first
         if let cached = imageCache.cache[url] {
@@ -1029,9 +1038,26 @@ struct ContentView: View {
 
         // Load from network in background
         Task {
-            if let image = await imageCache.getImage(for: url) {
+            let resolvedURL: URL
+            // Firebase Storage URLs need authenticated download URLs
+            // Convert https://storage.googleapis.com/BUCKET/PATH → gs://BUCKET/PATH
+            if urlString.contains("storage.googleapis.com/pluginreporter") {
+                let gsURL = urlString
+                    .replacingOccurrences(of: "https://storage.googleapis.com/", with: "gs://")
+                do {
+                    let storageRef = Storage.storage().reference(forURL: gsURL)
+                    resolvedURL = try await storageRef.downloadURL()
+                    print("📸 Firebase Storage: signed URL for \(selectedPlugin.name)")
+                } catch {
+                    print("📸 Firebase Storage error for \(selectedPlugin.name): \(error.localizedDescription)")
+                    return
+                }
+            } else {
+                resolvedURL = url
+            }
+
+            if let image = await imageCache.getImage(for: resolvedURL) {
                 await MainActor.run {
-                    // Only update if this is still the current URL
                     if currentImageURL == url {
                         currentDisplayedImage = image
                     }

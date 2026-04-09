@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		40FF00082EB9000000000008 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 40FF00072EB9000000000007 /* FirebaseStorage */; };
 		40FF00062EB9000000000006 /* PluginHeritageDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FF00052EB9000000000005 /* PluginHeritageDatabase.swift */; };
 		40FF00042EB9000000000004 /* PluginEnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FF00032EB9000000000003 /* PluginEnrichmentService.swift */; };
 		40FF00022EB9000000000002 /* EnrichmentCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FF00012EB9000000000001 /* EnrichmentCacheManager.swift */; };
@@ -555,6 +556,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				409063912EB17DAE00987E55 /* FirebaseCore in Frameworks */,
+				40FF00082EB9000000000008 /* FirebaseStorage in Frameworks */,
 				402869DC2E937F6100A3C7DA /* Sentry in Frameworks */,
 				409063932EB17DAE00987E55 /* FirebaseFirestore in Frameworks */,
 			);
@@ -1888,6 +1890,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		40FF00072EB9000000000007 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 409063892EB06FFF00987E55 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
 		402869DB2E937F6100A3C7DA /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 402869DA2E937F6100A3C7DA /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
